@@ -29,6 +29,18 @@ namespace
 	}
 }
 
+
+std::string HelloWorld(RE::StaticFunctionTag*)
+{
+	return "Hello world!";
+}
+
+bool RegisterFuncs(RE::BSScript::IVirtualMachine* a_vm)
+{
+	a_vm->RegisterFunction("HelloWorld", "MyClass", HelloWorld);
+	return true;
+}
+
 extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() {
 	SKSE::PluginVersionData v;
 
@@ -46,7 +58,16 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 	InitializeLog();
 	logger::info("{} v{}"sv, Plugin::NAME, Plugin::VERSION.string());
 
-	SKSE::Init(a_skse);
+
+	if (!SKSE::Init(a_skse)) 
+	{
+		return false;
+	}
+
+	if (const auto papyrus = SKSE::GetPapyrusInterface(); papyrus && !papyrus->Register(RegisterFuncs)) 
+	{
+		return false;
+	}
 
 	return true;
 }
