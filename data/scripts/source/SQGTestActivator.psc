@@ -1,6 +1,6 @@
-Scriptname HelloWorldScript extends ObjectReference  
+Scriptname SQGTestActivator extends ObjectReference  
  
-import SQGLibRegistrationScript
+import SQGLib
 
 Event OnActivate(ObjectReference akActionRef)
 	Debug.MessageBox(HelloWorld())

@@ -1,3 +1,3 @@
-ScriptName SQGLibRegistrationScript
+ScriptName SQGLib
 
 String Function HelloWorld() Global Native
