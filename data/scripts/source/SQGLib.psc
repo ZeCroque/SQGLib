@@ -1,3 +1,6 @@
 ScriptName SQGLib
 
-String Function HelloWorld() Global Native
+String Function GenerateQuest() Global Native
+String Function SwapSelectedQuest() Global Native
+String Function StartSelectedQuest() Global Native
+String Function EmptyDebugFunction() Global Native
