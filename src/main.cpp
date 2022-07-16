@@ -69,7 +69,9 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questObjective->ownerQuest = generatedQuest;
 	questObjective->initialized = true; //TODO do we have to set this manually?
 
-	generatedQuest->objectives.push_front(questObjective); //TODO!!! add target to quest objective
+	//TODO!!! take alias lock and add reference quest alias (BGSQuestAlias)
+
+	generatedQuest->objectives.push_front(questObjective); //TODO!! add target to quest objective
 
 	generatedQuest->InitializeData(); //Initializes pad24, pad22c and questObjective's pad04
 
@@ -92,12 +94,63 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 	{
 		auto* storyTeller = RE::BGSStoryTeller::GetSingleton();
 		storyTeller->BeginStartUpQuest(selectedQuest);
+		//TODO check why quest targets aren't set
 	}
 }
 
 void EmptyDebugFunction(RE::StaticFunctionTag*)
 {
-	int i = 42;
+	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+	auto* policy = scriptMachine->GetObjectHandlePolicy();
+
+	RE::TESQuest* editedQuest;
+	if(!generatedQuest)
+	{
+		const RE::FormID emptyQuestFormId = std::strtoul("5003e36", nullptr, 16);
+		editedQuest = RE::TESForm::LookupByID<RE::TESQuest>(emptyQuestFormId);
+	}
+	else
+	{
+		editedQuest = generatedQuest;
+	}
+	const auto editedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, editedQuest);
+
+	//TODO!!! try to call script compiler from c++ before loading custom script
+	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
+	scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject); //TODO defensive pattern against return value;
+	scriptMachine->BindObject(questCustomScriptObject, editedQuestHandle, false);
+	policy->PersistHandle(editedQuestHandle);
+
+	const RE::FormID targetFormId = std::strtoul("500439A", nullptr, 16);
+	const auto targetForm = RE::TESForm::LookupByID<RE::TESObjectREFR>(targetFormId);
+	const auto targetHandle = policy->GetHandleForObject(RE::FormType::Reference, targetForm);
+
+	RE::BSTSmartPointer<RE::BSScript::Object> objectReferenceBaseScriptObject;
+	scriptMachine->CreateObject("ObjectReference", objectReferenceBaseScriptObject);
+	scriptMachine->BindObject(objectReferenceBaseScriptObject, targetHandle, false);
+	policy->PersistHandle(targetHandle);
+
+	RE::BSScript::Variable propertyValue;
+	propertyValue.SetObject(objectReferenceBaseScriptObject);
+	scriptMachine->SetPropertyValue(questCustomScriptObject, "SQGTestTargetNPC", propertyValue);
+	questCustomScriptObject->initialized = true;
+
+	const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter();
+	RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+	scriptMachine->DispatchMethodCall(editedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+
+	//Execute console command for debugging purposes
+	//=====================
+	/*const auto scriptFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::Script>();
+	auto script = scriptFactory ? scriptFactory->Create() : nullptr;
+	if (script)
+	{
+		const auto selectedRef = RE::Console::GetSelectedRef();
+		script->SetCommand("StartQuest SQGSampleQuest");
+		script->CompileAndRun(selectedRef.get());
+		delete script;
+	}*/
+	//TODO!!! debug printing this very method ptr adr to break into it in IDA debugger and find the engine startQuest function with quest target initialization
 }
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
