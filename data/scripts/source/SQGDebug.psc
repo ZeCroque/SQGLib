@@ -1,16 +1,12 @@
 Scriptname SQGDebug Extends Quest Hidden
 
-ObjectReference Property SQGTestTargetNPC Auto
+ReferenceAlias Property SQGTestAliasTarget Auto
 
 Function Fragment_0()
-SQGTestTargetNPC.Disable()
+Debug.MessageBox(SQGTestAliasTarget.GetActorReference().GetFormID())
 SetObjectiveDisplayed(10)
 EndFunction
 
-Function Fragment_3()
-SetObjectiveCompleted(10)
-EndFunction
-
-Function Fragment_4()
+Function Fragment_1()
 SetObjectiveCompleted(10)
 EndFunction
