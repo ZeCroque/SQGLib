@@ -55,6 +55,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	std::memset(reinterpret_cast<void*>(generatedQuest->executedStages), 0, 3 * sizeof(std::int64_t));
 	std::memcpy(reinterpret_cast<void*>(generatedQuest->executedStages), reinterpret_cast<void*>(referenceQuest->executedStages), 2 * sizeof(std::int64_t));
 	//TODO reinterpret cast to ListNode* and try to add new ListNode directly
+	//auto* rawList = reinterpret_cast<RE::BSSimpleList<RE::TESQuestStage>::Node*>(&generatedQuest->objectives);
 
 	generatedQuest->waitingStages = new RE::BSSimpleList<RE::TESQuestStage*>(*referenceQuest->waitingStages);
 
@@ -80,22 +81,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	return "Generated quest with formID: " + formId;
 }
 
-std::string SwapSelectedQuest(RE::StaticFunctionTag*)
-{
-	selectedQuest = selectedQuest == referenceQuest ? generatedQuest : referenceQuest;
-	return "Selected " + std::string(selectedQuest ? selectedQuest->GetFullName() : "nullptr");
-}
-
-void StartSelectedQuest(RE::StaticFunctionTag*)
-{
-	if(selectedQuest)
-	{
-		auto* storyTeller = RE::BGSStoryTeller::GetSingleton();
-		storyTeller->BeginStartUpQuest(selectedQuest);
-		//TODO check why quest targets aren't set
-	}
-}
-
 namespace RE
 {
 	struct TESQuestStageEvent
@@ -114,12 +99,18 @@ class QuestStageEventSink final : public RE::BSTEventSink<RE::TESQuestStageEvent
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESQuestStageEvent* a_event, RE::BSTEventSource<RE::TESQuestStageEvent>* a_eventSource) override
 	{
+		//TODO check targets memory adr after starting reference quest
+
 		auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 		auto* policy = scriptMachine->GetObjectHandlePolicy();
 
 		const auto* updatedQuest = RE::TESForm::LookupByID<RE::TESQuest>(a_event->formID);
-		if(updatedQuest != referenceQuest && updatedQuest != generatedQuest && updatedQuest != RE::TESForm::LookupByID<RE::TESQuest>(std::strtoul("5003e36", nullptr, 16))) //TODO find a proper way to bypass unwanted events
+		if(updatedQuest != generatedQuest && updatedQuest != RE::TESForm::LookupByID<RE::TESQuest>(std::strtoul("5003e36", nullptr, 16))) //TODO find a proper way to bypass unwanted events
 		{
+			if(updatedQuest == referenceQuest)
+			{
+				int i = 42;
+			}
 			return RE::BSEventNotifyControl::kStop;
 		}
 
@@ -135,8 +126,32 @@ public:
 	}
 };
 
+std::string SwapSelectedQuest(RE::StaticFunctionTag*)
+{
+	RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
+	selectedQuest = selectedQuest == referenceQuest ? generatedQuest : referenceQuest;
+	return "Selected " + std::string(selectedQuest ? selectedQuest->GetFullName() : "nullptr");
+}
+
+void StartSelectedQuest(RE::StaticFunctionTag*)
+{
+	if(selectedQuest)
+	{
+		auto* storyTeller = RE::BGSStoryTeller::GetSingleton();
+		storyTeller->BeginStartUpQuest(selectedQuest);
+		//TODO check why quest targets aren't set
+	}
+}
+
 void EmptyDebugFunction(RE::StaticFunctionTag*)
 {
+	/*const auto base = REL::Module::get().base();
+	std::map<uint64_t, uint64_t> resultMap;
+	for(const auto& addresses = REL::IDDatabase::get()._offset2id; const auto& address : addresses)
+	{
+	    resultMap[address.id] = address.offset + base;
+	}*/
+
 	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 	auto* policy = scriptMachine->GetObjectHandlePolicy();
 
@@ -186,19 +201,85 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 	auto* refAliasInstanceData = new RE::BGSRefAliasInstanceData();
 	refAliasInstanceData->alias = createdAlias;
 	refAliasInstanceData->quest = editedQuest;
-	refAliasInstanceData->instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //TODO!!! test add packages
+	refAliasInstanceData->instancedPackages = nullptr; //new RE::BSTArray<RE::TESPackage*>(); //TODO!!! test add packages
 
 	auto* aliasInstanceArray = new RE::ExtraAliasInstanceArray();
 	aliasInstanceArray->aliases.emplace_back(refAliasInstanceData);
 
 	targetForm->extraList.Add(aliasInstanceArray);
+	const auto referenceObjective = *referenceQuest->objectives.begin();
+	const auto target = new RE::TESQuestTarget();
+	target->alias = 0; 
+	target->unk00 = referenceObjective->targets[0]->unk00; //00007ff7b6ab6880 -> 240935 -> probably a virtual table so can be copied...
+	auto* firstObjective = *editedQuest->objectives.begin();
+	firstObjective->targets = new RE::TESQuestTarget*;
+	*firstObjective->targets = new RE::TESQuestTarget[4];
+	firstObjective->targets[0] = target;
+	firstObjective->targets[1] = nullptr;
+	firstObjective->targets[2] = nullptr;
+	firstObjective->targets[3] = nullptr;
+
+	firstObjective->numTargets = 1;
 
 	RE::BSScript::Variable propertyValue;
 	propertyValue.SetObject(referenceAliasBaseScriptObject);
 	scriptMachine->SetPropertyValue(questCustomScriptObject, "SQGTestAliasTarget", propertyValue);
 	questCustomScriptObject->initialized = true;
 
-	//TODO!!! make a quest target
+	std::ostringstream ss;
+	ss << std::hex << editedQuest;
+	SKSE::log::debug("base-adr:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << editedQuest->formID;
+	SKSE::log::debug("formid:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << &editedQuest->aliases;
+	SKSE::log::debug("aliases-adr{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << *editedQuest->aliases.begin();
+	SKSE::log::debug("aliases-adr:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << &editedQuest->objectives._listHead;
+	SKSE::log::debug("objective[0]-node-adr:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << &editedQuest->objectives._listHead.item;
+	SKSE::log::debug("objective[0]-item-adr:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << editedQuest->objectives._listHead.item->targets;
+	SKSE::log::debug("targets-adr:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << editedQuest->objectives._listHead.item->targets[0];
+	SKSE::log::debug("target[0]-adr:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << &editedQuest->executedStages->_listHead;
+	SKSE::log::debug("executedStages[0]-node-adr:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << &editedQuest->executedStages->_listHead.item;
+	SKSE::log::debug("executedStages[0]-item-adr:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << &editedQuest->waitingStages->_listHead;
+	SKSE::log::debug("waitingStages[0]-node-adr:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << &editedQuest->waitingStages->_listHead;
+	SKSE::log::debug("waitingStages[0]-item-adr:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << targetForm;
+	SKSE::log::debug("targetForm:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << &targetForm->extraList;
+	SKSE::log::debug("targetFormExtraLists:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << aliasInstanceArray;
+	SKSE::log::debug("extraData[Alias]:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << refAliasInstanceData;
+	SKSE::log::debug("aliasInstanceData:{0}"sv, ss.str());
+	ss.str(std::string());
+	ss << std::hex << refAliasInstanceData->instancedPackages;
+	SKSE::log::debug("packages:{0}"sv, ss.str());
+	//Debug target ref ptr
+	//ExtraData
+	//Instanciated objects
 
 	//Execute console command because native C++ method doesn't init quest targets
 	//=====================
@@ -209,7 +290,7 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 		const auto selectedRef = RE::Console::GetSelectedRef();
 		script->SetCommand("StartQuest SQGEmptySample");
 		script->CompileAndRun(selectedRef.get());
-		delete script;
+		//delete script;
 	}
 	//TODO!! debug printing this very method ptr adr to break into it in IDA debugger and find the engine startQuest function with quest target initialization
 }
