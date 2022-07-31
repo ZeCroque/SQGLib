@@ -148,7 +148,7 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 	auto* policy = scriptMachine->GetObjectHandlePolicy();
 
-	auto* rawCreatedAlias = new char[0x48]; //TODO make size constexpr
+	auto* rawCreatedAlias = new char[sizeof(RE::BGSRefAlias)];
 	std::memcpy(rawCreatedAlias, referenceQuest->aliases[0], 0x48);  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess) //TODO relocate vtable and copy it from here instead of using reference quest
 	auto* createdAlias = reinterpret_cast<RE::BGSRefAlias*>(rawCreatedAlias); 
 
@@ -194,7 +194,7 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 	//Script part
 	//===========================
 	const auto selectedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, selectedQuest);
-	//TODO!!! try to call script compiler from c++ before loading custom script
+	//TODO!! try to call script compiler from c++ before loading custom script
 	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
 	scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject); //TODO defensive pattern against return value;
 	scriptMachine->BindObject(questCustomScriptObject, selectedQuestHandle, false);
@@ -211,8 +211,8 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 	scriptMachine->SetPropertyValue(questCustomScriptObject, "SQGTestAliasTarget", propertyValue);
 	questCustomScriptObject->initialized = true;
 
+	//TODO!! debug nvidia exception on close
 
-	//TODO!!! debug nvidia exception
 }
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
