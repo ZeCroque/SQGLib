@@ -51,18 +51,24 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 
 	generatedQuest->data.flags.set(RE::QuestFlag::kRunOnce);
 
-	generatedQuest->executedStages = reinterpret_cast<RE::BSSimpleList<RE::TESQuestStage>*>(new std::int64_t[3]);
-	std::memset(reinterpret_cast<void*>(generatedQuest->executedStages), 0, 3 * sizeof(std::int64_t));
-	std::memcpy(reinterpret_cast<void*>(generatedQuest->executedStages), reinterpret_cast<void*>(referenceQuest->executedStages), 2 * sizeof(std::int64_t));
-	//TODO reinterpret cast to ListNode* and try to add new ListNode directly
-	//auto* rawList = reinterpret_cast<RE::BSSimpleList<RE::TESQuestStage>::Node*>(&generatedQuest->objectives);
+	auto* executedStages = new RE::BSSimpleList<RE::TESQuestStage>::Node[4];
+	std::memset(executedStages, 0, 3 * sizeof(RE::BSSimpleList<RE::TESQuestStage>::Node));  // NOLINT(bugprone-undefined-memory-manipulation)
+	executedStages[0].item.data.index = 10;
+	executedStages[0].item.data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
+	executedStages[0].item.data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
+	executedStages[0].next = &executedStages[1];
+	auto* rawValue = reinterpret_cast<std::uintptr_t*>(&executedStages[2].item);
+	*rawValue = 0x10000ffffffff; //Win32 Allocator
+	*(rawValue + 1) = reinterpret_cast<std::uintptr_t>(generatedQuest);
+	*(rawValue + 2) = reinterpret_cast<std::uintptr_t>(executedStages);
+	generatedQuest->executedStages = reinterpret_cast<RE::BSSimpleList<RE::TESQuestStage>*>(executedStages); //TODO if tied to array and not queststage itself, create a wrapper structure containing the raw value in addition to the list
 
-	generatedQuest->waitingStages = new RE::BSSimpleList<RE::TESQuestStage*>(*referenceQuest->waitingStages);
-
-	auto* questStage = new RE::TESQuestStage();
-	questStage->data.index = 20;
-	questStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
-	*generatedQuest->waitingStages->begin() = questStage;
+	auto* waitingStages = new RE::BSSimpleList<RE::TESQuestStage*>::Node();
+	std::memset(waitingStages, 0, sizeof(RE::BSSimpleList<RE::TESQuestStage*>::Node));  // NOLINT(bugprone-undefined-memory-manipulation)
+	waitingStages[0].item = new RE::TESQuestStage();
+	waitingStages[0].item->data.index = 20;
+	waitingStages[0].item->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
+	generatedQuest->waitingStages = reinterpret_cast<RE::BSSimpleList<RE::TESQuestStage*>*>(waitingStages);
 
 	auto* questObjective = new RE::BGSQuestObjective();
 	questObjective->index = 10;
