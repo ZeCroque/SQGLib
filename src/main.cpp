@@ -31,7 +31,9 @@ void InitializeLog()
 
 RE::TESQuest* referenceQuest = nullptr;
 RE::TESQuest* generatedQuest = nullptr;
+RE::TESQuest* editedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
+RE::TESObjectREFR* targetForm = nullptr;
 
 std::string GenerateQuest(RE::StaticFunctionTag*)
 {
@@ -39,10 +41,9 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	{
 		return "Quest yet generated.";
 	}
-
 	auto* questFormFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESQuest>();
+	selectedQuest = generatedQuest = questFormFactory->Create();
 
-	generatedQuest = questFormFactory->Create();
 	generatedQuest->SetFormEditorID("SQGTestQuest");
 	generatedQuest->fullName = "00_SQG_POC";
 	generatedQuest->InitItem(); //Initializes formFlags
@@ -109,7 +110,7 @@ public:
 		auto* policy = scriptMachine->GetObjectHandlePolicy();
 
 		const auto* updatedQuest = RE::TESForm::LookupByID<RE::TESQuest>(a_event->formID);
-		if(updatedQuest != generatedQuest && updatedQuest != RE::TESForm::LookupByID<RE::TESQuest>(std::strtoul("5003e36", nullptr, 16))) //TODO find a proper way to bypass unwanted events
+		if(updatedQuest != generatedQuest && updatedQuest != editedQuest) //TODO find a proper way to bypass unwanted events
 		{
 			return RE::BSEventNotifyControl::kStop;
 		}
@@ -138,7 +139,6 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 	{
 		auto* storyTeller = RE::BGSStoryTeller::GetSingleton();
 		storyTeller->BeginStartUpQuest(selectedQuest);
-		//TODO check why quest targets aren't set
 	}
 }
 
@@ -147,21 +147,6 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 	auto* policy = scriptMachine->GetObjectHandlePolicy();
 
-	RE::TESQuest* editedQuest;
-	if(!generatedQuest)
-	{
-		const RE::FormID emptyQuestFormId = std::strtoul("5003e36", nullptr, 16); //TODO getModIndex
-		editedQuest = RE::TESForm::LookupByID<RE::TESQuest>(emptyQuestFormId);
-	}
-	else
-	{
-		editedQuest = generatedQuest;
-	}
-	RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
-
-	const RE::FormID targetFormId = std::strtoul("500439A", nullptr, 16);
-	const auto targetForm = RE::TESForm::LookupByID<RE::TESObjectREFR>(targetFormId);
-
 	auto* rawCreatedAlias = new char[0x48]; //TODO make size constexpr
 	std::memcpy(rawCreatedAlias, referenceQuest->aliases[0], 0x48);  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess) //TODO relocate vtable and copy it from here instead of using reference quest
 	auto* createdAlias = reinterpret_cast<RE::BGSRefAlias*>(rawCreatedAlias); 
@@ -169,12 +154,12 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 	createdAlias->aliasID = 0;
 	createdAlias->aliasName = "SQGTestAliasTarget";
 	createdAlias->fillType = RE::BGSBaseAlias::FILL_TYPE::kForced;
-	createdAlias->owningQuest = editedQuest;
+	createdAlias->owningQuest = selectedQuest;
 	createdAlias->fillData.forced = RE::BGSRefAlias::ForcedFillData{targetForm->CreateRefHandle()};
 
-	editedQuest->aliasAccessLock.LockForWrite();
-	editedQuest->aliases.push_back(createdAlias);
-	editedQuest->aliasAccessLock.UnlockForWrite();
+	selectedQuest->aliasAccessLock.LockForWrite();
+	selectedQuest->aliases.push_back(createdAlias);
+	selectedQuest->aliasAccessLock.UnlockForWrite();
 
 
 	//Add packages //TODO!!
@@ -185,7 +170,7 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 		aliasInstancesList->lock.LockForWrite();
 		for(auto* aliasInstanceData : aliasInstancesList->aliases)
 		{
-			if(aliasInstanceData->quest == editedQuest && aliasInstanceData->alias->aliasName == "SQGTestAliasTarget")
+			if(aliasInstanceData->quest == selectedQuest && aliasInstanceData->alias->aliasName == "SQGTestAliasTarget")
 			{
 				auto* package = packageFormFactory->Create();
 				//TODO fill package
@@ -199,7 +184,7 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 	//=======================
 	const auto target = new RE::TESQuestTarget[3]();
 	target->alias = 0; 
-	auto* firstObjective = *editedQuest->objectives.begin();
+	auto* firstObjective = *selectedQuest->objectives.begin();
 	firstObjective->targets = new RE::TESQuestTarget*;
 	std::memset(&target[1], 0, 2 * sizeof(RE::TESQuestTarget*));  // NOLINT(bugprone-undefined-memory-manipulation)
 	*firstObjective->targets = target;
@@ -207,16 +192,16 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 
 	//Script part
 	//===========================
-	const auto editedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, editedQuest);
+	const auto selectedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, selectedQuest);
 	//TODO!!! try to call script compiler from c++ before loading custom script
 	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
 	scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject); //TODO defensive pattern against return value;
-	scriptMachine->BindObject(questCustomScriptObject, editedQuestHandle, false);
-	policy->PersistHandle(editedQuestHandle); //TODO check if useful
+	scriptMachine->BindObject(questCustomScriptObject, selectedQuestHandle, false);
+	policy->PersistHandle(selectedQuestHandle); //TODO check if useful
 
 	RE::BSTSmartPointer<RE::BSScript::Object> referenceAliasBaseScriptObject;
 	scriptMachine->CreateObject("SQGQuestTargetScript", referenceAliasBaseScriptObject);
-	const auto questAliasHandle = editedQuestHandle & 0x0000FFFFFFFF;
+	const auto questAliasHandle = selectedQuestHandle & 0x0000FFFFFFFF;
 	scriptMachine->BindObject(referenceAliasBaseScriptObject, questAliasHandle, false);
 	policy->PersistHandle(questAliasHandle); //TODO check if useful
 
@@ -292,21 +277,11 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 			if (message->type == SKSE::MessagingInterface::kDataLoaded)
 			{
 				auto* dataHandler = RE::TESDataHandler::GetSingleton();
-				auto& questFormArray = dataHandler->GetFormArray(RE::FormType::Quest);
-				auto it = questFormArray.end();
-				bool found = false;
-				do
-				{
-					--it;
-					auto* quest = reinterpret_cast<RE::TESQuest*>(*it);
-					std::ostringstream ss;
-				    ss << std::hex << quest->formID;
-					if (std::regex_search(ss.str(), std::regex(".*003371")))
-					{
-						found = true;
-						referenceQuest = quest;
-					}
-				} while(!found && it != questFormArray.begin());
+				selectedQuest = editedQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{0x003e36}, "SQGLib.esp"));
+				referenceQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{0x003371}, "SQGLib.esp"));
+				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp")); //Test actor
+
+				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
 			}
 		})
 	)
