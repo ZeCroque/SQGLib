@@ -195,7 +195,7 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 	target->alias = 0; 
 	auto* firstObjective = *editedQuest->objectives.begin();
 	firstObjective->targets = new RE::TESQuestTarget*;
-	std::memset(&target[1], 0, 2 * sizeof(RE::TESQuestTarget));  // NOLINT(bugprone-undefined-memory-manipulation)
+	std::memset(&target[1], 0, 2 * sizeof(RE::TESQuestTarget*));  // NOLINT(bugprone-undefined-memory-manipulation)
 	*firstObjective->targets = target;
 	firstObjective->numTargets = 1;
 
