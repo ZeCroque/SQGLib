@@ -137,6 +137,7 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 {
 	if(selectedQuest)
 	{
+		selectedQuest->Start();
 		auto* storyTeller = RE::BGSStoryTeller::GetSingleton();
 		storyTeller->BeginStartUpQuest(selectedQuest);
 	}
@@ -210,18 +211,6 @@ void EmptyDebugFunction(RE::StaticFunctionTag*)
 	scriptMachine->SetPropertyValue(questCustomScriptObject, "SQGTestAliasTarget", propertyValue);
 	questCustomScriptObject->initialized = true;
 
-	//Execute console command because native C++ method doesn't init quest targets
-	//=====================
-	const auto scriptFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::Script>();
-	auto script = scriptFactory ? scriptFactory->Create() : nullptr;
-	if (script)
-	{
-		const auto selectedRef = RE::Console::GetSelectedRef();
-		script->SetCommand("StartQuest SQGEmptySample");
-		script->CompileAndRun(selectedRef.get());
-		//delete script;
-	}
-	//TODO!!!! debug printing this very method ptr adr to break into it in IDA debugger and find the engine startQuest function with quest target initialization, then use it to start generated quest (replace empty quest)
 
 	//TODO!!! debug nvidia exception
 }
