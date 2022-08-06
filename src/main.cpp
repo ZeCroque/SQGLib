@@ -35,25 +35,6 @@ RE::TESQuest* editedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
 RE::TESObjectREFR* targetForm = nullptr;
 
-
-//================ WAITING STAGES WRAPPER ================= //TODO Patch lib to add this RE::TESQuestStage directly
- struct WaitingStagesWrapper
-{	
-	RE::TESQuestStage waitingStage;							// 00
-	struct WaitingStagesExtraData* waitingStagesExtraData;	// 08
-	std::uintptr_t unk10;									// 10
-};
-
-//================ WAITING STAGES EXTRA DATA ================= //TODO Rename
-struct WaitingStagesExtraData
-{	
-	std::uint64_t unk00;				// 00
-	std::uint64_t unk08;				// 08
-	std::uint64_t mask;					// 10 Known values : 0x10000ffffffff and 0x10001ffffffff, the latter for Shutdown stages
-	RE::TESQuest* ownerQuest;			// 18
-	WaitingStagesWrapper* ownerWrapper;	// 20
-};
-
 std::string GenerateQuest(RE::StaticFunctionTag*)
 {
 	if(generatedQuest)
@@ -71,30 +52,29 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 
 	generatedQuest->data.flags.set(RE::QuestFlag::kRunOnce);
 
-	auto* stageExecutionData = new WaitingStagesExtraData[2];
-	std::memset(stageExecutionData, 0, 2 * sizeof(WaitingStagesExtraData));
+	auto* waitingLogEntries = new RE::TESQuestStageItem[2];
+	std::memset(waitingLogEntries, 0, 2 * sizeof(RE::TESQuestStageItem));  // NOLINT(bugprone-undefined-memory-manipulation)
 
-	auto* executedStagesWrapper = new WaitingStagesWrapper;
-	std::memset(executedStagesWrapper, 0, sizeof(WaitingStagesWrapper));
-	executedStagesWrapper->waitingStage.data.index = 10;
-	executedStagesWrapper->waitingStage.data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
-	executedStagesWrapper->waitingStage.data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
-	executedStagesWrapper->waitingStagesExtraData = stageExecutionData + 1;
-	executedStagesWrapper->waitingStagesExtraData->ownerQuest = generatedQuest;
-	executedStagesWrapper->waitingStagesExtraData->ownerWrapper = executedStagesWrapper;
-	executedStagesWrapper->waitingStagesExtraData->mask = 0x10000ffffffff;
-	generatedQuest->executedStages = reinterpret_cast<RE::BSSimpleList<RE::TESQuestStage>*>(executedStagesWrapper); //TODO patch lib to change type to RE::TESQuestStage* and name to "initStage"
+	generatedQuest->initialStage = new RE::TESQuestStage();
+	std::memset(generatedQuest->initialStage, 0, sizeof(RE::TESQuestStage));
+	generatedQuest->initialStage->data.index = 10;
+	generatedQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
+	generatedQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
+	generatedQuest->initialStage->questStageItem = waitingLogEntries + 1;
+	generatedQuest->initialStage->questStageItem->owner = generatedQuest;
+	generatedQuest->initialStage->questStageItem->owningStage = generatedQuest->initialStage;
+	generatedQuest->initialStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 
-	auto* waitingStages = new RE::BSSimpleList<RE::TESQuestStage*>::Node();
-	auto* waitingStagesWrapper = new WaitingStagesWrapper();
-	waitingStages[0].item = reinterpret_cast<RE::TESQuestStage*>(waitingStagesWrapper);
-	waitingStagesWrapper->waitingStage.data.index = 20;
-	waitingStagesWrapper->waitingStage.data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
-	waitingStagesWrapper->waitingStagesExtraData = stageExecutionData;
-	waitingStagesWrapper->waitingStagesExtraData->ownerQuest = generatedQuest;
-	waitingStagesWrapper->waitingStagesExtraData->ownerWrapper = waitingStagesWrapper;
-	waitingStagesWrapper->waitingStagesExtraData->mask = 0x10001ffffffff;
-	generatedQuest->waitingStages = reinterpret_cast<RE::BSSimpleList<RE::TESQuestStage*>*>(waitingStages); //TODO rename to followingStagesList
+	generatedQuest->otherStages = new RE::BSSimpleList<RE::TESQuestStage*>();
+	auto* lastQuestStage = new RE::TESQuestStage();
+	lastQuestStage->data.index = 20;
+	lastQuestStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
+	lastQuestStage->questStageItem = waitingLogEntries;
+	lastQuestStage->questStageItem->owner = generatedQuest;
+	lastQuestStage->questStageItem->owningStage = lastQuestStage;
+	lastQuestStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
+	lastQuestStage->questStageItem->data = 1; //Means "Last stage"
+	generatedQuest->otherStages->emplace_front(lastQuestStage);
 
 	auto* questObjective = new RE::BGSQuestObjective();
 	questObjective->index = 10;

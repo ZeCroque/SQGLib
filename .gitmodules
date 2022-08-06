@@ -1,4 +1,4 @@
 [submodule "extern/CommonLibSSE"]
 	path = external/CommonLibSSE
 	url = https://github.com/ZeCroque/CommonLibSSE.git
-	branch = vs2022SESupport
+	branch = SQGLibPatch
