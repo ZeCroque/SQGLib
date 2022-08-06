@@ -35,6 +35,25 @@ RE::TESQuest* editedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
 RE::TESObjectREFR* targetForm = nullptr;
 
+
+//================ WAITING STAGES WRAPPER ================= //TODO Patch lib to add this RE::TESQuestStage directly
+ struct WaitingStagesWrapper
+{	
+	RE::TESQuestStage waitingStage;							// 00
+	struct WaitingStagesExtraData* waitingStagesExtraData;	// 08
+	std::uintptr_t unk10;									// 10
+};
+
+//================ WAITING STAGES EXTRA DATA ================= //TODO Rename
+struct WaitingStagesExtraData
+{	
+	std::uint64_t unk00;				// 00
+	std::uint64_t unk08;				// 08
+	std::uint64_t mask;					// 10 Known values : 0x10000ffffffff and 0x10001ffffffff, the latter for Shutdown stages
+	RE::TESQuest* ownerQuest;			// 18
+	WaitingStagesWrapper* ownerWrapper;	// 20
+};
+
 std::string GenerateQuest(RE::StaticFunctionTag*)
 {
 	if(generatedQuest)
@@ -52,24 +71,30 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 
 	generatedQuest->data.flags.set(RE::QuestFlag::kRunOnce);
 
-	auto* executedStages = new RE::BSSimpleList<RE::TESQuestStage>::Node[4];
-	std::memset(executedStages, 0, 3 * sizeof(RE::BSSimpleList<RE::TESQuestStage>::Node));  // NOLINT(bugprone-undefined-memory-manipulation)
-	executedStages[0].item.data.index = 10;
-	executedStages[0].item.data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
-	executedStages[0].item.data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
-	executedStages[0].next = &executedStages[1];
-	auto* rawValue = reinterpret_cast<std::uintptr_t*>(&executedStages[2].item);
-	*rawValue = 0x10000ffffffff; //Win32 Allocator
-	*(rawValue + 1) = reinterpret_cast<std::uintptr_t>(generatedQuest);
-	*(rawValue + 2) = reinterpret_cast<std::uintptr_t>(executedStages);
-	generatedQuest->executedStages = reinterpret_cast<RE::BSSimpleList<RE::TESQuestStage>*>(executedStages); //TODO if tied to array and not queststage itself, create a wrapper structure containing the raw value in addition to the list
+	auto* stageExecutionData = new WaitingStagesExtraData[2];
+	std::memset(stageExecutionData, 0, 2 * sizeof(WaitingStagesExtraData));
+
+	auto* executedStagesWrapper = new WaitingStagesWrapper;
+	std::memset(executedStagesWrapper, 0, sizeof(WaitingStagesWrapper));
+	executedStagesWrapper->waitingStage.data.index = 10;
+	executedStagesWrapper->waitingStage.data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
+	executedStagesWrapper->waitingStage.data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
+	executedStagesWrapper->waitingStagesExtraData = stageExecutionData + 1;
+	executedStagesWrapper->waitingStagesExtraData->ownerQuest = generatedQuest;
+	executedStagesWrapper->waitingStagesExtraData->ownerWrapper = executedStagesWrapper;
+	executedStagesWrapper->waitingStagesExtraData->mask = 0x10000ffffffff;
+	generatedQuest->executedStages = reinterpret_cast<RE::BSSimpleList<RE::TESQuestStage>*>(executedStagesWrapper); //TODO patch lib to change type to RE::TESQuestStage* and name to "initStage"
 
 	auto* waitingStages = new RE::BSSimpleList<RE::TESQuestStage*>::Node();
-	std::memset(waitingStages, 0, sizeof(RE::BSSimpleList<RE::TESQuestStage*>::Node));  // NOLINT(bugprone-undefined-memory-manipulation)
-	waitingStages[0].item = new RE::TESQuestStage();
-	waitingStages[0].item->data.index = 20;
-	waitingStages[0].item->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
-	generatedQuest->waitingStages = reinterpret_cast<RE::BSSimpleList<RE::TESQuestStage*>*>(waitingStages);
+	auto* waitingStagesWrapper = new WaitingStagesWrapper();
+	waitingStages[0].item = reinterpret_cast<RE::TESQuestStage*>(waitingStagesWrapper);
+	waitingStagesWrapper->waitingStage.data.index = 20;
+	waitingStagesWrapper->waitingStage.data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
+	waitingStagesWrapper->waitingStagesExtraData = stageExecutionData;
+	waitingStagesWrapper->waitingStagesExtraData->ownerQuest = generatedQuest;
+	waitingStagesWrapper->waitingStagesExtraData->ownerWrapper = waitingStagesWrapper;
+	waitingStagesWrapper->waitingStagesExtraData->mask = 0x10001ffffffff;
+	generatedQuest->waitingStages = reinterpret_cast<RE::BSSimpleList<RE::TESQuestStage*>*>(waitingStages); //TODO rename to followingStagesList
 
 	auto* questObjective = new RE::BGSQuestObjective();
 	questObjective->index = 10;
