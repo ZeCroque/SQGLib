@@ -12,9 +12,8 @@ Event OnActivate(ObjectReference akActionRef)
 		Debug.MessageBox(SwapSelectedQuest())
 	ElseIf (result == 2) 
 		StartSelectedQuest()
-		Debug.MessageBox("Quest started.")
 	Else
-		EmptyDebugFunction()
+		DraftDebugFunction()
 	EndIf 
 endEvent
 
