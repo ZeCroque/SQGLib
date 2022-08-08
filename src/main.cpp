@@ -105,18 +105,15 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	selectedQuest->aliases.push_back(createdAlias);
 	selectedQuest->aliasAccessLock.UnlockForWrite();
 
-	//Add target
+	//Add target //TODO Investigate further this part as it is very likely bugged and related to the memory corruption and/or crashes
 	//=======================
+	const auto target = new RE::TESQuestTarget[3](); 
+	target->alias = 0; 
 	auto* firstObjective = *selectedQuest->objectives.begin();
 	firstObjective->targets = new RE::TESQuestTarget*;
+	std::memset(&target[1], 0, 2 * sizeof(RE::TESQuestTarget*));  // NOLINT(bugprone-undefined-memory-manipulation)
+	*firstObjective->targets = target;
 	firstObjective->numTargets = 1;
-
-	const auto rawTargetArray = new std::uintptr_t[3];
-	std::memset(rawTargetArray, 0, 3 * sizeof(std::uintptr_t));
-	auto* target = new RE::TESQuestTarget();
-	target->alias = 0;
-	rawTargetArray[0] = reinterpret_cast<std::uintptr_t>(target);
-	*firstObjective->targets = reinterpret_cast<RE::TESQuestTarget*>(rawTargetArray);
 
 	//Sets some additional variables (pad24, pad22c and questObjective's pad04 among others)
 	//=======================
