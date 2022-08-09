@@ -117,7 +117,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 
 	//Sets some additional variables (pad24, pad22c and questObjective's pad04 among others)
 	//=======================
-	generatedQuest->InitializeData(); //Initializes
+	generatedQuest->InitializeData();
 
 	//Add script logic
 	//===========================
@@ -186,9 +186,73 @@ public:
 		RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 		scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 
-		return RE::BSEventNotifyControl::kStop; //TODO check what happens if we return continue here
+		return RE::BSEventNotifyControl::kStop;
 	}
 };
+
+namespace RE
+{
+	struct TESQuestInitEvent
+	{
+	public:
+		// members
+		FormID	formID;	// 00
+	};
+	static_assert(sizeof(TESQuestInitEvent) == 0x4);
+}
+
+class QuestInitEventSink : public RE::BSTEventSink<RE::TESQuestInitEvent>
+{
+public:
+	RE::BSEventNotifyControl ProcessEvent(const RE::TESQuestInitEvent* a_event, RE::BSTEventSource<RE::TESQuestInitEvent>* a_eventSource) override
+	{
+		if(const auto* updatedQuest = RE::TESForm::LookupByID<RE::TESQuest>(a_event->formID); updatedQuest == generatedQuest) //TODO find a proper way to bypass unwanted events
+		{
+			if(const auto* aliasInstancesList = reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray)))
+			{
+				aliasInstancesList->lock.LockForRead();
+
+				const RE::TESPackage* referencePackage = nullptr;
+				for(const auto* alias : aliasInstancesList->aliases)
+				{
+					if(alias->quest == referenceQuest)
+					{
+						referencePackage = (*alias->instancedPackages)[0];
+						break;
+					}
+				}
+
+				if(referencePackage && aliasInstancesList->aliases[1])
+				{
+					auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>();
+					aliasInstancesList->aliases[1]->instancedPackages = instancedPackages;
+
+					auto* packageFormFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESPackage>();
+					auto* package = packageFormFactory->Create();
+
+					//POC: memcpy travel package from reference quest and remove the dummy condition to start it asap
+					//===========================
+					std::memcpy(package, referencePackage, sizeof(RE::TESPackage));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
+					package->ownerQuest = selectedQuest;
+					package->packConditions = RE::TESCondition();
+					instancedPackages->push_back(package);
+
+					//Attempt to instanciate package template manually //TODO!!!
+					//===========================
+					/*delete package->data;
+					auto* rawCreatedPackageData = new char[sizeof(RE::TESCustomPackageData)];
+					auto& referencePackageList = *(reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray))->aliases[0]->instancedPackages);
+					std::memcpy(rawCreatedPackageData, referencePackageList[0]->data, sizeof(RE::TESCustomPackageData));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess) //TODO relocate vtable and copy it from here instead of using package of reference quest
+					package->data = reinterpret_cast<RE::TESCustomPackageData*>(rawCreatedPackageData);
+					package->ownerQuest = selectedQuest;*/
+				}
+				aliasInstancesList->lock.UnlockForRead();
+			}
+		}
+		return RE::BSEventNotifyControl::kContinue;
+	}
+};
+
 
 std::string SwapSelectedQuest(RE::StaticFunctionTag*)
 {
@@ -238,51 +302,49 @@ void DraftDebugFunction(RE::StaticFunctionTag*)
 	ss << std::hex << activator;
 	SKSE::log::debug("Activator:{0}"sv, ss.str());
 
+
 	if(const auto* aliasInstancesList = reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray)))
 	{
-		ss.str(std::string());
-		ss << std::hex << aliasInstancesList;
-		SKSE::log::debug("targetFormExtraAliasInstanceArray:{0}"sv, ss.str());
-
 		aliasInstancesList->lock.LockForRead();
-		auto* castedPackage = reinterpret_cast<RE::TESCustomPackageData*>((*aliasInstancesList->aliases[0]->instancedPackages)[0]->data);
-		ss.str(std::string());
-		ss << std::hex << castedPackage;
-		SKSE::log::debug("customPackageData:{0}"sv, ss.str());
 
-		for(auto i = 0; i < castedPackage->data.dataSize; ++i)
+		const RE::TESPackage* referencePackage = nullptr;
+		for(const auto* alias : aliasInstancesList->aliases)
 		{
-			auto* packageData = castedPackage->data.data[i];
-			SKSE::log::debug("package-data[{0}]-type:{1}"sv, i, packageData->GetTypeName());
-
-			if(packageData->GetTypeName() == "Location")
+			if(alias->quest == referenceQuest)
 			{
-				auto castedPackageData = reinterpret_cast<RE::BGSPackageDataLocation*>(packageData - 1);
-				auto activatorSmartPtr = castedPackageData->pointer->data.refHandle.get();
-				auto* activatorLocalRef = activatorSmartPtr.get();
-				int u = 54;
+				referencePackage = (*alias->instancedPackages)[0];
+				break;
 			}
-			//TODO other types...
-
-			RE::BSString result;
-			packageData->GetDataAsString(&result);
-			SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, i, result);
-			int z = 42;
-			
 		}
-		aliasInstancesList->lock.UnlockForRead();
+
+		if(referencePackage)
+		{
+			const auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(referencePackage->data);
+			std::ostringstream ss;
+			ss.str(std::string());
+			ss << std::hex << customPackageData;
+			SKSE::log::debug("customPackageData:{0}"sv, ss.str());
+			for(auto i = 0; i < customPackageData->data.dataSize; ++i)
+			{
+				auto* packageData = customPackageData->data.data[i];
+				SKSE::log::debug("package-data[{0}]-type:{1}"sv, i, packageData->GetTypeName());
+
+				if(packageData->GetTypeName() == "Location")
+				{
+					auto castedPackageData = reinterpret_cast<RE::BGSPackageDataLocation*>(packageData - 1);
+					auto activatorSmartPtr = castedPackageData->pointer->data.refHandle.get();
+					auto* activatorLocalRef = activatorSmartPtr.get();
+					int u = 54;
+				}
+				//TODO other types...
+
+				RE::BSString result;
+				packageData->GetDataAsString(&result);
+				SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, i, result);
+				int z = 42;
+			}
+		}
 	}
-
-
-	auto* packageFormFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESPackage>();
-	auto* package = packageFormFactory->Create();
-
-	delete package->data;
-	auto* rawCreatedPackageData = new char[sizeof(RE::TESCustomPackageData)];
-	auto& referencePackageList = *(reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray))->aliases[0]->instancedPackages);
-	std::memcpy(rawCreatedPackageData, referencePackageList[0]->data, sizeof(RE::TESCustomPackageData));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess) //TODO relocate vtable and copy it from here instead of using package of reference quest
-	package->data = reinterpret_cast<RE::TESCustomPackageData*>(rawCreatedPackageData);
-	package->ownerQuest = selectedQuest;
 
 	//TODO!! debug nvidia exception on close
 }
@@ -344,6 +406,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
 
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
+				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestInitEventSink());
 			}
 			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
 			{
