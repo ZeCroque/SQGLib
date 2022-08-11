@@ -35,6 +35,7 @@ RE::TESQuest* editedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
 RE::TESObjectREFR* targetForm = nullptr;
 RE::TESObjectREFR* activator = nullptr;
+RE::TESPackage* travelPackage = nullptr;
 
 std::string GenerateQuest(RE::StaticFunctionTag*)
 {
@@ -211,40 +212,43 @@ public:
 			if(const auto* aliasInstancesList = reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray)))
 			{
 				aliasInstancesList->lock.LockForRead();
-
-				const RE::TESPackage* referencePackage = nullptr;
-				for(const auto* alias : aliasInstancesList->aliases)
+				for(auto* aliasInstanceData : aliasInstancesList->aliases)
 				{
-					if(alias->quest == referenceQuest)
+					if(aliasInstanceData->quest == generatedQuest)
 					{
-						referencePackage = (*alias->instancedPackages)[0];
-						break;
+						auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
+						aliasInstanceData->instancedPackages = instancedPackages;
+
+						auto* packageFormFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESPackage>();
+						auto* package = packageFormFactory->Create();
+						instancedPackages->push_back(package);
+						package->ownerQuest = selectedQuest;
+						package->procedureType = travelPackage->procedureType;
+						package->packData.packType = RE::PACKAGE_PROCEDURE_TYPE::kPackage;
+						package->packData.interruptOverrideType = RE::PACK_INTERRUPT_TARGET::kSpectator;
+						package->packData.maxSpeed = RE::PACKAGE_DATA::PreferredSpeed::kRun;
+						package->packData.foBehaviorFlags.set(RE::PACKAGE_DATA::InterruptFlag::kHellosToPlayer, RE::PACKAGE_DATA::InterruptFlag::kRandomConversations, RE::PACKAGE_DATA::InterruptFlag::kObserveCombatBehaviour, RE::PACKAGE_DATA::InterruptFlag::kGreetCorpseBehaviour, RE::PACKAGE_DATA::InterruptFlag::kReactionToPlayerActions, RE::PACKAGE_DATA::InterruptFlag::kFriendlyFireComments, RE::PACKAGE_DATA::InterruptFlag::kAggroRadiusBehavior, RE::PACKAGE_DATA::InterruptFlag::kAllowIdleChatter, RE::PACKAGE_DATA::InterruptFlag::kWorldInteractions); 
+
+						std::memcpy(package->data, travelPackage->data, sizeof(RE::TESCustomPackageData)); // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
+						auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(package->data);
+						customPackageData->templateParent = travelPackage;
+
+						for(auto i = 0; i < customPackageData->data.dataSize; ++i)
+						{
+							auto* packageData = customPackageData->data.data[i];
+
+							if(packageData->GetTypeName() == "Location")
+							{
+								auto castedPackageData = reinterpret_cast<RE::BGSPackageDataLocation*>(packageData - 1);
+								castedPackageData->pointer->locType = RE::PackageLocation::Type::kNearReference;
+								castedPackageData->pointer->rad = 0;
+								castedPackageData->pointer->data.refHandle = activator->CreateRefHandle();
+							}
+							//TODO other types...
+						}
+
+						instancedPackages->push_back(package);
 					}
-				}
-
-				if(referencePackage && aliasInstancesList->aliases[1])
-				{
-					auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>();
-					aliasInstancesList->aliases[1]->instancedPackages = instancedPackages;
-
-					auto* packageFormFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESPackage>();
-					auto* package = packageFormFactory->Create();
-
-					//POC: memcpy travel package from reference quest and remove the dummy condition to start it asap
-					//===========================
-					std::memcpy(package, referencePackage, sizeof(RE::TESPackage));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
-					package->ownerQuest = selectedQuest;
-					package->packConditions = RE::TESCondition();
-					instancedPackages->push_back(package);
-
-					//Attempt to instanciate package template manually //TODO!!!
-					//===========================
-					/*delete package->data;
-					auto* rawCreatedPackageData = new char[sizeof(RE::TESCustomPackageData)];
-					auto& referencePackageList = *(reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray))->aliases[0]->instancedPackages);
-					std::memcpy(rawCreatedPackageData, referencePackageList[0]->data, sizeof(RE::TESCustomPackageData));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess) //TODO relocate vtable and copy it from here instead of using package of reference quest
-					package->data = reinterpret_cast<RE::TESCustomPackageData*>(rawCreatedPackageData);
-					package->ownerQuest = selectedQuest;*/
 				}
 				aliasInstancesList->lock.UnlockForRead();
 			}
@@ -404,6 +408,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				referenceQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{0x003371}, "SQGLib.esp"));
 				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
+				travelPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0016FAA});  //TODO parse a package template descriptor map
 
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestInitEventSink());
