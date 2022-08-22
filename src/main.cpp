@@ -202,6 +202,98 @@ namespace RE
 	static_assert(sizeof(TESQuestInitEvent) == 0x4);
 }
 
+enum class ObjectType
+{
+	kNONE = 0,
+	kActivators = 1,
+	kArmor = 2,
+	kBooks = 3,
+	kContainers = 4,
+	kDoors = 5,
+	kIngredients = 6,
+	kLights = 7,
+	kMiscellaneous = 8,
+	kFlora = 9,
+	kFurniture = 10,
+	kAnyWeapons = 11,
+	kAmmo = 12,
+	kKeys = 13,
+	kAlchemy = 14,
+	kFood = 15,
+	kCombatWearable = 16,
+	kWearable = 17,
+	kNONEWeapons = 18,
+	kMeleeWeapons = 19,
+	kRangedWeapons = 20,
+	kAnySpells = 21,
+	kTargetSpells = 22,
+	kTouchSpells = 23,
+	kSelfSpells  = 24,
+	kAnyActors = 25,
+	kBeds = 26,
+	kChairs = 27,
+	kShouts = 28
+};
+
+struct ObjectTypeWrapper
+{
+	SKSE::stl::enumeration<ObjectType, std::int8_t> objectType;		// 00
+	std::uint8_t pad01;												// 01
+	std::uint16_t unk02;											// 02
+	std::uint32_t unk04;											// 04
+};
+static_assert(sizeof(ObjectTypeWrapper) == 0x8);
+
+class PackageTarget
+{
+public:
+	union Data
+	{
+		RE::TESForm* object;			//Target's class or keyword
+		RE::ObjectRefHandle refHandle;	//Reference to target
+		ObjectTypeWrapper objectType;	//Target's object type, only usable with TargetSelectors
+	};
+
+	// members
+	std::uint64_t unk00;    // 00
+	Data data;				// 08
+	std::uint64_t unk10;    // 10
+};
+static_assert(sizeof(PackageTarget) == 0x18);
+
+class BGSPackageDataTargetSelector : public RE::BGSPackageDataPointerTemplate<RE::IPackageData, PackageTarget>
+{
+public:
+	inline static constexpr auto RTTI = RE::RTTI_BGSPackageDataTargetSelector;
+
+	~BGSPackageDataTargetSelector() override;  // 00
+
+	void Unk_06(void) override;									// 06
+	void Unk_07(void) override;									// 07
+	void LoadBuffer(RE::BGSLoadFormBuffer* a_buf) override;		// 08
+	void Unk_09(void) override;									// 09
+	bool GetDataAsString(RE::BSString* a_dst) const override;	// 0A
+	void Unk_0C(void) override;									// 0C
+};
+static_assert(sizeof(BGSPackageDataTargetSelector) == 0x18);
+
+class BGSPackageDataSingleRef : public RE::BGSPackageDataPointerTemplate<RE::IPackageData, PackageTarget>
+{
+public:
+	inline static constexpr auto RTTI = RE::RTTI_BGSPackageDataRef;
+
+	~BGSPackageDataSingleRef() override;  // 00
+
+	void Unk_06(void) override;									// 06
+	void Unk_07(void) override;									// 07
+	void LoadBuffer(RE::BGSLoadFormBuffer* a_buf) override;		// 08
+	void Unk_09(void) override;									// 09
+	bool GetDataAsString(RE::BSString* a_dst) const override;	// 0A
+	void Unk_0C(void) override;									// 0C
+};
+static_assert(sizeof(BGSPackageDataSingleRef) == 0x18);
+
+
 class QuestInitEventSink : public RE::BSTEventSink<RE::TESQuestInitEvent>
 {
 public:
@@ -245,6 +337,8 @@ public:
 								castedPackageData->pointer->data.refHandle = activator->CreateRefHandle();
 							}
 							//TODO other types...
+							//TargetSelector and Ref can both take Any Object : ObjectMatching Id or Object matching type
+							//Note the logic for Location/TargetSelector/Ref can both take direct ref and keyword ref
 						}
 
 						instancedPackages->push_back(package);
@@ -281,77 +375,9 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
-	std::ostringstream ss;
-	ss << std::hex << referenceQuest;
-	SKSE::log::debug("base-adr:{0}"sv, ss.str());
-	ss.str(std::string());
-	ss << std::hex << referenceQuest->formID;
-	SKSE::log::debug("formid:{0}"sv, ss.str());
-	ss.str(std::string());
-	ss << std::hex << &referenceQuest->aliases;
-	SKSE::log::debug("aliases-adr:{0}"sv, ss.str());
-	ss.str(std::string());
-	ss << std::hex << *referenceQuest->aliases.begin();
-	SKSE::log::debug("aliases[0]-adr:{0}"sv, ss.str());
-	ss.str(std::string());
-	ss << std::hex << targetForm;
-	SKSE::log::debug("targetForm:{0}"sv, ss.str());
-	ss.str(std::string());
-	ss << std::hex << &targetForm->extraList;
-	SKSE::log::debug("targetFormExtraLists:{0}"sv, ss.str());
-	ss.str(std::string());
-	ss << std::hex << targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray);
-	SKSE::log::debug("targetFormExtraAliasInstanceArrays:{0}"sv, ss.str());
-	ss.str(std::string());
-	ss << std::hex << activator;
-	SKSE::log::debug("Activator:{0}"sv, ss.str());
-
-
-	if(const auto* aliasInstancesList = reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray)))
-	{
-		aliasInstancesList->lock.LockForRead();
-
-		const RE::TESPackage* referencePackage = nullptr;
-		for(const auto* alias : aliasInstancesList->aliases)
-		{
-			if(alias->quest == referenceQuest)
-			{
-				referencePackage = (*alias->instancedPackages)[0];
-				break;
-			}
-		}
-
-		if(referencePackage)
-		{
-			const auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(referencePackage->data);
-			std::ostringstream ss;
-			ss.str(std::string());
-			ss << std::hex << customPackageData;
-			SKSE::log::debug("customPackageData:{0}"sv, ss.str());
-			for(auto i = 0; i < customPackageData->data.dataSize; ++i)
-			{
-				auto* packageData = customPackageData->data.data[i];
-				SKSE::log::debug("package-data[{0}]-type:{1}"sv, i, packageData->GetTypeName());
-
-				if(packageData->GetTypeName() == "Location")
-				{
-					auto castedPackageData = reinterpret_cast<RE::BGSPackageDataLocation*>(packageData - 1);
-					auto activatorSmartPtr = castedPackageData->pointer->data.refHandle.get();
-					auto* activatorLocalRef = activatorSmartPtr.get();
-					int u = 54;
-				}
-				//TODO other types...
-
-				RE::BSString result;
-				packageData->GetDataAsString(&result);
-				SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, i, result);
-				int z = 42;
-			}
-		}
-	}
-
+	//TODO!!! Add packages according to reference quest and do package fragment logic
 	//TODO!! debug nvidia exception on close
-}
+}	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
 {
