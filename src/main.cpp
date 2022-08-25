@@ -59,29 +59,46 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 
 	//Add stages
 	//=======================
-	auto* waitingLogEntries = new RE::TESQuestStageItem[2];
-	std::memset(waitingLogEntries, 0, 2 * sizeof(RE::TESQuestStageItem));  // NOLINT(bugprone-undefined-memory-manipulation)
+	auto* logEntries = new RE::TESQuestStageItem[4];
+	std::memset(logEntries, 0, 4 * sizeof(RE::TESQuestStageItem));  // NOLINT(bugprone-undefined-memory-manipulation)
 
 	generatedQuest->initialStage = new RE::TESQuestStage();
 	std::memset(generatedQuest->initialStage, 0, sizeof(RE::TESQuestStage));
 	generatedQuest->initialStage->data.index = 10;
 	generatedQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
 	generatedQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
-	generatedQuest->initialStage->questStageItem = waitingLogEntries + 1;
+	generatedQuest->initialStage->questStageItem = logEntries + 3;
 	generatedQuest->initialStage->questStageItem->owner = generatedQuest;
 	generatedQuest->initialStage->questStageItem->owningStage = generatedQuest->initialStage;
 	generatedQuest->initialStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff}; //TODO create real quest log entry
 
 	generatedQuest->otherStages = new RE::BSSimpleList<RE::TESQuestStage*>();
-	auto* lastQuestStage = new RE::TESQuestStage();
-	lastQuestStage->data.index = 20;
-	lastQuestStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
-	lastQuestStage->questStageItem = waitingLogEntries;
-	lastQuestStage->questStageItem->owner = generatedQuest;
-	lastQuestStage->questStageItem->owningStage = lastQuestStage;
-	lastQuestStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
-	lastQuestStage->questStageItem->data = 1; //Means "Last stage"
-	generatedQuest->otherStages->emplace_front(lastQuestStage);
+
+	auto* questStage = new RE::TESQuestStage();
+	questStage->data.index = 40;
+	questStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
+	questStage->questStageItem = logEntries + 2;
+	questStage->questStageItem->owner = generatedQuest;
+	questStage->questStageItem->owningStage = questStage;
+	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
+	questStage->questStageItem->data = 1; //Means "Last stage"
+	generatedQuest->otherStages->emplace_front(questStage);
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 30;
+	questStage->questStageItem = logEntries + 1;
+	questStage->questStageItem->owner = generatedQuest;
+	questStage->questStageItem->owningStage = questStage;
+	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
+	generatedQuest->otherStages->emplace_front(questStage);
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 20;
+	questStage->questStageItem = logEntries;
+	questStage->questStageItem->owner = generatedQuest;
+	questStage->questStageItem->owningStage = questStage;
+	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
+	generatedQuest->otherStages->emplace_front(questStage);
 
 	//Add objectives
 	//=======================
@@ -183,9 +200,18 @@ public:
 		RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
 		scriptMachine->FindBoundObject(updatedQuestHandle, "SQGDebug", questCustomScriptObject);
 
-		const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() +  a_event->targetStage / 10 - 1;
-		RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-		scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+		if(a_event->targetStage == 10)
+		{
+			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter();
+			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+		}
+		else if(a_event->targetStage == 40)
+		{
+			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 1;
+			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+		}
 
 		return RE::BSEventNotifyControl::kStop;
 	}
@@ -202,66 +228,10 @@ namespace RE
 	static_assert(sizeof(TESQuestInitEvent) == 0x4);
 }
 
-enum class ObjectType
-{
-	kNONE = 0,
-	kActivators = 1,
-	kArmor = 2,
-	kBooks = 3,
-	kContainers = 4,
-	kDoors = 5,
-	kIngredients = 6,
-	kLights = 7,
-	kMiscellaneous = 8,
-	kFlora = 9,
-	kFurniture = 10,
-	kAnyWeapons = 11,
-	kAmmo = 12,
-	kKeys = 13,
-	kAlchemy = 14,
-	kFood = 15,
-	kCombatWearable = 16,
-	kWearable = 17,
-	kNONEWeapons = 18,
-	kMeleeWeapons = 19,
-	kRangedWeapons = 20,
-	kAnySpells = 21,
-	kTargetSpells = 22,
-	kTouchSpells = 23,
-	kSelfSpells  = 24,
-	kAnyActors = 25,
-	kBeds = 26,
-	kChairs = 27,
-	kShouts = 28
-};
+//TargetSelector and Ref can both take Any Object : ObjectMatching Id or Object matching type
+//Note the logic for Location/TargetSelector/Ref can both take direct ref and keyword ref
 
-struct ObjectTypeWrapper
-{
-	SKSE::stl::enumeration<ObjectType, std::int8_t> objectType;		// 00
-	std::uint8_t pad01;												// 01
-	std::uint16_t unk02;											// 02
-	std::uint32_t unk04;											// 04
-};
-static_assert(sizeof(ObjectTypeWrapper) == 0x8);
-
-class PackageTarget
-{
-public:
-	union Data
-	{
-		RE::TESForm* object;			//Target's class or keyword
-		RE::ObjectRefHandle refHandle;	//Reference to target
-		ObjectTypeWrapper objectType;	//Target's object type, only usable with TargetSelectors
-	};
-
-	// members
-	std::uint64_t unk00;    // 00
-	Data data;				// 08
-	std::uint64_t unk10;    // 10
-};
-static_assert(sizeof(PackageTarget) == 0x18);
-
-class BGSPackageDataTargetSelector : public RE::BGSPackageDataPointerTemplate<RE::IPackageData, PackageTarget>
+class BGSPackageDataTargetSelector : public RE::BGSPackageDataPointerTemplate<RE::IPackageData, RE::PackageTarget>
 {
 public:
 	inline static constexpr auto RTTI = RE::RTTI_BGSPackageDataTargetSelector;
@@ -277,7 +247,7 @@ public:
 };
 static_assert(sizeof(BGSPackageDataTargetSelector) == 0x18);
 
-class BGSPackageDataSingleRef : public RE::BGSPackageDataPointerTemplate<RE::IPackageData, PackageTarget>
+class BGSPackageDataSingleRef : public RE::BGSPackageDataPointerTemplate<RE::IPackageData, RE::PackageTarget>
 {
 public:
 	inline static constexpr auto RTTI = RE::RTTI_BGSPackageDataRef;
@@ -293,6 +263,160 @@ public:
 };
 static_assert(sizeof(BGSPackageDataSingleRef) == 0x18);
 
+union PackageData
+{
+	using PackageNativeData = RE::BGSNamedPackageData<RE::IPackageData>::Data;
+
+	PackageData();
+	PackageData(RE::PackageLocation::Type inType, const RE::PackageLocation::Data& inData, std::uint32_t inRadius);
+	PackageData(std::int8_t inType, const RE::PackageTarget::Target& inData);
+	explicit PackageData(const RE::BGSNamedPackageData<RE::IPackageData>::Data& inData);
+	~PackageData();
+	PackageData& operator=(const PackageData& inOther);
+
+	RE::PackageTarget targetData;
+	RE::PackageLocation locationData;
+	PackageNativeData nativeData{};	
+};
+
+PackageData::PackageData()
+{
+	std::memset(this, 0, sizeof(PackageData));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
+}
+
+PackageData::PackageData(RE::PackageLocation::Type inType, const RE::PackageLocation::Data& inData, std::uint32_t inRadius) : PackageData()
+{
+	locationData.locType = inType;
+	locationData.data = inData;
+	locationData.rad = inRadius;
+}
+
+PackageData::PackageData(const std::int8_t inType, const RE::PackageTarget::Target& inData) : PackageData()
+{
+	targetData.targType = inType;
+	targetData.target = inData;
+}
+
+PackageData::PackageData(const RE::BGSNamedPackageData<RE::IPackageData>::Data& inData) : PackageData()
+{
+	nativeData = inData;
+}
+
+PackageData::~PackageData()  // NOLINT(modernize-use-equals-default)
+{
+}
+
+PackageData& PackageData::operator=(const PackageData& inOther)
+{
+	std::memcpy(this, &inOther, sizeof(PackageData));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
+	return *this;
+}
+
+RE::TESPackage* CreatePackageFromTemplate(RE::TESPackage* inPackageTemplate, RE::TESQuest* inOwnerQuest)
+{
+	auto* packageFormFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESPackage>();
+	auto* package = packageFormFactory->Create();
+
+	package->ownerQuest = inOwnerQuest;
+	package->procedureType = inPackageTemplate->procedureType;
+	package->packData.packType = RE::PACKAGE_PROCEDURE_TYPE::kPackage;
+	package->packData.interruptOverrideType = RE::PACK_INTERRUPT_TARGET::kSpectator;
+	package->packData.maxSpeed = RE::PACKAGE_DATA::PreferredSpeed::kRun;
+	package->packData.foBehaviorFlags.set(RE::PACKAGE_DATA::InterruptFlag::kHellosToPlayer, RE::PACKAGE_DATA::InterruptFlag::kRandomConversations, RE::PACKAGE_DATA::InterruptFlag::kObserveCombatBehaviour, RE::PACKAGE_DATA::InterruptFlag::kGreetCorpseBehaviour, RE::PACKAGE_DATA::InterruptFlag::kReactionToPlayerActions, RE::PACKAGE_DATA::InterruptFlag::kFriendlyFireComments, RE::PACKAGE_DATA::InterruptFlag::kAggroRadiusBehavior, RE::PACKAGE_DATA::InterruptFlag::kAllowIdleChatter, RE::PACKAGE_DATA::InterruptFlag::kWorldInteractions); 
+
+	std::memcpy(package->data, inPackageTemplate->data, sizeof(RE::TESCustomPackageData)); // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
+	auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(package->data);
+	customPackageData->templateParent = inPackageTemplate;
+
+	return package;
+}
+
+void FillPackageData(const RE::TESPackage* outPackage, const std::unordered_map<std::string, PackageData>& inPackageDataMap) //TODO test if we can generalize the package location enum
+{
+	const auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(outPackage->data);
+	for(const auto& [name, packageData] : inPackageDataMap)
+	{
+		int count = 0;
+		for(auto& nameMapData : customPackageData->nameMap->nameMap)
+		{
+			if(nameMapData.name.c_str() == name)
+			{
+				const auto packageDataTypeName = customPackageData->data.data[count]->GetTypeName();
+
+				if(packageDataTypeName == "Location")
+				{
+					const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[count] - 1);
+					bgsPackageDataLocation->pointer->locType = packageData.locationData.locType;
+					bgsPackageDataLocation->pointer->rad = packageData.locationData.rad;
+					bgsPackageDataLocation->pointer->data = packageData.locationData.data;
+				}
+				else if(packageDataTypeName == "Ref")
+				{
+					const auto* bgsPackageDataSingleRef = reinterpret_cast<BGSPackageDataSingleRef*>(customPackageData->data.data[count]);
+					bgsPackageDataSingleRef->pointer->targType = packageData.targetData.targType;
+					bgsPackageDataSingleRef->pointer->target = packageData.targetData.target;
+				}
+				else if(packageDataTypeName == "TargetSelector")
+				{
+					const auto* bgsPackageDataTargetSelector = reinterpret_cast<BGSPackageDataTargetSelector*>(customPackageData->data.data[count]);
+					bgsPackageDataTargetSelector->pointer->targType = packageData.targetData.targType;
+					bgsPackageDataTargetSelector->pointer->target = packageData.targetData.target;
+				}
+				else if(packageDataTypeName == "Bool")
+				{
+					const auto bgsPackageDataBool = reinterpret_cast<RE::BGSPackageDataBool*>(customPackageData->data.data[count]);
+					bgsPackageDataBool->data.b = packageData.nativeData.b;
+				}
+				else if(packageDataTypeName == "Int")
+				{
+					const auto bgsPackageDataInt = reinterpret_cast<RE::BGSNamedPackageData<RE::IPackageData>*>(customPackageData->data.data[count]);
+					bgsPackageDataInt->data.i = packageData.nativeData.i;
+				}
+				else if(packageDataTypeName == "Float")
+				{
+					const auto bgsPackageDataFloat = reinterpret_cast<RE::BGSNamedPackageData<RE::IPackageData>*>(customPackageData->data.data[count]);
+					bgsPackageDataFloat->data.f = packageData.nativeData.f;
+				}
+	
+				RE::BSString result;
+				customPackageData->data.data[count]->GetDataAsString(&result);
+				SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, packageDataTypeName, result);
+			}
+			++count;
+		}
+	}
+}
+
+struct PackageConditionDescriptor
+{
+	RE::FUNCTION_DATA::FunctionID functionId;
+	RE::TESForm* functionCaller;
+	RE::CONDITION_ITEM_DATA::OpCode opCode;
+	bool useGlobal;
+	RE::CONDITION_ITEM_DATA::GlobalOrFloat data;
+	bool isOr;
+};
+
+void FillPackageCondition(RE::TESPackage* inPackage, const std::list<PackageConditionDescriptor>& packageConditionDescriptors)
+{
+	RE::TESConditionItem** conditionItemHolder = &inPackage->packConditions.head;
+	for(auto& packageConditionDescriptor : packageConditionDescriptors)
+	{
+		auto conditionItem = *conditionItemHolder = new RE::TESConditionItem();
+		conditionItem->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		std::memset(reinterpret_cast<void*>(&inPackage->packConditions.head->data.functionData.function), 0, sizeof(inPackage->packConditions.head->data.functionData.function.underlying()));
+
+		conditionItem->data.functionData.function.set(packageConditionDescriptor.functionId);
+		conditionItem->data.functionData.params[0] = packageConditionDescriptor.functionCaller;
+		conditionItem->data.flags.opCode = packageConditionDescriptor.opCode;
+		conditionItem->data.flags.global = packageConditionDescriptor.useGlobal;
+		conditionItem->data.comparisonValue = packageConditionDescriptor.data;
+		conditionItem->data.flags.isOR = packageConditionDescriptor.isOr;
+
+		conditionItemHolder = &conditionItem->next;
+	}
+
+}
 
 class QuestInitEventSink : public RE::BSTEventSink<RE::TESQuestInitEvent>
 {
@@ -308,39 +432,23 @@ public:
 				{
 					if(aliasInstanceData->quest == generatedQuest)
 					{
+						auto* package = CreatePackageFromTemplate(travelPackage, generatedQuest);
+
+
+						std::unordered_map<std::string, PackageData> packageDataMap;
+						RE::PackageLocation::Data locationData{};
+						locationData.refHandle = activator->CreateRefHandle();
+						packageDataMap["Place to Travel"] = PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
+						FillPackageData(package, packageDataMap);
+
+						std::list<PackageConditionDescriptor> packageConditionList;
+						RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+						conditionItemData.f = 20.f;
+						packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+						FillPackageCondition(package, packageConditionList);
+
 						auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
 						aliasInstanceData->instancedPackages = instancedPackages;
-
-						auto* packageFormFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESPackage>();
-						auto* package = packageFormFactory->Create();
-						instancedPackages->push_back(package);
-						package->ownerQuest = selectedQuest;
-						package->procedureType = travelPackage->procedureType;
-						package->packData.packType = RE::PACKAGE_PROCEDURE_TYPE::kPackage;
-						package->packData.interruptOverrideType = RE::PACK_INTERRUPT_TARGET::kSpectator;
-						package->packData.maxSpeed = RE::PACKAGE_DATA::PreferredSpeed::kRun;
-						package->packData.foBehaviorFlags.set(RE::PACKAGE_DATA::InterruptFlag::kHellosToPlayer, RE::PACKAGE_DATA::InterruptFlag::kRandomConversations, RE::PACKAGE_DATA::InterruptFlag::kObserveCombatBehaviour, RE::PACKAGE_DATA::InterruptFlag::kGreetCorpseBehaviour, RE::PACKAGE_DATA::InterruptFlag::kReactionToPlayerActions, RE::PACKAGE_DATA::InterruptFlag::kFriendlyFireComments, RE::PACKAGE_DATA::InterruptFlag::kAggroRadiusBehavior, RE::PACKAGE_DATA::InterruptFlag::kAllowIdleChatter, RE::PACKAGE_DATA::InterruptFlag::kWorldInteractions); 
-
-						std::memcpy(package->data, travelPackage->data, sizeof(RE::TESCustomPackageData)); // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
-						auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(package->data);
-						customPackageData->templateParent = travelPackage;
-
-						for(auto i = 0; i < customPackageData->data.dataSize; ++i)
-						{
-							auto* packageData = customPackageData->data.data[i];
-
-							if(packageData->GetTypeName() == "Location")
-							{
-								auto castedPackageData = reinterpret_cast<RE::BGSPackageDataLocation*>(packageData - 1);
-								castedPackageData->pointer->locType = RE::PackageLocation::Type::kNearReference;
-								castedPackageData->pointer->rad = 0;
-								castedPackageData->pointer->data.refHandle = activator->CreateRefHandle();
-							}
-							//TODO other types...
-							//TargetSelector and Ref can both take Any Object : ObjectMatching Id or Object matching type
-							//Note the logic for Location/TargetSelector/Ref can both take direct ref and keyword ref
-						}
-
 						instancedPackages->push_back(package);
 					}
 				}
@@ -377,6 +485,7 @@ void DraftDebugFunction(RE::StaticFunctionTag*)
 {
 	//TODO!!! Add packages according to reference quest and do package fragment logic
 	//TODO!! debug nvidia exception on close
+	generatedQuest->currentStage = 20;
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
@@ -438,10 +547,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestInitEventSink());
-			}
-			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
-			{
-				StartQuest(referenceQuest);
 			}
 		})
 	)
