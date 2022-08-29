@@ -36,6 +36,7 @@ RE::TESQuest* selectedQuest = nullptr;
 RE::TESObjectREFR* targetForm = nullptr;
 RE::TESObjectREFR* activator = nullptr;
 RE::TESPackage* travelPackage = nullptr;
+RE::TESPackage* customTravelPackage = nullptr;
 
 std::string GenerateQuest(RE::StaticFunctionTag*)
 {
@@ -432,24 +433,33 @@ public:
 				{
 					if(aliasInstanceData->quest == generatedQuest)
 					{
-						auto* package = CreatePackageFromTemplate(travelPackage, generatedQuest);
+						customTravelPackage = CreatePackageFromTemplate(travelPackage, generatedQuest);
 
 
 						std::unordered_map<std::string, PackageData> packageDataMap;
 						RE::PackageLocation::Data locationData{};
 						locationData.refHandle = activator->CreateRefHandle();
 						packageDataMap["Place to Travel"] = PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
-						FillPackageData(package, packageDataMap);
+						FillPackageData(customTravelPackage, packageDataMap);
 
-						std::list<PackageConditionDescriptor> packageConditionList;
+						/*std::list<PackageConditionDescriptor> packageConditionList;
 						RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
 						conditionItemData.f = 20.f;
 						packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
-						FillPackageCondition(package, packageConditionList);
+						FillPackageCondition(package, packageConditionList);*/
+
+						auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+						auto* policy = scriptMachine->GetObjectHandlePolicy();
+
+						const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
+						RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
+						scriptMachine->CreateObject("PF_SQGTravelPackage", packageCustomScriptObject); //TODO defensive pattern against return value;
+						scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
+						policy->PersistHandle(packageHandle); //TODO check if useful
 
 						auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
 						aliasInstanceData->instancedPackages = instancedPackages;
-						instancedPackages->push_back(package);
+						instancedPackages->push_back(customTravelPackage);
 					}
 				}
 				aliasInstancesList->lock.UnlockForRead();
@@ -459,6 +469,39 @@ public:
 	}
 };
 
+namespace RE
+{
+	struct TESPackageEvent
+	{
+	public:
+		// members
+		RE::TESObjectREFR* owner;												// 00
+		RE::FormID packageFormId;												// 08
+		bool isEndEvent;														// 0C (maybe flag for begin end etc...)
+	};
+	static_assert(sizeof(TESPackageEvent) == 0x10);
+}
+
+class PackageEventSink : public RE::BSTEventSink<RE::TESPackageEvent>
+{
+public:
+	RE::BSEventNotifyControl ProcessEvent(const RE::TESPackageEvent* a_event, RE::BSTEventSource<RE::TESPackageEvent>* a_eventSource) override
+	{
+		if(customTravelPackage && a_event->packageFormId == customTravelPackage->formID && a_event->isEndEvent)
+		{
+			auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+			auto* policy = scriptMachine->GetObjectHandlePolicy();
+
+			const auto customTravelPackageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
+			RE::BSTSmartPointer<RE::BSScript::Object> customTravelPackageScriptObject;
+			scriptMachine->FindBoundObject(customTravelPackageHandle, "PF_SQGTravelPackage", customTravelPackageScriptObject);
+			const auto* methodInfo = customTravelPackageScriptObject->type->GetMemberFuncIter();
+			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+			scriptMachine->DispatchMethodCall(customTravelPackageHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+		}
+		return RE::BSEventNotifyControl::kContinue;
+	}
+};
 
 std::string SwapSelectedQuest(RE::StaticFunctionTag*)
 {
@@ -547,6 +590,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestInitEventSink());
+				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new PackageEventSink());
 			}
 		})
 	)
