@@ -520,8 +520,6 @@ public:
 							policy->PersistHandle(packageHandle); //TODO check if useful
 
 							instancedPackages->push_back(customActivatePackage);
-
-							customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(customActivatePackage->data);
 						}
 
 						{
