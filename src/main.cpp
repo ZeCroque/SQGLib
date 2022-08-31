@@ -35,7 +35,12 @@ RE::TESQuest* editedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
 RE::TESObjectREFR* targetForm = nullptr;
 RE::TESObjectREFR* activator = nullptr;
+RE::TESObjectREFR* targetActivator;
+RE::TESPackage* acquirePackage;
+RE::TESPackage* activatePackage;
 RE::TESPackage* travelPackage = nullptr;
+RE::TESPackage* customAcquirePackage = nullptr;
+RE::TESPackage* customActivatePackage = nullptr;
 RE::TESPackage* customTravelPackage = nullptr;
 
 std::string GenerateQuest(RE::StaticFunctionTag*)
@@ -264,6 +269,12 @@ public:
 };
 static_assert(sizeof(BGSPackageDataSingleRef) == 0x18);
 
+struct PackageInt : public RE::IPackageData
+{
+	std::uint64_t unk00;	// 00
+};
+static_assert(sizeof(PackageInt) == 0x10);
+
 union PackageData
 {
 	using PackageNativeData = RE::BGSNamedPackageData<RE::IPackageData>::Data;
@@ -332,58 +343,70 @@ RE::TESPackage* CreatePackageFromTemplate(RE::TESPackage* inPackageTemplate, RE:
 	return package;
 }
 
-void FillPackageData(const RE::TESPackage* outPackage, const std::unordered_map<std::string, PackageData>& inPackageDataMap) //TODO test if we can generalize the package location enum
+void FillPackageData(const RE::TESPackage* outPackage, const std::unordered_map<std::string, PackageData>& inPackageDataMap) //TODO use uid
 {
 	const auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(outPackage->data);
 	for(const auto& [name, packageData] : inPackageDataMap)
 	{
-		int count = 0;
 		for(auto& nameMapData : customPackageData->nameMap->nameMap)
 		{
 			if(nameMapData.name.c_str() == name)
 			{
-				const auto packageDataTypeName = customPackageData->data.data[count]->GetTypeName();
+				for(auto i = 0; i < customPackageData->data.dataSize; ++i)
+				{
+					if(customPackageData->data.uids[i] == nameMapData.uid)
+					{
+						const auto packageDataTypeName = customPackageData->data.data[i]->GetTypeName();
 
-				if(packageDataTypeName == "Location")
-				{
-					const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[count] - 1);
-					bgsPackageDataLocation->pointer->locType = packageData.locationData.locType;
-					bgsPackageDataLocation->pointer->rad = packageData.locationData.rad;
-					bgsPackageDataLocation->pointer->data = packageData.locationData.data;
+						if(packageDataTypeName == "Location")
+						{
+							const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[i] - 1);
+							bgsPackageDataLocation->pointer->locType = packageData.locationData.locType;
+							bgsPackageDataLocation->pointer->rad = packageData.locationData.rad;
+							bgsPackageDataLocation->pointer->data = packageData.locationData.data;
+
+							RE::BSString result;
+							bgsPackageDataLocation->GetDataAsString(&result);
+							SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, packageDataTypeName, result);
+						}
+						else
+						{
+							if(packageDataTypeName == "SingleRef")
+							{
+								const auto* bgsPackageDataSingleRef = reinterpret_cast<BGSPackageDataSingleRef*>(customPackageData->data.data[i]);
+								bgsPackageDataSingleRef->pointer->targType = packageData.targetData.targType;
+								bgsPackageDataSingleRef->pointer->target = packageData.targetData.target;
+							}
+							else if(packageDataTypeName == "TargetSelector")
+							{
+								const auto* bgsPackageDataTargetSelector = reinterpret_cast<BGSPackageDataTargetSelector*>(customPackageData->data.data[i]);
+								bgsPackageDataTargetSelector->pointer->targType = packageData.targetData.targType;
+								bgsPackageDataTargetSelector->pointer->target = packageData.targetData.target;
+							}
+							else if(packageDataTypeName == "Bool")
+							{
+								const auto bgsPackageDataBool = reinterpret_cast<RE::BGSPackageDataBool*>(customPackageData->data.data[i]);
+								bgsPackageDataBool->data.i = packageData.nativeData.b ? 2 : 0;
+							}
+							else if(packageDataTypeName == "Int")
+							{
+								const auto bgsPackageDataInt = reinterpret_cast<RE::BGSNamedPackageData<PackageInt>*>(customPackageData->data.data[i]);
+								bgsPackageDataInt->data.i = packageData.nativeData.i;
+							}
+							else if(packageDataTypeName == "Float") //TODO investigate floats
+							{
+								const auto bgsPackageDataFloat = reinterpret_cast<RE::BGSNamedPackageData<RE::IPackageData>*>(customPackageData->data.data[i]);
+								bgsPackageDataFloat->data.f = packageData.nativeData.f;
+							}
+							RE::BSString result;
+							customPackageData->data.data[i]->GetDataAsString(&result);
+							SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, packageDataTypeName, result);
+						}
+						break;
+					}
 				}
-				else if(packageDataTypeName == "Ref")
-				{
-					const auto* bgsPackageDataSingleRef = reinterpret_cast<BGSPackageDataSingleRef*>(customPackageData->data.data[count]);
-					bgsPackageDataSingleRef->pointer->targType = packageData.targetData.targType;
-					bgsPackageDataSingleRef->pointer->target = packageData.targetData.target;
-				}
-				else if(packageDataTypeName == "TargetSelector")
-				{
-					const auto* bgsPackageDataTargetSelector = reinterpret_cast<BGSPackageDataTargetSelector*>(customPackageData->data.data[count]);
-					bgsPackageDataTargetSelector->pointer->targType = packageData.targetData.targType;
-					bgsPackageDataTargetSelector->pointer->target = packageData.targetData.target;
-				}
-				else if(packageDataTypeName == "Bool")
-				{
-					const auto bgsPackageDataBool = reinterpret_cast<RE::BGSPackageDataBool*>(customPackageData->data.data[count]);
-					bgsPackageDataBool->data.b = packageData.nativeData.b;
-				}
-				else if(packageDataTypeName == "Int")
-				{
-					const auto bgsPackageDataInt = reinterpret_cast<RE::BGSNamedPackageData<RE::IPackageData>*>(customPackageData->data.data[count]);
-					bgsPackageDataInt->data.i = packageData.nativeData.i;
-				}
-				else if(packageDataTypeName == "Float")
-				{
-					const auto bgsPackageDataFloat = reinterpret_cast<RE::BGSNamedPackageData<RE::IPackageData>*>(customPackageData->data.data[count]);
-					bgsPackageDataFloat->data.f = packageData.nativeData.f;
-				}
-	
-				RE::BSString result;
-				customPackageData->data.data[count]->GetDataAsString(&result);
-				SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, packageDataTypeName, result);
+				break;
 			}
-			++count;
 		}
 	}
 }
@@ -403,7 +426,7 @@ void FillPackageCondition(RE::TESPackage* inPackage, const std::list<PackageCond
 	RE::TESConditionItem** conditionItemHolder = &inPackage->packConditions.head;
 	for(auto& packageConditionDescriptor : packageConditionDescriptors)
 	{
-		auto conditionItem = *conditionItemHolder = new RE::TESConditionItem();
+		const auto conditionItem = *conditionItemHolder = new RE::TESConditionItem();
 		conditionItem->data.dataID = std::numeric_limits<std::uint32_t>::max();
 		std::memset(reinterpret_cast<void*>(&inPackage->packConditions.head->data.functionData.function), 0, sizeof(inPackage->packConditions.head->data.functionData.function.underlying()));
 
@@ -433,33 +456,100 @@ public:
 				{
 					if(aliasInstanceData->quest == generatedQuest)
 					{
-						customTravelPackage = CreatePackageFromTemplate(travelPackage, generatedQuest);
-
-
-						std::unordered_map<std::string, PackageData> packageDataMap;
-						RE::PackageLocation::Data locationData{};
-						locationData.refHandle = activator->CreateRefHandle();
-						packageDataMap["Place to Travel"] = PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
-						FillPackageData(customTravelPackage, packageDataMap);
-
-						/*std::list<PackageConditionDescriptor> packageConditionList;
-						RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-						conditionItemData.f = 20.f;
-						packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
-						FillPackageCondition(package, packageConditionList);*/
+						auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
+						aliasInstanceData->instancedPackages = instancedPackages;
 
 						auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 						auto* policy = scriptMachine->GetObjectHandlePolicy();
 
-						const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
-						RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
-						scriptMachine->CreateObject("PF_SQGTravelPackage", packageCustomScriptObject); //TODO defensive pattern against return value;
-						scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
-						policy->PersistHandle(packageHandle); //TODO check if useful
+						{
+							//ACQUIRE PACKAGE
+							//=============================
 
-						auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
-						aliasInstanceData->instancedPackages = instancedPackages;
-						instancedPackages->push_back(customTravelPackage);
+							customAcquirePackage = CreatePackageFromTemplate(acquirePackage, generatedQuest);
+
+							std::unordered_map<std::string, PackageData> packageDataMap;
+							RE::PackageTarget::Target targetData{};
+							targetData.objType = RE::PACKAGE_OBJECT_TYPE::kWEAP;
+							packageDataMap["Target Criteria"] = PackageData(2, targetData); //Check type
+							RE::BGSNamedPackageData<RE::IPackageData>::Data numData{};
+							numData.i = 2; //TODO check for package update event with this
+							packageDataMap["Num to acquire"] = PackageData(numData); 
+							RE::BGSNamedPackageData<RE::IPackageData>::Data allowStealingData{};
+							allowStealingData.b = true;
+							packageDataMap["AllowStealing"] = PackageData(allowStealingData);
+							FillPackageData(customAcquirePackage, packageDataMap);
+
+							std::list<PackageConditionDescriptor> packageConditionList;
+							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+							conditionItemData.f = 10.f;
+							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+							FillPackageCondition(customAcquirePackage, packageConditionList);
+
+							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customAcquirePackage);
+							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
+							scriptMachine->CreateObject("PF_SQGAcquirePackage", packageCustomScriptObject); //TODO defensive pattern against return value;
+							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
+							policy->PersistHandle(packageHandle); //TODO check if useful
+
+							instancedPackages->push_back(customAcquirePackage);
+						}
+
+						{
+							//ACTIVATE PACKAGE
+							//=============================
+
+							customActivatePackage = CreatePackageFromTemplate(activatePackage, generatedQuest);
+
+							std::unordered_map<std::string, PackageData> packageDataMap;
+							RE::PackageTarget::Target targetData{};
+							targetData.handle = targetActivator->CreateRefHandle();
+							packageDataMap["Target"] = PackageData(0, targetData); //Check type
+							FillPackageData(customActivatePackage, packageDataMap);
+
+							std::list<PackageConditionDescriptor> packageConditionList;
+							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+							conditionItemData.f = 20.f;
+							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+							FillPackageCondition(customActivatePackage, packageConditionList);
+
+							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customActivatePackage);
+							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
+							scriptMachine->CreateObject("PF_SQGActivatePackage", packageCustomScriptObject); //TODO defensive pattern against return value;
+							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
+							policy->PersistHandle(packageHandle); //TODO check if useful
+
+							instancedPackages->push_back(customActivatePackage);
+
+							customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(customActivatePackage->data);
+						}
+
+						{
+							//TRAVEL PACKAGE
+							//=============================
+
+							customTravelPackage = CreatePackageFromTemplate(travelPackage, generatedQuest);
+
+							std::unordered_map<std::string, PackageData> packageDataMap;
+							RE::PackageLocation::Data locationData{};
+							locationData.refHandle = activator->CreateRefHandle();
+							packageDataMap["Place to Travel"] = PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
+							FillPackageData(customTravelPackage, packageDataMap);
+
+							std::list<PackageConditionDescriptor> packageConditionList;
+							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+							conditionItemData.f = 30.f;
+							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+							FillPackageCondition(customTravelPackage, packageConditionList);
+
+							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
+							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
+							scriptMachine->CreateObject("PF_SQGTravelPackage", packageCustomScriptObject); //TODO defensive pattern against return value;
+							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
+							policy->PersistHandle(packageHandle); //TODO check if useful
+
+							instancedPackages->push_back(customTravelPackage);
+						}
 					}
 				}
 				aliasInstancesList->lock.UnlockForRead();
@@ -473,11 +563,16 @@ namespace RE
 {
 	struct TESPackageEvent
 	{
-	public:
+		enum class PackageEventType
+		{
+			kBegin = 0,
+			kEnd = 1,
+			kUpdate = 2
+		};
 		// members
 		RE::TESObjectREFR* owner;												// 00
 		RE::FormID packageFormId;												// 08
-		bool isEndEvent;														// 0C (maybe flag for begin end etc...)
+		PackageEventType packageEventType;										// 0C
 	};
 	static_assert(sizeof(TESPackageEvent) == 0x10);
 }
@@ -487,7 +582,34 @@ class PackageEventSink : public RE::BSTEventSink<RE::TESPackageEvent>
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESPackageEvent* a_event, RE::BSTEventSource<RE::TESPackageEvent>* a_eventSource) override
 	{
-		if(customTravelPackage && a_event->packageFormId == customTravelPackage->formID && a_event->isEndEvent)
+		if(customAcquirePackage && a_event->packageFormId == customAcquirePackage->formID)
+		{
+			if(a_event->packageEventType == RE::TESPackageEvent::PackageEventType::kEnd)
+			{
+				auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+				auto* policy = scriptMachine->GetObjectHandlePolicy();
+
+				const auto customAcquirePackageHandle = policy->GetHandleForObject(RE::FormType::Package, customAcquirePackage);
+				RE::BSTSmartPointer<RE::BSScript::Object> customAcquirePackageScriptObject;
+				scriptMachine->FindBoundObject(customAcquirePackageHandle, "PF_SQGAcquirePackage", customAcquirePackageScriptObject);
+				const auto* methodInfo = customAcquirePackageScriptObject->type->GetMemberFuncIter();
+				RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+				scriptMachine->DispatchMethodCall(customAcquirePackageHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+			}
+		}
+		else if(customActivatePackage && a_event->packageFormId == customActivatePackage->formID && a_event->packageEventType == RE::TESPackageEvent::PackageEventType::kEnd)
+		{
+			auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+			auto* policy = scriptMachine->GetObjectHandlePolicy();
+
+			const auto customActivatePackageHandle = policy->GetHandleForObject(RE::FormType::Package, customActivatePackage);
+			RE::BSTSmartPointer<RE::BSScript::Object> customActivatePackageScriptObject;
+			scriptMachine->FindBoundObject(customActivatePackageHandle, "PF_SQGActivatePackage", customActivatePackageScriptObject);
+			const auto* methodInfo = customActivatePackageScriptObject->type->GetMemberFuncIter();
+			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+			scriptMachine->DispatchMethodCall(customActivatePackageHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+		}
+		else if(customTravelPackage && a_event->packageFormId == customTravelPackage->formID)
 		{
 			auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 			auto* policy = scriptMachine->GetObjectHandlePolicy();
@@ -495,13 +617,18 @@ public:
 			const auto customTravelPackageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
 			RE::BSTSmartPointer<RE::BSScript::Object> customTravelPackageScriptObject;
 			scriptMachine->FindBoundObject(customTravelPackageHandle, "PF_SQGTravelPackage", customTravelPackageScriptObject);
-			const auto* methodInfo = customTravelPackageScriptObject->type->GetMemberFuncIter();
+			const auto* methodInfo = a_event->packageEventType == RE::TESPackageEvent::PackageEventType::kBegin ? customTravelPackageScriptObject->type->GetMemberFuncIter() + 1 : customTravelPackageScriptObject->type->GetMemberFuncIter();
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(customTravelPackageHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
 		return RE::BSEventNotifyControl::kContinue;
 	}
 };
+
+RE::TESQuest* GetSelectedQuest(RE::StaticFunctionTag*)
+{
+	return selectedQuest;
+}
 
 std::string SwapSelectedQuest(RE::StaticFunctionTag*)
 {
@@ -526,15 +653,16 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
-	//TODO!!! Add packages according to reference quest and do package fragment logic
 	//TODO!! debug nvidia exception on close
-	generatedQuest->currentStage = 20;
+	//TODO!!! try float package (carryanddropitem) and create packageTargetType enum
+	int z = 42;
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
 {
 	inScriptMachine->RegisterFunction("GenerateQuest", "SQGLib", GenerateQuest);
 	inScriptMachine->RegisterFunction("SwapSelectedQuest", "SQGLib", SwapSelectedQuest);
+	inScriptMachine->RegisterFunction("GetSelectedQuest", "SQGLib", GetSelectedQuest);
 	inScriptMachine->RegisterFunction("StartSelectedQuest", "SQGLib", StartSelectedQuest);
 	inScriptMachine->RegisterFunction("DraftDebugFunction", "SQGLib", DraftDebugFunction);
 	return true;
@@ -586,6 +714,9 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				referenceQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{0x003371}, "SQGLib.esp"));
 				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
+				targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
+				activatePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019B2D});
+				acquirePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019713});
 				travelPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0016FAA});  //TODO parse a package template descriptor map
 
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());

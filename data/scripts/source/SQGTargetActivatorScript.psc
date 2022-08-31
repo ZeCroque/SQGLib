@@ -1,10 +1,10 @@
 Scriptname SQGTargetActivatorScript extends ObjectReference 
 
-Quest Property SQGSampleQuest  Auto  
+import SQGLib
 
 Event OnActivate(ObjectReference akActionRef)
-	Debug.MessageBox("Activated")
-	SQGSampleQuest.SetStage(30) 
+	Debug.MessageBox(GetSelectedQuest().GetName())
+	GetSelectedQuest().SetStage(30) 
 endEvent
 
 
