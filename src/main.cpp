@@ -275,13 +275,51 @@ struct PackageInt : public RE::IPackageData
 };
 static_assert(sizeof(PackageInt) == 0x10);
 
+class BGSPackageDataInt : public RE::BGSPackageDataPointerTemplate<RE::IPackageData, PackageInt>
+{
+public:
+	inline static constexpr auto RTTI = RE::RTTI_BGSPackageDataInt;
+
+	~BGSPackageDataInt() override;  // 00
+
+	void Unk_06(void) override;									// 06
+	void Unk_07(void) override;									// 07
+	void LoadBuffer(RE::BGSLoadFormBuffer* a_buf) override;		// 08
+	void Unk_09(void) override;									// 09
+	bool GetDataAsString(RE::BSString* a_dst) const override;	// 0A
+	void Unk_0C(void) override;									// 0C
+};
+static_assert(sizeof(BGSPackageDataInt) == 0x18);
+
+struct PackageFloat : public RE::IPackageData
+{
+	std::uint64_t unk00;	// 00
+};
+static_assert(sizeof(PackageFloat) == 0x10);
+
+class BGSPackageDataFloat : public RE::BGSNamedPackageData<PackageFloat>
+{
+public:
+	inline static constexpr auto RTTI = RE::RTTI_BGSPackageDataFloat;
+
+	~BGSPackageDataFloat() override;  // 00
+
+	void Unk_06(void) override;									// 06
+	void Unk_07(void) override;									// 07
+	void LoadBuffer(RE::BGSLoadFormBuffer* a_buf) override;		// 08
+	void Unk_09(void) override;									// 09
+	bool GetDataAsString(RE::BSString* a_dst) const override;	// 0A
+	void Unk_0C(void) override;									// 0C
+};
+static_assert(sizeof(BGSPackageDataFloat) == 0x18);
+
 union PackageData
 {
 	using PackageNativeData = RE::BGSNamedPackageData<RE::IPackageData>::Data;
 
 	PackageData();
 	PackageData(RE::PackageLocation::Type inType, const RE::PackageLocation::Data& inData, std::uint32_t inRadius);
-	PackageData(std::int8_t inType, const RE::PackageTarget::Target& inData);
+	PackageData(RE::PackageTarget::Type inType, const RE::PackageTarget::Target& inData);
 	explicit PackageData(const RE::BGSNamedPackageData<RE::IPackageData>::Data& inData);
 	~PackageData();
 	PackageData& operator=(const PackageData& inOther);
@@ -296,14 +334,14 @@ PackageData::PackageData()
 	std::memset(this, 0, sizeof(PackageData));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
 }
 
-PackageData::PackageData(RE::PackageLocation::Type inType, const RE::PackageLocation::Data& inData, std::uint32_t inRadius) : PackageData()
+PackageData::PackageData(const RE::PackageLocation::Type inType, const RE::PackageLocation::Data& inData, std::uint32_t inRadius) : PackageData()
 {
 	locationData.locType = inType;
 	locationData.data = inData;
 	locationData.rad = inRadius;
 }
 
-PackageData::PackageData(const std::int8_t inType, const RE::PackageTarget::Target& inData) : PackageData()
+PackageData::PackageData(const RE::PackageTarget::Type inType, const RE::PackageTarget::Target& inData) : PackageData()
 {
 	targetData.targType = inType;
 	targetData.target = inData;
@@ -390,12 +428,12 @@ void FillPackageData(const RE::TESPackage* outPackage, const std::unordered_map<
 							}
 							else if(packageDataTypeName == "Int")
 							{
-								const auto bgsPackageDataInt = reinterpret_cast<RE::BGSNamedPackageData<PackageInt>*>(customPackageData->data.data[i]);
+								const auto bgsPackageDataInt = reinterpret_cast<BGSPackageDataInt*>(customPackageData->data.data[i]);
 								bgsPackageDataInt->data.i = packageData.nativeData.i;
 							}
-							else if(packageDataTypeName == "Float") //TODO investigate floats
+							else if(packageDataTypeName == "Float")
 							{
-								const auto bgsPackageDataFloat = reinterpret_cast<RE::BGSNamedPackageData<RE::IPackageData>*>(customPackageData->data.data[i]);
+								const auto bgsPackageDataFloat = reinterpret_cast<BGSPackageDataFloat*>(customPackageData->data.data[i]);
 								bgsPackageDataFloat->data.f = packageData.nativeData.f;
 							}
 							RE::BSString result;
@@ -471,9 +509,9 @@ public:
 							std::unordered_map<std::string, PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
 							targetData.objType = RE::PACKAGE_OBJECT_TYPE::kWEAP;
-							packageDataMap["Target Criteria"] = PackageData(2, targetData); //Check type
+							packageDataMap["Target Criteria"] = PackageData(RE::PackageTarget::Type::kObjectType, targetData);
 							RE::BGSNamedPackageData<RE::IPackageData>::Data numData{};
-							numData.i = 2; //TODO check for package update event with this
+							numData.i = 2;
 							packageDataMap["Num to acquire"] = PackageData(numData); 
 							RE::BGSNamedPackageData<RE::IPackageData>::Data allowStealingData{};
 							allowStealingData.b = true;
@@ -504,7 +542,7 @@ public:
 							std::unordered_map<std::string, PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
 							targetData.handle = targetActivator->CreateRefHandle();
-							packageDataMap["Target"] = PackageData(0, targetData); //Check type
+							packageDataMap["Target"] = PackageData(RE::PackageTarget::Type::kNearReference, targetData);
 							FillPackageData(customActivatePackage, packageDataMap);
 
 							std::list<PackageConditionDescriptor> packageConditionList;
@@ -652,8 +690,8 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
 	//TODO!! debug nvidia exception on close
-	//TODO!!! try float package (carryanddropitem) and create packageTargetType enum
-	int z = 42;
+	//TODO!!! debug quest stage update event and move all new reverse-engineered classes to separate file
+	//TODO!!! move generation file to separate file
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
