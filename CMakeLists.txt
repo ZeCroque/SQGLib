@@ -38,10 +38,12 @@ configure_file(
 
 set(HEADERS
 	${HEADER_DIR}/PCH.h
+	${HEADER_DIR}/PackageUtils.h
 )
 
 set(SOURCES
 	${SOURCE_DIR}/main.cpp
+	${SOURCE_DIR}/PackageUtils.cpp
 )
 
 configure_file(

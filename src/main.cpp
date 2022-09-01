@@ -1,4 +1,5 @@
 #include "PCH.h"
+#include "PackageUtils.h"
 
 void InitializeLog()
 {
@@ -175,19 +176,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	return "Generated quest with formID: " + formId;
 }
 
-namespace RE
-{
-	struct TESQuestStageEvent
-	{
-	public:
-		// members
-		void* unkPtr;	// 00 //TODO check what it is (maybe QuestStageItem*?)
-		FormID	formID;	// 04
-		std::uint16_t  targetStage; // 08
-	};
-	static_assert(sizeof(TESQuestStageEvent) == 0x10);
-}
-
 class QuestStageEventSink final : public RE::BSTEventSink<RE::TESQuestStageEvent>
 {
 public:
@@ -223,263 +211,6 @@ public:
 	}
 };
 
-namespace RE
-{
-	struct TESQuestInitEvent
-	{
-	public:
-		// members
-		FormID	formID;	// 00
-	};
-	static_assert(sizeof(TESQuestInitEvent) == 0x4);
-}
-
-//TargetSelector and Ref can both take Any Object : ObjectMatching Id or Object matching type
-//Note the logic for Location/TargetSelector/Ref can both take direct ref and keyword ref
-
-class BGSPackageDataTargetSelector : public RE::BGSPackageDataPointerTemplate<RE::IPackageData, RE::PackageTarget>
-{
-public:
-	inline static constexpr auto RTTI = RE::RTTI_BGSPackageDataTargetSelector;
-
-	~BGSPackageDataTargetSelector() override;  // 00
-
-	void Unk_06(void) override;									// 06
-	void Unk_07(void) override;									// 07
-	void LoadBuffer(RE::BGSLoadFormBuffer* a_buf) override;		// 08
-	void Unk_09(void) override;									// 09
-	bool GetDataAsString(RE::BSString* a_dst) const override;	// 0A
-	void Unk_0C(void) override;									// 0C
-};
-static_assert(sizeof(BGSPackageDataTargetSelector) == 0x18);
-
-class BGSPackageDataSingleRef : public RE::BGSPackageDataPointerTemplate<RE::IPackageData, RE::PackageTarget>
-{
-public:
-	inline static constexpr auto RTTI = RE::RTTI_BGSPackageDataRef;
-
-	~BGSPackageDataSingleRef() override;  // 00
-
-	void Unk_06(void) override;									// 06
-	void Unk_07(void) override;									// 07
-	void LoadBuffer(RE::BGSLoadFormBuffer* a_buf) override;		// 08
-	void Unk_09(void) override;									// 09
-	bool GetDataAsString(RE::BSString* a_dst) const override;	// 0A
-	void Unk_0C(void) override;									// 0C
-};
-static_assert(sizeof(BGSPackageDataSingleRef) == 0x18);
-
-struct PackageInt : public RE::IPackageData
-{
-	std::uint64_t unk00;	// 00
-};
-static_assert(sizeof(PackageInt) == 0x10);
-
-class BGSPackageDataInt : public RE::BGSPackageDataPointerTemplate<RE::IPackageData, PackageInt>
-{
-public:
-	inline static constexpr auto RTTI = RE::RTTI_BGSPackageDataInt;
-
-	~BGSPackageDataInt() override;  // 00
-
-	void Unk_06(void) override;									// 06
-	void Unk_07(void) override;									// 07
-	void LoadBuffer(RE::BGSLoadFormBuffer* a_buf) override;		// 08
-	void Unk_09(void) override;									// 09
-	bool GetDataAsString(RE::BSString* a_dst) const override;	// 0A
-	void Unk_0C(void) override;									// 0C
-};
-static_assert(sizeof(BGSPackageDataInt) == 0x18);
-
-struct PackageFloat : public RE::IPackageData
-{
-	std::uint64_t unk00;	// 00
-};
-static_assert(sizeof(PackageFloat) == 0x10);
-
-class BGSPackageDataFloat : public RE::BGSNamedPackageData<PackageFloat>
-{
-public:
-	inline static constexpr auto RTTI = RE::RTTI_BGSPackageDataFloat;
-
-	~BGSPackageDataFloat() override;  // 00
-
-	void Unk_06(void) override;									// 06
-	void Unk_07(void) override;									// 07
-	void LoadBuffer(RE::BGSLoadFormBuffer* a_buf) override;		// 08
-	void Unk_09(void) override;									// 09
-	bool GetDataAsString(RE::BSString* a_dst) const override;	// 0A
-	void Unk_0C(void) override;									// 0C
-};
-static_assert(sizeof(BGSPackageDataFloat) == 0x18);
-
-union PackageData
-{
-	using PackageNativeData = RE::BGSNamedPackageData<RE::IPackageData>::Data;
-
-	PackageData();
-	PackageData(RE::PackageLocation::Type inType, const RE::PackageLocation::Data& inData, std::uint32_t inRadius);
-	PackageData(RE::PackageTarget::Type inType, const RE::PackageTarget::Target& inData);
-	explicit PackageData(const RE::BGSNamedPackageData<RE::IPackageData>::Data& inData);
-	~PackageData();
-	PackageData& operator=(const PackageData& inOther);
-
-	RE::PackageTarget targetData;
-	RE::PackageLocation locationData;
-	PackageNativeData nativeData{};	
-};
-
-PackageData::PackageData()
-{
-	std::memset(this, 0, sizeof(PackageData));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
-}
-
-PackageData::PackageData(const RE::PackageLocation::Type inType, const RE::PackageLocation::Data& inData, std::uint32_t inRadius) : PackageData()
-{
-	locationData.locType = inType;
-	locationData.data = inData;
-	locationData.rad = inRadius;
-}
-
-PackageData::PackageData(const RE::PackageTarget::Type inType, const RE::PackageTarget::Target& inData) : PackageData()
-{
-	targetData.targType = inType;
-	targetData.target = inData;
-}
-
-PackageData::PackageData(const RE::BGSNamedPackageData<RE::IPackageData>::Data& inData) : PackageData()
-{
-	nativeData = inData;
-}
-
-PackageData::~PackageData()  // NOLINT(modernize-use-equals-default)
-{
-}
-
-PackageData& PackageData::operator=(const PackageData& inOther)
-{
-	std::memcpy(this, &inOther, sizeof(PackageData));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
-	return *this;
-}
-
-RE::TESPackage* CreatePackageFromTemplate(RE::TESPackage* inPackageTemplate, RE::TESQuest* inOwnerQuest)
-{
-	auto* packageFormFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESPackage>();
-	auto* package = packageFormFactory->Create();
-
-	package->ownerQuest = inOwnerQuest;
-	package->procedureType = inPackageTemplate->procedureType;
-	package->packData.packType = RE::PACKAGE_PROCEDURE_TYPE::kPackage;
-	package->packData.interruptOverrideType = RE::PACK_INTERRUPT_TARGET::kSpectator;
-	package->packData.maxSpeed = RE::PACKAGE_DATA::PreferredSpeed::kRun;
-	package->packData.foBehaviorFlags.set(RE::PACKAGE_DATA::InterruptFlag::kHellosToPlayer, RE::PACKAGE_DATA::InterruptFlag::kRandomConversations, RE::PACKAGE_DATA::InterruptFlag::kObserveCombatBehaviour, RE::PACKAGE_DATA::InterruptFlag::kGreetCorpseBehaviour, RE::PACKAGE_DATA::InterruptFlag::kReactionToPlayerActions, RE::PACKAGE_DATA::InterruptFlag::kFriendlyFireComments, RE::PACKAGE_DATA::InterruptFlag::kAggroRadiusBehavior, RE::PACKAGE_DATA::InterruptFlag::kAllowIdleChatter, RE::PACKAGE_DATA::InterruptFlag::kWorldInteractions); 
-
-	std::memcpy(package->data, inPackageTemplate->data, sizeof(RE::TESCustomPackageData)); // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
-	auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(package->data);
-	customPackageData->templateParent = inPackageTemplate;
-
-	return package;
-}
-
-void FillPackageData(const RE::TESPackage* outPackage, const std::unordered_map<std::string, PackageData>& inPackageDataMap) //TODO use uid
-{
-	const auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(outPackage->data);
-	for(const auto& [name, packageData] : inPackageDataMap)
-	{
-		for(auto& nameMapData : customPackageData->nameMap->nameMap)
-		{
-			if(nameMapData.name.c_str() == name)
-			{
-				for(auto i = 0; i < customPackageData->data.dataSize; ++i)
-				{
-					if(customPackageData->data.uids[i] == nameMapData.uid)
-					{
-						const auto packageDataTypeName = customPackageData->data.data[i]->GetTypeName();
-
-						if(packageDataTypeName == "Location")
-						{
-							const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[i] - 1);
-							bgsPackageDataLocation->pointer->locType = packageData.locationData.locType;
-							bgsPackageDataLocation->pointer->rad = packageData.locationData.rad;
-							bgsPackageDataLocation->pointer->data = packageData.locationData.data;
-
-							RE::BSString result;
-							bgsPackageDataLocation->GetDataAsString(&result);
-							SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, packageDataTypeName, result);
-						}
-						else
-						{
-							if(packageDataTypeName == "SingleRef")
-							{
-								const auto* bgsPackageDataSingleRef = reinterpret_cast<BGSPackageDataSingleRef*>(customPackageData->data.data[i]);
-								bgsPackageDataSingleRef->pointer->targType = packageData.targetData.targType;
-								bgsPackageDataSingleRef->pointer->target = packageData.targetData.target;
-							}
-							else if(packageDataTypeName == "TargetSelector")
-							{
-								const auto* bgsPackageDataTargetSelector = reinterpret_cast<BGSPackageDataTargetSelector*>(customPackageData->data.data[i]);
-								bgsPackageDataTargetSelector->pointer->targType = packageData.targetData.targType;
-								bgsPackageDataTargetSelector->pointer->target = packageData.targetData.target;
-							}
-							else if(packageDataTypeName == "Bool")
-							{
-								const auto bgsPackageDataBool = reinterpret_cast<RE::BGSPackageDataBool*>(customPackageData->data.data[i]);
-								bgsPackageDataBool->data.i = packageData.nativeData.b ? 2 : 0;
-							}
-							else if(packageDataTypeName == "Int")
-							{
-								const auto bgsPackageDataInt = reinterpret_cast<BGSPackageDataInt*>(customPackageData->data.data[i]);
-								bgsPackageDataInt->data.i = packageData.nativeData.i;
-							}
-							else if(packageDataTypeName == "Float")
-							{
-								const auto bgsPackageDataFloat = reinterpret_cast<BGSPackageDataFloat*>(customPackageData->data.data[i]);
-								bgsPackageDataFloat->data.f = packageData.nativeData.f;
-							}
-							RE::BSString result;
-							customPackageData->data.data[i]->GetDataAsString(&result);
-							SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, packageDataTypeName, result);
-						}
-						break;
-					}
-				}
-				break;
-			}
-		}
-	}
-}
-
-struct PackageConditionDescriptor
-{
-	RE::FUNCTION_DATA::FunctionID functionId;
-	RE::TESForm* functionCaller;
-	RE::CONDITION_ITEM_DATA::OpCode opCode;
-	bool useGlobal;
-	RE::CONDITION_ITEM_DATA::GlobalOrFloat data;
-	bool isOr;
-};
-
-void FillPackageCondition(RE::TESPackage* inPackage, const std::list<PackageConditionDescriptor>& packageConditionDescriptors)
-{
-	RE::TESConditionItem** conditionItemHolder = &inPackage->packConditions.head;
-	for(auto& packageConditionDescriptor : packageConditionDescriptors)
-	{
-		const auto conditionItem = *conditionItemHolder = new RE::TESConditionItem();
-		conditionItem->data.dataID = std::numeric_limits<std::uint32_t>::max();
-		std::memset(reinterpret_cast<void*>(&inPackage->packConditions.head->data.functionData.function), 0, sizeof(inPackage->packConditions.head->data.functionData.function.underlying()));
-
-		conditionItem->data.functionData.function.set(packageConditionDescriptor.functionId);
-		conditionItem->data.functionData.params[0] = packageConditionDescriptor.functionCaller;
-		conditionItem->data.flags.opCode = packageConditionDescriptor.opCode;
-		conditionItem->data.flags.global = packageConditionDescriptor.useGlobal;
-		conditionItem->data.comparisonValue = packageConditionDescriptor.data;
-		conditionItem->data.flags.isOR = packageConditionDescriptor.isOr;
-
-		conditionItemHolder = &conditionItem->next;
-	}
-
-}
-
 class QuestInitEventSink : public RE::BSTEventSink<RE::TESQuestInitEvent>
 {
 public:
@@ -504,21 +235,21 @@ public:
 							//ACQUIRE PACKAGE
 							//=============================
 
-							customAcquirePackage = CreatePackageFromTemplate(acquirePackage, generatedQuest);
+							customAcquirePackage = SQG::CreatePackageFromTemplate(acquirePackage, generatedQuest);
 
-							std::unordered_map<std::string, PackageData> packageDataMap;
+							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
 							targetData.objType = RE::PACKAGE_OBJECT_TYPE::kWEAP;
-							packageDataMap["Target Criteria"] = PackageData(RE::PackageTarget::Type::kObjectType, targetData);
+							packageDataMap["Target Criteria"] = SQG::PackageData(RE::PackageTarget::Type::kObjectType, targetData);
 							RE::BGSNamedPackageData<RE::IPackageData>::Data numData{};
 							numData.i = 2;
-							packageDataMap["Num to acquire"] = PackageData(numData); 
+							packageDataMap["Num to acquire"] = SQG::PackageData(numData); 
 							RE::BGSNamedPackageData<RE::IPackageData>::Data allowStealingData{};
 							allowStealingData.b = true;
-							packageDataMap["AllowStealing"] = PackageData(allowStealingData);
+							packageDataMap["AllowStealing"] = SQG::PackageData(allowStealingData);
 							FillPackageData(customAcquirePackage, packageDataMap);
 
-							std::list<PackageConditionDescriptor> packageConditionList;
+							std::list<SQG::PackageConditionDescriptor> packageConditionList;
 							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
 							conditionItemData.f = 10.f;
 							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
@@ -537,15 +268,15 @@ public:
 							//ACTIVATE PACKAGE
 							//=============================
 
-							customActivatePackage = CreatePackageFromTemplate(activatePackage, generatedQuest);
+							customActivatePackage = SQG::CreatePackageFromTemplate(activatePackage, generatedQuest);
 
-							std::unordered_map<std::string, PackageData> packageDataMap;
+							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
 							targetData.handle = targetActivator->CreateRefHandle();
-							packageDataMap["Target"] = PackageData(RE::PackageTarget::Type::kNearReference, targetData);
+							packageDataMap["Target"] = SQG::PackageData(RE::PackageTarget::Type::kNearReference, targetData);
 							FillPackageData(customActivatePackage, packageDataMap);
 
-							std::list<PackageConditionDescriptor> packageConditionList;
+							std::list<SQG::PackageConditionDescriptor> packageConditionList;
 							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
 							conditionItemData.f = 20.f;
 							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
@@ -564,15 +295,15 @@ public:
 							//TRAVEL PACKAGE
 							//=============================
 
-							customTravelPackage = CreatePackageFromTemplate(travelPackage, generatedQuest);
+							customTravelPackage = SQG::CreatePackageFromTemplate(travelPackage, generatedQuest);
 
-							std::unordered_map<std::string, PackageData> packageDataMap;
+							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageLocation::Data locationData{};
 							locationData.refHandle = activator->CreateRefHandle();
-							packageDataMap["Place to Travel"] = PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
+							packageDataMap["Place to Travel"] = SQG::PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
 							FillPackageData(customTravelPackage, packageDataMap);
 
-							std::list<PackageConditionDescriptor> packageConditionList;
+							std::list<SQG::PackageConditionDescriptor> packageConditionList;
 							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
 							conditionItemData.f = 30.f;
 							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
@@ -594,24 +325,6 @@ public:
 		return RE::BSEventNotifyControl::kContinue;
 	}
 };
-
-namespace RE
-{
-	struct TESPackageEvent
-	{
-		enum class PackageEventType
-		{
-			kBegin = 0,
-			kEnd = 1,
-			kUpdate = 2
-		};
-		// members
-		RE::TESObjectREFR* owner;												// 00
-		RE::FormID packageFormId;												// 08
-		PackageEventType packageEventType;										// 0C
-	};
-	static_assert(sizeof(TESPackageEvent) == 0x10);
-}
 
 class PackageEventSink : public RE::BSTEventSink<RE::TESPackageEvent>
 {
@@ -690,8 +403,6 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
 	//TODO!! debug nvidia exception on close
-	//TODO!!! debug quest stage update event and move all new reverse-engineered classes to separate file
-	//TODO!!! move generation file to separate file
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
