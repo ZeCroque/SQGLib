@@ -5,6 +5,19 @@
 #include <REL/Relocation.h>
 #include <SKSE/SKSE.h>
 
+#include <xbyak/xbyak.h>
+#undef PAGE_EXECUTE_READWRITE
+#undef GetModuleFileName
+#undef GetEnvironmentVariable
+#undef MessageBox
+#undef VerQueryValue
+#undef GetFileVersionInfo
+#undef GetFileVersionInfoSize
+#undef GetModuleHandle
+#undef max
+#undef min
+#undef GetObject
+
 #ifdef NDEBUG
 #	include <spdlog/sinks/basic_file_sink.h>
 #else

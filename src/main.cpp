@@ -437,6 +437,74 @@ extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryIn
 	return true;
 }
 
+namespace RE
+{
+	struct TESTopicInfoEvent
+	{
+		enum class TopicInfoEventType
+		{
+			kBegin = 0,
+			kEnd = 1,
+		};
+		std::uint64_t		unk00;			// 00
+		RE::TESObjectREFR*	speaker;		// 08
+		RE::FormID			topicInfoId;	// 10
+		TopicInfoEventType	eventType;		// 14
+	};
+}
+
+class TopicInfoEventSink final : public RE::BSTEventSink<RE::TESTopicInfoEvent>
+{
+public:
+	RE::BSEventNotifyControl ProcessEvent(const RE::TESTopicInfoEvent* a_event, RE::BSTEventSource<RE::TESTopicInfoEvent>* a_eventSource) override
+	{
+		if(a_event->speaker == targetForm)
+		{
+			if(a_event->topicInfoId == 0x50099CC)
+			{
+				auto* eventTopicInfo = RE::TESForm::LookupByID<RE::TESTopicInfo>(a_event->topicInfoId);
+				int z = 42;
+			}
+		}
+		return RE::BSEventNotifyControl::kContinue;
+	}
+};
+
+void onTopicSetterHook(RE::TESTopicInfo::ResponseData* generatedResponse, const RE::TESTopicInfo* parentTopicInfo)
+{
+	if(parentTopicInfo->formID == 0x50099CC)
+	{
+		generatedResponse->responseText = "Hi! Congrats, you finally succeeded to hack this mess!";
+	}
+}
+
+struct PopulateResponseTextHookedPatch final : Xbyak::CodeGenerator
+{
+	explicit PopulateResponseTextHookedPatch(const uintptr_t inHookAddress, const uintptr_t inPopulateResponseTextAddress, const uintptr_t inResumeAddress)
+	{
+		mov(r13, rcx);	//Saving RCX value at it is overwritten by PopulateResponseText
+
+		mov(rax, inPopulateResponseTextAddress); //Calling PopulateResponseText as usual
+		call(rax);
+
+		push(rax); //Saving state
+		push(rcx);
+		push(rdx);
+
+		mov(rcx, r13); //Moving data to function arguments (see: https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170)
+		mov(rdx, rbp);
+
+		mov(rax, inHookAddress); //Calling hook
+		call(rax);
+
+		pop(rax); //Restoring state
+		pop(rcx);
+		pop(rdx);
+
+		mov(r15, inResumeAddress); //Resuming standard execution
+		jmp(r15);
+    }
+};
 
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
@@ -469,12 +537,20 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestInitEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new PackageEventSink());
+				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new TopicInfoEventSink());
 			}
 		})
 	)
 	{
 	    return false;
 	}
-	
+
+	SKSE::AllocTrampoline(1<<10);
+	auto& trampoline = SKSE::GetTrampoline();
+
+	const auto hookAddress = REL::Offset(3750450).address();
+	PopulateResponseTextHookedPatch tsh{ reinterpret_cast<uintptr_t>(onTopicSetterHook), REL::ID(24985).address(), hookAddress + 0x5 };
+    trampoline.write_branch<5>(hookAddress, trampoline.allocate(tsh));
+
 	return true;
 }
