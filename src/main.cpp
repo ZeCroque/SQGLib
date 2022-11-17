@@ -9,10 +9,23 @@ struct DialogEntry
 	RE::BSFixedString topicInfoText;				// { TODO make a vector and check conditions + add a topicTextOverride string + add script fragment
 	std::vector<RE::TESConditionItem*> conditions;	// {
 	std::vector<DialogEntry> childEntries;
+	//TODO add alreadySaid bool
 };
 
 DialogEntry dialogRoot;
-std::unordered_map<RE::FormID, RE::BSFixedString*> topicsInfosBindings;
+std::unordered_map<RE::FormID, DialogEntry*> topicsInfosBindings;
+
+void ProcessDialogEntry(DialogEntry& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
+{
+	if(!inDialogEntry.conditions.empty())
+	{
+		inOutTopicInfo->objConditions.head = inDialogEntry.conditions[0]; //TODO iterate over all conditions
+	}
+	inOutTopicInfo->parentTopic->fullName = inDialogEntry.topicText;
+	topicsInfosBindings[inOutTopicInfo->formID] = &inDialogEntry;
+}
+
+RE::TESConditionItem* impossibleCondition = nullptr;
 
 void InitializeLog()
 {
@@ -502,14 +515,10 @@ void DraftDebugFunction(RE::StaticFunctionTag*)
 		}
 	);
 
-	topicsInfosBindings[helloTopicInfo->formID] = &dialogRoot.topicInfoText; //TODO factorize topic modifying
-	helloTopicInfo->objConditions.head = checkSpeakerCondition;
-
+	ProcessDialogEntry(dialogRoot, helloTopicInfo);
 	for(size_t i = 0; i < dialogRoot.childEntries.size(); ++i)
 	{
-		subTopicsInfos[i]->objConditions.head = dialogRoot.childEntries[i].conditions[0];
-		subTopicsInfos[i]->parentTopic->fullName = dialogRoot.childEntries[i].topicText;
-		topicsInfosBindings[subTopicsInfos[i]->formID] = &dialogRoot.childEntries[i].topicInfoText;
+		ProcessDialogEntry(dialogRoot.childEntries[i], subTopicsInfos[i]);
 	}
 }	
 
@@ -568,10 +577,25 @@ public:
 	{
 		if(a_event->speaker == targetForm)
 		{
-			if(a_event->topicInfoId == 0x50099CC)
+			if( a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kEnd)
 			{
-				auto* eventTopicInfo = RE::TESForm::LookupByID<RE::TESTopicInfo>(a_event->topicInfoId);
-				int z = 42;
+				if(const auto topicInfoBinding = topicsInfosBindings.find(a_event->topicInfoId); topicInfoBinding != topicsInfosBindings.end())
+				{
+					//TODO script fragment
+
+					auto& entries = !topicInfoBinding->second->childEntries.empty() ? topicInfoBinding->second->childEntries : dialogRoot.childEntries;
+					for(size_t i = 0; i < SUB_TOPIC_COUNT; ++i)
+					{
+						if(i < entries.size())
+						{
+							ProcessDialogEntry(entries[i], subTopicsInfos[i]);
+						}
+						else
+						{
+							subTopicsInfos[i]->objConditions.head = impossibleCondition;
+						}
+					}
+				}
 			}
 		}
 		return RE::BSEventNotifyControl::kContinue;
@@ -580,9 +604,9 @@ public:
 
 void onTopicSetterHook(RE::TESTopicInfo::ResponseData* generatedResponse, const RE::TESTopicInfo* parentTopicInfo)
 {
-	if(const auto dialogEntry = topicsInfosBindings.find(parentTopicInfo->formID); dialogEntry != topicsInfosBindings.end())
+	if(const auto topicInfoBinding = topicsInfosBindings.find(parentTopicInfo->formID); topicInfoBinding != topicsInfosBindings.end())
 	{
-		generatedResponse->responseText = *dialogEntry->second;
+		generatedResponse->responseText = topicInfoBinding->second->topicInfoText;
 	}
 }
 
@@ -654,7 +678,16 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				subTopicsInfos[1] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF99}, "SQGLib.esp"));
 				subTopicsInfos[2] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9C}, "SQGLib.esp"));
 				subTopicsInfos[3] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9F}, "SQGLib.esp"));
-				
+
+				impossibleCondition = new RE::TESConditionItem();
+				impossibleCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+				impossibleCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+				impossibleCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kIsXBox);
+				impossibleCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+				RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+				conditionItemData.f = 1.f;
+				impossibleCondition->data.comparisonValue = conditionItemData;
+				impossibleCondition->next = nullptr;
 			}
 		})
 	)
