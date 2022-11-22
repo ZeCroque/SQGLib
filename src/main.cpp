@@ -9,7 +9,7 @@ struct DialogEntry
 	RE::BSFixedString topicInfoText;				// { TODO make a vector and check conditions + add a topicTextOverride string + add script fragment
 	std::vector<RE::TESConditionItem*> conditions;	// {
 	std::vector<DialogEntry> childEntries;
-	//TODO add alreadySaid bool
+	bool alreadySaid { false };
 };
 
 DialogEntry dialogRoot;
@@ -577,11 +577,12 @@ public:
 	{
 		if(a_event->speaker == targetForm)
 		{
-			if( a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kEnd)
+			if(a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kEnd)
 			{
 				if(const auto topicInfoBinding = topicsInfosBindings.find(a_event->topicInfoId); topicInfoBinding != topicsInfosBindings.end())
 				{
 					//TODO script fragment
+					topicInfoBinding->second->alreadySaid = true;
 
 					auto& entries = !topicInfoBinding->second->childEntries.empty() ? topicInfoBinding->second->childEntries : dialogRoot.childEntries;
 					for(size_t i = 0; i < SUB_TOPIC_COUNT; ++i)
@@ -602,7 +603,7 @@ public:
 	}
 };
 
-void onTopicSetterHook(RE::TESTopicInfo::ResponseData* generatedResponse, const RE::TESTopicInfo* parentTopicInfo)
+void PopulateResponseTextHook(RE::TESTopicInfo::ResponseData* generatedResponse, RE::TESTopicInfo* parentTopicInfo)
 {
 	if(const auto topicInfoBinding = topicsInfosBindings.find(parentTopicInfo->formID); topicInfoBinding != topicsInfosBindings.end())
 	{
@@ -635,6 +636,36 @@ struct PopulateResponseTextHookedPatch final : Xbyak::CodeGenerator
 
 		mov(r15, inResumeAddress); //Resuming standard execution
 		jmp(r15);
+    }
+};
+
+void OnResponseSaidHook()
+{
+	if(const auto* topicManager = RE::MenuTopicManager::GetSingleton(); topicManager->dialogueList)
+	{
+		for(auto* dialog : *topicManager->dialogueList)
+		{
+			if(const auto topicInfoBinding = topicsInfosBindings.find(dialog->parentTopicInfo->formID); topicInfoBinding != topicsInfosBindings.end())
+			{
+				dialog->neverSaid = !topicInfoBinding->second->alreadySaid;
+				dialog->parentTopicInfo->saidOnce = topicInfoBinding->second->alreadySaid;
+			}
+		}
+	}
+}
+
+struct OnResponseSaidHookedPatch final : Xbyak::CodeGenerator
+{
+    explicit OnResponseSaidHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeAddress)
+    {
+		mov(r14, inHijackedMethodAddress); //Calling the method we hijacked (didn't bother to check what it does, it's just at a convenient place for our hook)
+		call(r14);
+
+		mov(r14, inHookAddress);	//Calling hook
+		call(r14);
+
+		mov(r14, inResumeAddress); //Resuming standard execution
+		jmp(r14);
     }
 };
 
@@ -698,9 +729,16 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	SKSE::AllocTrampoline(1<<10);
 	auto& trampoline = SKSE::GetTrampoline();
 
-	const auto hookAddress = REL::Offset(3750450).address();
-	PopulateResponseTextHookedPatch tsh{ reinterpret_cast<uintptr_t>(onTopicSetterHook), REL::ID(24985).address(), hookAddress + 0x5 };
+	const auto hookAddress = REL::Offset(0x393A32).address();
+	PopulateResponseTextHookedPatch tsh{ reinterpret_cast<uintptr_t>(PopulateResponseTextHook), REL::ID(24985).address(), hookAddress + 0x5 };
     trampoline.write_branch<5>(hookAddress, trampoline.allocate(tsh));
+
+	const auto onResponseSaidHook = REL::Offset(0x5E869D).address();
+	OnResponseSaidHookedPatch dsh{ reinterpret_cast<uintptr_t>(OnResponseSaidHook), REL::Offset(0x64F360).address(), onResponseSaidHook + 0x7 };
+	const auto onDialogueSayHooked = trampoline.allocate(dsh);
+    trampoline.write_branch<5>(onResponseSaidHook, onDialogueSayHooked);
+
+	//TODO method to init dialogs
 
 	return true;
 }
