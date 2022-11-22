@@ -5,14 +5,14 @@ constexpr int SUB_TOPIC_COUNT = 4;
 
 struct DialogEntry
 {
-	RE::BSFixedString topicText;
+	RE::BSFixedString topicText;	// in CK : Topic text max 80/TopicInfo text max 150 -> TODO test if hardcap
 	RE::BSFixedString topicInfoText;				// { TODO make a vector and check conditions + add a topicTextOverride string + add script fragment
 	std::vector<RE::TESConditionItem*> conditions;	// {
 	std::vector<DialogEntry> childEntries;
 	bool alreadySaid { false };
 };
 
-DialogEntry dialogRoot;
+DialogEntry dialogRoot;	//TODO serialize on save
 std::unordered_map<RE::FormID, DialogEntry*> topicsInfosBindings;
 
 void ProcessDialogEntry(DialogEntry& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
@@ -24,8 +24,6 @@ void ProcessDialogEntry(DialogEntry& inDialogEntry, RE::TESTopicInfo* inOutTopic
 	inOutTopicInfo->parentTopic->fullName = inDialogEntry.topicText;
 	topicsInfosBindings[inOutTopicInfo->formID] = &inDialogEntry;
 }
-
-RE::TESConditionItem* impossibleCondition = nullptr;
 
 void InitializeLog()
 {
@@ -58,7 +56,6 @@ void InitializeLog()
 
 RE::TESQuest* referenceQuest = nullptr;
 RE::TESQuest* generatedQuest = nullptr;
-RE::TESQuest* editedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
 RE::TESObjectREFR* targetForm = nullptr;
 RE::TESObjectREFR* activator = nullptr;
@@ -71,6 +68,112 @@ RE::TESPackage* customActivatePackage = nullptr;
 RE::TESPackage* customTravelPackage = nullptr;
 RE::TESTopicInfo* helloTopicInfo;
 RE::TESTopicInfo* subTopicsInfos[SUB_TOPIC_COUNT];
+
+RE::TESConditionItem* impossibleCondition = nullptr;
+RE::TESConditionItem* checkSpeakerCondition = nullptr;
+
+void InitDialog()
+{
+	if(!impossibleCondition)
+	{
+		RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+		conditionItemData.f = 1.f;
+
+		impossibleCondition = new RE::TESConditionItem();
+		impossibleCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		impossibleCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		impossibleCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kIsXBox);
+		impossibleCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+		impossibleCondition->data.comparisonValue = conditionItemData;
+		impossibleCondition->next = nullptr;
+
+		checkSpeakerCondition = new RE::TESConditionItem();
+		checkSpeakerCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		checkSpeakerCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		checkSpeakerCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetIsID);
+		checkSpeakerCondition->data.functionData.params[0] = targetForm->data.objectReference;
+		checkSpeakerCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+		checkSpeakerCondition->data.comparisonValue = conditionItemData;
+		checkSpeakerCondition->next = nullptr;
+	}
+
+	/*
+	-> So you came here to kill me, right ?
+		- I've not decided yet. I'd like to hear your side of the story. 
+			-> (Stage <= 5) Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.
+			-> [Tell me again about the reasons of the contract]  Your boss is a liar.
+				- What did he do ?
+					-> He lied, I'm the good one in the story.
+		- As you guessed. Prepare to die !
+			-> (Stage <= 5) Wait a minute ! Could I have a last will please ?
+			-> [I can't believe my boss would lie. Prepare to die !] Wait a minute ! Could I have a last will please ?
+				- Yes, of course, proceed but don't do anything inconsiderate.
+					-> Thank you for your consideration
+				- No, I came here for business, not charity.
+					-> Your lack of dignity is a shame.
+		- Actually, I decided to spare you.
+			-> (Stage >= 5) You're the kindest. I will make sure to hide myself from the eyes of your organization.
+	*/
+
+	dialogRoot.topicInfoText = "So you came here to kill me, right ?";
+	dialogRoot.conditions = {checkSpeakerCondition};
+
+	dialogRoot.childEntries.clear();
+	dialogRoot.childEntries.emplace_back
+	(
+		"I've not decided yet. I'd like to hear your side of the story.", 
+		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
+		std::vector<RE::TESConditionItem*>{checkSpeakerCondition},
+		std::vector<DialogEntry>
+		{
+			{
+				"What did he do ?", 
+				"He lied, I'm the good one in the story.",
+				std::vector<RE::TESConditionItem*>(),
+				std::vector<DialogEntry>()
+			}
+		}
+	);
+
+	dialogRoot.childEntries.emplace_back
+	(
+		"As you guessed. Prepare to die !", 
+		"Wait a minute ! Could I have a last will please ?",
+		std::vector<RE::TESConditionItem*>{checkSpeakerCondition},
+		std::vector<DialogEntry>
+		{
+			{
+				"Yes, of course, proceed but don't do anything inconsiderate.", 
+				"Thank you for your consideration",
+				std::vector<RE::TESConditionItem*>(),
+				std::vector<DialogEntry>()
+			},
+			{
+				"No, I came here for business, not charity.", 
+				"Your lack of dignity is a shame.",
+				std::vector<RE::TESConditionItem*>(),
+				std::vector<DialogEntry>()
+			},
+		}
+	);
+
+	dialogRoot.childEntries.emplace_back
+	(
+		DialogEntry
+		{
+			"Actually, I decided to spare you.", 
+			"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
+			std::vector<RE::TESConditionItem*>{checkSpeakerCondition},
+			std::vector<DialogEntry>()
+		}
+	);
+
+	ProcessDialogEntry(dialogRoot, helloTopicInfo);
+	for(size_t i = 0; i < dialogRoot.childEntries.size(); ++i)
+	{
+		ProcessDialogEntry(dialogRoot.childEntries[i], subTopicsInfos[i]);
+	}
+}
 
 std::string GenerateQuest(RE::StaticFunctionTag*)
 {
@@ -152,17 +255,17 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	createdAlias->aliasID = 0;
 	createdAlias->aliasName = "SQGTestAliasTarget";
 	createdAlias->fillType = RE::BGSBaseAlias::FILL_TYPE::kForced;
-	createdAlias->owningQuest = selectedQuest;
+	createdAlias->owningQuest = generatedQuest;
 	createdAlias->fillData.forced = RE::BGSRefAlias::ForcedFillData{targetForm->CreateRefHandle()};
-	selectedQuest->aliasAccessLock.LockForWrite();
-	selectedQuest->aliases.push_back(createdAlias);
-	selectedQuest->aliasAccessLock.UnlockForWrite();
+	generatedQuest->aliasAccessLock.LockForWrite();
+	generatedQuest->aliases.push_back(createdAlias);
+	generatedQuest->aliasAccessLock.UnlockForWrite();
 
 	//Add target //TODO Investigate further this part as it is very likely bugged and related to the memory corruption and/or crashes
 	//=======================
 	const auto target = new RE::TESQuestTarget[3](); 
 	target->alias = 0; 
-	auto* firstObjective = *selectedQuest->objectives.begin();
+	auto* firstObjective = *generatedQuest->objectives.begin();
 	firstObjective->targets = new RE::TESQuestTarget*;
 	std::memset(&target[1], 0, 2 * sizeof(RE::TESQuestTarget*));  // NOLINT(bugprone-undefined-memory-manipulation)
 	*firstObjective->targets = target;
@@ -177,7 +280,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 	auto* policy = scriptMachine->GetObjectHandlePolicy();
 
-	const auto selectedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, selectedQuest);
+	const auto selectedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, generatedQuest);
 	//TODO!! try to call script compiler from c++ before loading custom script
 	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
 	scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject); //TODO defensive pattern against return value;
@@ -431,95 +534,7 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
 	//TODO!! debug nvidia exception on close
-
-	/*
-	-> So you came here to kill me, right ?
-		- I've not decided yet. I'd like to hear your side of the story. 
-			-> (Stage <= 5) Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.
-			-> [Tell me again about the reasons of the contract]  Your boss is a liar.
-				- What did he do ?
-					-> He lied, I'm the good one in the story.
-		- As you guessed. Prepare to die !
-			-> (Stage <= 5) Wait a minute ! Could I have a last will please ?
-			-> [I can't believe my boss would lie. Prepare to die !] Wait a minute ! Could I have a last will please ?
-				- Yes, of course, proceed but don't do anything inconsiderate.
-					-> Thank you for your consideration
-				- No, I came here for business, not charity.
-					-> Your lack of dignity is a shame.
-		- Actually, I decided to spare you.
-			-> (Stage >= 5) You're the kindest. I will make sure to hide myself from the eyes of your organization.
-	*/
-
-
-	const auto checkSpeakerCondition = new RE::TESConditionItem();
-	checkSpeakerCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-	checkSpeakerCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-	checkSpeakerCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetIsID);
-	checkSpeakerCondition->data.functionData.params[0] = targetForm->data.objectReference;
-	checkSpeakerCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-	RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-	conditionItemData.f = 1.f;
-	checkSpeakerCondition->data.comparisonValue = conditionItemData;
-	checkSpeakerCondition->next = nullptr;
-
-	dialogRoot.topicInfoText = "So you came here to kill me, right ?";
-	dialogRoot.conditions = {checkSpeakerCondition};
-
-
-	dialogRoot.childEntries.emplace_back
-	(
-		"I've not decided yet. I'd like to hear your side of the story.", 
-		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
-		std::vector<RE::TESConditionItem*>{checkSpeakerCondition},
-		std::vector<DialogEntry>
-		{
-			{
-				"What did he do ?", 
-				"He lied, I'm the good one in the story.",
-				std::vector<RE::TESConditionItem*>(),
-				std::vector<DialogEntry>()
-			}
-		}
-	);
-
-	dialogRoot.childEntries.emplace_back
-	(
-		"As you guessed. Prepare to die !", 
-		"Wait a minute ! Could I have a last will please ?",
-		std::vector<RE::TESConditionItem*>{checkSpeakerCondition},
-		std::vector<DialogEntry>
-		{
-			{
-				"Yes, of course, proceed but don't do anything inconsiderate.", 
-				"Thank you for your consideration",
-				std::vector<RE::TESConditionItem*>(),
-				std::vector<DialogEntry>()
-			},
-			{
-				"No, I came here for business, not charity.", 
-				"Your lack of dignity is a shame.",
-				std::vector<RE::TESConditionItem*>(),
-				std::vector<DialogEntry>()
-			},
-		}
-	);
-
-	dialogRoot.childEntries.emplace_back
-	(
-		DialogEntry
-		{
-			"Actually, I decided to spare you.", 
-			"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
-			std::vector<RE::TESConditionItem*>{checkSpeakerCondition},
-			std::vector<DialogEntry>()
-		}
-	);
-
-	ProcessDialogEntry(dialogRoot, helloTopicInfo);
-	for(size_t i = 0; i < dialogRoot.childEntries.size(); ++i)
-	{
-		ProcessDialogEntry(dialogRoot.childEntries[i], subTopicsInfos[i]);
-	}
+	int z = 42;
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
@@ -687,8 +702,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 		{
 			if (auto* dataHandler = RE::TESDataHandler::GetSingleton(); message->type == SKSE::MessagingInterface::kDataLoaded)
 			{
-
-				selectedQuest = editedQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{0x003e36}, "SQGLib.esp"));
 				referenceQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{0x003371}, "SQGLib.esp"));
 				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
@@ -710,15 +723,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				subTopicsInfos[2] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9C}, "SQGLib.esp"));
 				subTopicsInfos[3] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9F}, "SQGLib.esp"));
 
-				impossibleCondition = new RE::TESConditionItem();
-				impossibleCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-				impossibleCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-				impossibleCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kIsXBox);
-				impossibleCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-				RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-				conditionItemData.f = 1.f;
-				impossibleCondition->data.comparisonValue = conditionItemData;
-				impossibleCondition->next = nullptr;
+				InitDialog();
 			}
 		})
 	)
@@ -737,8 +742,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	OnResponseSaidHookedPatch dsh{ reinterpret_cast<uintptr_t>(OnResponseSaidHook), REL::Offset(0x64F360).address(), onResponseSaidHook + 0x7 };
 	const auto onDialogueSayHooked = trampoline.allocate(dsh);
     trampoline.write_branch<5>(onResponseSaidHook, onDialogueSayHooked);
-
-	//TODO method to init dialogs
 
 	return true;
 }
