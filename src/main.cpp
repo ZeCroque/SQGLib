@@ -1,30 +1,6 @@
 #include "PCH.h"
 #include "PackageUtils.h"
 
-constexpr int SUB_TOPIC_COUNT = 4;
-
-struct DialogEntry
-{
-	RE::BSFixedString topicText;	// in CK : Topic text max 80/TopicInfo text max 150 -> TODO test if hardcap
-	RE::BSFixedString topicInfoText;				// { TODO make a vector and check conditions + add a topicTextOverride string + add script fragment
-	std::vector<RE::TESConditionItem*> conditions;	// {
-	std::vector<DialogEntry> childEntries;
-	bool alreadySaid { false };
-};
-
-DialogEntry dialogRoot;	//TODO serialize on save
-std::unordered_map<RE::FormID, DialogEntry*> topicsInfosBindings;
-
-void ProcessDialogEntry(DialogEntry& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
-{
-	if(!inDialogEntry.conditions.empty())
-	{
-		inOutTopicInfo->objConditions.head = inDialogEntry.conditions[0]; //TODO iterate over all conditions
-	}
-	inOutTopicInfo->parentTopic->fullName = inDialogEntry.topicText;
-	topicsInfosBindings[inOutTopicInfo->formID] = &inDialogEntry;
-}
-
 void InitializeLog()
 {
 #ifndef NDEBUG
@@ -54,6 +30,8 @@ void InitializeLog()
 	spdlog::set_pattern("%g(%#): [%^%l%$] %v"s);
 }
 
+constexpr int SUB_TOPIC_COUNT = 4;
+
 RE::TESQuest* referenceQuest = nullptr;
 RE::TESQuest* generatedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
@@ -71,6 +49,79 @@ RE::TESTopicInfo* subTopicsInfos[SUB_TOPIC_COUNT];
 
 RE::TESConditionItem* impossibleCondition = nullptr;
 RE::TESConditionItem* checkSpeakerCondition = nullptr;
+RE::TESConditionItem* underStage12Condition = nullptr;
+RE::TESConditionItem* aboveStage12Condition = nullptr;
+RE::TESConditionItem* underStage15Condition = nullptr;
+
+struct AnswerData
+{
+	class DialogEntry& parentEntry; 
+	RE::BSFixedString topicInfoText;
+	RE::BSFixedString topicOverrideText;
+	std::vector<RE::TESConditionItem*> conditions;
+	bool alreadySaid { false };
+	//TODO  add script fragment
+};
+
+class DialogEntry
+{
+public:
+	explicit DialogEntry(const RE::BSString& inTopicText = "") : topicText(inTopicText)
+	{
+	}
+
+	void AddAnswer(const RE::BSString& inTopicInfoText, const RE::BSString& inTopicOverrideText, const std::vector<RE::TESConditionItem*>& inConditions)
+	{
+		answers.push_back(new AnswerData(*this, inTopicInfoText, inTopicOverrideText, inConditions, false));
+	}
+
+	DialogEntry* AddChildEntry(const RE::BSString& inTopicText)
+	{
+		auto* result = new DialogEntry(inTopicText);
+		childEntries.push_back(result);
+		return result;
+	}
+
+//private: TODO encapsulation
+	RE::BSFixedString topicText;	// in CK : Topic text max 80/TopicInfo text max 150 -> TODO test if hardcap
+	std::vector<AnswerData*> answers;
+	std::vector<DialogEntry*> childEntries;
+};
+
+DialogEntry* dialogRoot = nullptr;	//TODO serialize on save
+std::unordered_map<RE::FormID, AnswerData*> topicsInfosBindings;
+
+void ProcessDialogEntry(const DialogEntry& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
+{
+	bool hasAnyValidEntry = false;
+	for(auto& answerData : inDialogEntry.answers)
+	{
+		RE::TESCondition condition;
+		RE::TESConditionItem** conditionItemHolder = &condition.head;
+		for(const auto* conditionItem : answerData->conditions)
+		{
+			*conditionItemHolder = new RE::TESConditionItem();
+			(*conditionItemHolder)->data = conditionItem->data;
+			conditionItemHolder = &((*conditionItemHolder)->next);
+		}
+		*conditionItemHolder = nullptr;
+
+
+		if(condition(targetForm, targetForm)) //TODO take caller & target from arg
+		{
+			inOutTopicInfo->objConditions.head = nullptr;
+			topicsInfosBindings[inOutTopicInfo->formID] = answerData;
+			inOutTopicInfo->parentTopic->fullName = answerData->topicOverrideText.empty() ? inDialogEntry.topicText : answerData->topicOverrideText;
+			hasAnyValidEntry = true;
+			break;
+		}
+	}
+
+	if(!hasAnyValidEntry)
+	{
+		inOutTopicInfo->objConditions.head = impossibleCondition;
+	}
+}
 
 void InitDialog()
 {
@@ -95,84 +146,99 @@ void InitDialog()
 		checkSpeakerCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
 		checkSpeakerCondition->data.comparisonValue = conditionItemData;
 		checkSpeakerCondition->next = nullptr;
+
+		conditionItemData.f = 12.f;
+		underStage12Condition = new RE::TESConditionItem();
+		underStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		underStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		underStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+		underStage12Condition->data.functionData.params[0] = referenceQuest;  //TODO use generated quest instead
+		underStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
+		underStage12Condition->data.comparisonValue = conditionItemData;
+		underStage12Condition->next = nullptr;
+
+		aboveStage12Condition = new RE::TESConditionItem();
+		aboveStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		aboveStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		aboveStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+		aboveStage12Condition->data.functionData.params[0] = referenceQuest; //TODO use generated quest instead
+		aboveStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kGreaterThanOrEqualTo;
+		aboveStage12Condition->data.comparisonValue = conditionItemData;
+		aboveStage12Condition->next = nullptr;
+
+		conditionItemData.f = 15.f;
+		underStage15Condition = new RE::TESConditionItem();
+		underStage15Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		underStage15Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		underStage15Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+		underStage15Condition->data.functionData.params[0] = referenceQuest;  //TODO use generated quest instead
+		underStage15Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
+		underStage15Condition->data.comparisonValue = conditionItemData;
+		underStage15Condition->next = nullptr;
 	}
-
-	/*
-	-> So you came here to kill me, right ?
-		- I've not decided yet. I'd like to hear your side of the story. 
-			-> (Stage <= 5) Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.
-			-> [Tell me again about the reasons of the contract]  Your boss is a liar.
-				- What did he do ?
-					-> He lied, I'm the good one in the story.
-		- As you guessed. Prepare to die !
-			-> (Stage <= 5) Wait a minute ! Could I have a last will please ?
-			-> [I can't believe my boss would lie. Prepare to die !] Wait a minute ! Could I have a last will please ?
-				- Yes, of course, proceed but don't do anything inconsiderate.
-					-> Thank you for your consideration
-				- No, I came here for business, not charity.
-					-> Your lack of dignity is a shame.
-		- Actually, I decided to spare you.
-			-> (Stage >= 5) You're the kindest. I will make sure to hide myself from the eyes of your organization.
-	*/
-
-	dialogRoot.topicInfoText = "So you came here to kill me, right ?";
-	dialogRoot.conditions = {checkSpeakerCondition};
-
-	dialogRoot.childEntries.clear();
-	dialogRoot.childEntries.emplace_back
+	
+	dialogRoot = new DialogEntry();
+	dialogRoot->AddAnswer("So you came here to kill me, right ?", "", {checkSpeakerCondition});
+	
+	auto* wonderEntry = dialogRoot->AddChildEntry("I've not decided yet. I'd like to hear your side of the story.");
+;	wonderEntry->AddAnswer
 	(
-		"I've not decided yet. I'd like to hear your side of the story.", 
 		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
-		std::vector<RE::TESConditionItem*>{checkSpeakerCondition},
-		std::vector<DialogEntry>
-		{
-			{
-				"What did he do ?", 
-				"He lied, I'm the good one in the story.",
-				std::vector<RE::TESConditionItem*>(),
-				std::vector<DialogEntry>()
-			}
-		}
+		"",
+		{checkSpeakerCondition, underStage12Condition}
+	);
+	wonderEntry->AddAnswer
+	(
+		"Your boss is a liar.",
+		"Tell me again about the reasons of the contract",
+		{checkSpeakerCondition, underStage15Condition}
+	);
+	auto* moreWonderEntry = wonderEntry->AddChildEntry("What did he do ?");
+	moreWonderEntry->AddAnswer
+	(
+		"He lied, I'm the good one in the story.",
+		"",
+		{}
 	);
 
-	dialogRoot.childEntries.emplace_back
+	auto* attackEntry = dialogRoot->AddChildEntry("As you guessed. Prepare to die !");
+	attackEntry->AddAnswer
 	(
-		"As you guessed. Prepare to die !", 
 		"Wait a minute ! Could I have a last will please ?",
-		std::vector<RE::TESConditionItem*>{checkSpeakerCondition},
-		std::vector<DialogEntry>
-		{
-			{
-				"Yes, of course, proceed but don't do anything inconsiderate.", 
-				"Thank you for your consideration",
-				std::vector<RE::TESConditionItem*>(),
-				std::vector<DialogEntry>()
-			},
-			{
-				"No, I came here for business, not charity.", 
-				"Your lack of dignity is a shame.",
-				std::vector<RE::TESConditionItem*>(),
-				std::vector<DialogEntry>()
-			},
-		}
+		"",
+		{checkSpeakerCondition, underStage12Condition}
 	);
-
-	dialogRoot.childEntries.emplace_back
+	attackEntry->AddAnswer
 	(
-		DialogEntry
-		{
-			"Actually, I decided to spare you.", 
-			"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
-			std::vector<RE::TESConditionItem*>{checkSpeakerCondition},
-			std::vector<DialogEntry>()
-		}
+		"Wait a minute ! Could I have a last will please ?",
+		"I can't believe my boss would lie. Prepare to die !",
+		{checkSpeakerCondition, underStage15Condition}
+	);
+	auto* lastWillYesEntry = attackEntry->AddChildEntry("Yes, of course, proceed but don't do anything inconsiderate.");
+	lastWillYesEntry->AddAnswer
+	(						
+		"Thank you for your consideration",
+		"",
+		{}
+	);
+	auto lastWillNoEntry = attackEntry->AddChildEntry("No, I came here for business, not charity.");
+	lastWillNoEntry->AddAnswer
+	(
+		"Your lack of dignity is a shame.",
+		"",
+		{}
 	);
 
-	ProcessDialogEntry(dialogRoot, helloTopicInfo);
-	for(size_t i = 0; i < dialogRoot.childEntries.size(); ++i)
-	{
-		ProcessDialogEntry(dialogRoot.childEntries[i], subTopicsInfos[i]);
-	}
+	auto* spareEntry = dialogRoot->AddChildEntry("Actually, I decided to spare you.");
+	spareEntry->AddAnswer
+	(
+		"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
+		"",
+		{checkSpeakerCondition, aboveStage12Condition, underStage15Condition}
+	);
+
+
+	ProcessDialogEntry(*dialogRoot, helloTopicInfo);
 }
 
 std::string GenerateQuest(RE::StaticFunctionTag*)
@@ -590,26 +656,33 @@ class TopicInfoEventSink final : public RE::BSTEventSink<RE::TESTopicInfoEvent>
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESTopicInfoEvent* a_event, RE::BSTEventSource<RE::TESTopicInfoEvent>* a_eventSource) override
 	{
-		if(a_event->speaker == targetForm)
+		if(a_event->speaker == targetForm) //TODO hook elsewhere because if it gets updated while not in dialog it does not update (TopicSetter from jfmherokiller ?)
 		{
-			if(a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kEnd)
+			AnswerData* entry = nullptr;
+			if(const auto topicInfoBinding = topicsInfosBindings.find(a_event->topicInfoId); a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kEnd &&  topicInfoBinding != topicsInfosBindings.end())
 			{
-				if(const auto topicInfoBinding = topicsInfosBindings.find(a_event->topicInfoId); topicInfoBinding != topicsInfosBindings.end())
-				{
-					//TODO script fragment
-					topicInfoBinding->second->alreadySaid = true;
+				entry = topicInfoBinding->second;
+			}
+			else if(a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kBegin && a_event->topicInfoId == helloTopicInfo->formID)
+			{
+				entry = dialogRoot->answers[0];
+			}
 
-					auto& entries = !topicInfoBinding->second->childEntries.empty() ? topicInfoBinding->second->childEntries : dialogRoot.childEntries;
-					for(size_t i = 0; i < SUB_TOPIC_COUNT; ++i)
+			if(entry)
+			{
+				//TODO script fragment
+				entry->alreadySaid = true;
+
+				const auto& entries = !entry->parentEntry.childEntries.empty() ?entry->parentEntry.childEntries : dialogRoot->childEntries;
+				for(size_t i = 0; i < SUB_TOPIC_COUNT; ++i)
+				{
+					if(i < entries.size())
 					{
-						if(i < entries.size())
-						{
-							ProcessDialogEntry(entries[i], subTopicsInfos[i]);
-						}
-						else
-						{
-							subTopicsInfos[i]->objConditions.head = impossibleCondition;
-						}
+						ProcessDialogEntry(*entries[i], subTopicsInfos[i]);
+					}
+					else
+					{
+						subTopicsInfos[i]->objConditions.head = impossibleCondition;
 					}
 				}
 			}
@@ -618,7 +691,7 @@ public:
 	}
 };
 
-void PopulateResponseTextHook(RE::TESTopicInfo::ResponseData* generatedResponse, RE::TESTopicInfo* parentTopicInfo)
+void PopulateResponseTextHook(RE::TESTopicInfo::ResponseData* generatedResponse, const RE::TESTopicInfo* parentTopicInfo)
 {
 	if(const auto topicInfoBinding = topicsInfosBindings.find(parentTopicInfo->formID); topicInfoBinding != topicsInfosBindings.end())
 	{
