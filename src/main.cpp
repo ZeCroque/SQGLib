@@ -44,8 +44,9 @@ RE::TESPackage* travelPackage = nullptr;
 RE::TESPackage* customAcquirePackage = nullptr;
 RE::TESPackage* customActivatePackage = nullptr;
 RE::TESPackage* customTravelPackage = nullptr;
-RE::TESTopicInfo* helloTopicInfo;
-RE::TESTopicInfo* subTopicsInfos[SUB_TOPIC_COUNT];
+RE::TESTopic* genericHelloTopic = nullptr;
+RE::TESTopicInfo* helloTopicInfo = nullptr;
+RE::TESTopicInfo* subTopicsInfos[SUB_TOPIC_COUNT] { nullptr };
 
 RE::TESConditionItem* impossibleCondition = nullptr;
 RE::TESConditionItem* checkSpeakerCondition = nullptr;
@@ -90,6 +91,7 @@ public:
 
 DialogEntry* dialogRoot = nullptr;	//TODO serialize on save
 std::unordered_map<RE::FormID, AnswerData*> topicsInfosBindings;
+AnswerData* lastSelectedAnswer = nullptr;
 
 void ProcessDialogEntry(const DialogEntry& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
 {
@@ -656,24 +658,35 @@ class TopicInfoEventSink final : public RE::BSTEventSink<RE::TESTopicInfoEvent>
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESTopicInfoEvent* a_event, RE::BSTEventSource<RE::TESTopicInfoEvent>* a_eventSource) override
 	{
-		if(a_event->speaker == targetForm) //TODO hook elsewhere because if it gets updated while not in dialog it does not update (TopicSetter from jfmherokiller ?)
+		if(a_event->speaker == targetForm)
 		{
-			AnswerData* entry = nullptr;
+			AnswerData* answer = nullptr;
 			if(const auto topicInfoBinding = topicsInfosBindings.find(a_event->topicInfoId); a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kEnd &&  topicInfoBinding != topicsInfosBindings.end())
 			{
-				entry = topicInfoBinding->second;
+				answer = topicInfoBinding->second;
 			}
-			else if(a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kBegin && a_event->topicInfoId == helloTopicInfo->formID)
+			else if(a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kBegin)
 			{
-				entry = dialogRoot->answers[0];
+				if(a_event->topicInfoId == helloTopicInfo->formID)
+				{
+					answer = dialogRoot->answers[0];
+				}
+				else
+				{
+					if(const auto* topicInfo = reinterpret_cast<RE::TESTopicInfo*>(RE::TESForm::LookupByID(a_event->topicInfoId)); topicInfo->parentTopic == genericHelloTopic)
+					{
+						answer = !lastSelectedAnswer || lastSelectedAnswer->parentEntry.childEntries.empty() ? dialogRoot->answers[0] : lastSelectedAnswer;
+					}
+				}
 			}
 
-			if(entry)
+			if(answer)
 			{
 				//TODO script fragment
-				entry->alreadySaid = true;
+				answer->alreadySaid = true;
+				lastSelectedAnswer = answer;
 
-				const auto& entries = !entry->parentEntry.childEntries.empty() ?entry->parentEntry.childEntries : dialogRoot->childEntries;
+				const auto& entries = !answer->parentEntry.childEntries.empty() ? answer->parentEntry.childEntries : dialogRoot->childEntries;
 				for(size_t i = 0; i < SUB_TOPIC_COUNT; ++i)
 				{
 					if(i < entries.size())
@@ -782,6 +795,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				activatePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019B2D});
 				acquirePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019713});
 				travelPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0016FAA});  //TODO parse a package template descriptor map
+				genericHelloTopic = RE::TESForm::LookupByID<RE::TESTopic>(RE::FormID{0x00142B5});
 
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestInitEventSink());
