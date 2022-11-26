@@ -60,8 +60,9 @@ struct AnswerData
 	RE::BSFixedString topicInfoText;
 	RE::BSFixedString topicOverrideText;
 	std::vector<RE::TESConditionItem*> conditions;
+	int targetStage;
+	int fragmentId;
 	bool alreadySaid { false };
-	//TODO  add script fragment
 };
 
 class DialogEntry
@@ -71,9 +72,9 @@ public:
 	{
 	}
 
-	void AddAnswer(const RE::BSString& inTopicInfoText, const RE::BSString& inTopicOverrideText, const std::vector<RE::TESConditionItem*>& inConditions)
+	void AddAnswer(const RE::BSString& inTopicInfoText, const RE::BSString& inTopicOverrideText, const std::vector<RE::TESConditionItem*>& inConditions, const int inTargetStage = -1, const int inFragmentId = -1)
 	{
-		answers.push_back(new AnswerData(*this, inTopicInfoText, inTopicOverrideText, inConditions, false));
+		answers.push_back(new AnswerData(*this, inTopicInfoText, inTopicOverrideText, inConditions, inTargetStage ,inFragmentId, false));
 	}
 
 	DialogEntry* AddChildEntry(const RE::BSString& inTopicText)
@@ -252,6 +253,11 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	scriptMachine->SetPropertyValue(questCustomScriptObject, "SQGTestAliasTarget", propertyValue);
 	questCustomScriptObject->initialized = true; //Required when creating object with properties
 
+	RE::BSTSmartPointer<RE::BSScript::Object> dialogFragmentsCustomScriptObject;
+	scriptMachine->CreateObject("SQGTopicFragments", dialogFragmentsCustomScriptObject); //TODO defensive pattern against return value;
+	scriptMachine->BindObject(dialogFragmentsCustomScriptObject, selectedQuestHandle, false);
+	policy->PersistHandle(selectedQuestHandle); //TODO check if useful
+
 	//Add dialogs
 	//===========================
 	if(!impossibleCondition)
@@ -327,7 +333,9 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	(
 		"He lied, I'm the good one in the story.",
 		"",
-		{}
+		{},
+		12,
+		0
 	);
 
 	auto* attackEntry = dialogRoot->AddChildEntry("As you guessed. Prepare to die !");
@@ -348,14 +356,18 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	(						
 		"Thank you for your consideration",
 		"",
-		{}
+		{},
+		15,
+		1
 	);
 	auto lastWillNoEntry = attackEntry->AddChildEntry("No, I came here for business, not charity.");
 	lastWillNoEntry->AddAnswer
 	(
 		"Your lack of dignity is a shame.",
 		"",
-		{}
+		{},
+		35,
+		2
 	);
 
 	auto* spareEntry = dialogRoot->AddChildEntry("Actually, I decided to spare you.");
@@ -363,7 +375,9 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	(
 		"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
 		"",
-		{checkSpeakerCondition, aboveStage12Condition, underStage15Condition}
+		{checkSpeakerCondition, aboveStage12Condition, underStage15Condition},
+		40,
+		3
 	);
 
 	ProcessDialogEntry(targetForm, *dialogRoot, helloTopicInfo);
@@ -685,9 +699,26 @@ public:
 
 			if(answer)
 			{
-				//TODO script fragment
 				answer->alreadySaid = true;
 				lastSelectedAnswer = answer;
+
+				if(answer->targetStage != -1) //Done specific code for target stage because asynchronous nature of script would prevent the topic list to be correctly updated. It is however strongly recommended to set the stage with fragment as well or QuestFragments won't be triggered otherwise.
+				{
+					generatedQuest->currentStage = static_cast<std::uint16_t>(answer->targetStage); //TODO take quest from DialogEntry
+				}
+
+				if(answer->fragmentId != -1)
+				{
+					auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+					auto* policy = scriptMachine->GetObjectHandlePolicy();
+					const auto updatedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, generatedQuest); //TODO take quest from DialogEntry
+					RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
+					scriptMachine->FindBoundObject(updatedQuestHandle, "SQGTopicFragments", questCustomScriptObject);
+
+					const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + answer->fragmentId;
+					RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+					scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+				}	
 
 				const auto& entries = !answer->parentEntry.childEntries.empty() ? answer->parentEntry.childEntries : dialogRoot->childEntries;
 				for(size_t i = 0; i < SUB_TOPIC_COUNT; ++i)
