@@ -93,7 +93,7 @@ DialogEntry* dialogRoot = nullptr;	//TODO serialize on save
 std::unordered_map<RE::FormID, AnswerData*> topicsInfosBindings;
 AnswerData* lastSelectedAnswer = nullptr;
 
-void ProcessDialogEntry(const DialogEntry& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
+void ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, const DialogEntry& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
 {
 	bool hasAnyValidEntry = false;
 	for(auto& answerData : inDialogEntry.answers)
@@ -109,7 +109,7 @@ void ProcessDialogEntry(const DialogEntry& inDialogEntry, RE::TESTopicInfo* inOu
 		*conditionItemHolder = nullptr;
 
 
-		if(condition(targetForm, targetForm)) //TODO take caller & target from arg
+		if(condition(inSpeaker, inSpeaker))
 		{
 			inOutTopicInfo->objConditions.head = nullptr;
 			topicsInfosBindings[inOutTopicInfo->formID] = answerData;
@@ -123,124 +123,6 @@ void ProcessDialogEntry(const DialogEntry& inDialogEntry, RE::TESTopicInfo* inOu
 	{
 		inOutTopicInfo->objConditions.head = impossibleCondition;
 	}
-}
-
-void InitDialog()
-{
-	if(!impossibleCondition)
-	{
-		RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-		conditionItemData.f = 1.f;
-
-		impossibleCondition = new RE::TESConditionItem();
-		impossibleCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-		impossibleCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-		impossibleCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kIsXBox);
-		impossibleCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-		impossibleCondition->data.comparisonValue = conditionItemData;
-		impossibleCondition->next = nullptr;
-
-		checkSpeakerCondition = new RE::TESConditionItem();
-		checkSpeakerCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-		checkSpeakerCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-		checkSpeakerCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetIsID);
-		checkSpeakerCondition->data.functionData.params[0] = targetForm->data.objectReference;
-		checkSpeakerCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-		checkSpeakerCondition->data.comparisonValue = conditionItemData;
-		checkSpeakerCondition->next = nullptr;
-
-		conditionItemData.f = 12.f;
-		underStage12Condition = new RE::TESConditionItem();
-		underStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-		underStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-		underStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-		underStage12Condition->data.functionData.params[0] = referenceQuest;  //TODO use generated quest instead
-		underStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
-		underStage12Condition->data.comparisonValue = conditionItemData;
-		underStage12Condition->next = nullptr;
-
-		aboveStage12Condition = new RE::TESConditionItem();
-		aboveStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-		aboveStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-		aboveStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-		aboveStage12Condition->data.functionData.params[0] = referenceQuest; //TODO use generated quest instead
-		aboveStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kGreaterThanOrEqualTo;
-		aboveStage12Condition->data.comparisonValue = conditionItemData;
-		aboveStage12Condition->next = nullptr;
-
-		conditionItemData.f = 15.f;
-		underStage15Condition = new RE::TESConditionItem();
-		underStage15Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-		underStage15Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-		underStage15Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-		underStage15Condition->data.functionData.params[0] = referenceQuest;  //TODO use generated quest instead
-		underStage15Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
-		underStage15Condition->data.comparisonValue = conditionItemData;
-		underStage15Condition->next = nullptr;
-	}
-	
-	dialogRoot = new DialogEntry();
-	dialogRoot->AddAnswer("So you came here to kill me, right ?", "", {checkSpeakerCondition});
-	
-	auto* wonderEntry = dialogRoot->AddChildEntry("I've not decided yet. I'd like to hear your side of the story.");
-;	wonderEntry->AddAnswer
-	(
-		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
-		"",
-		{checkSpeakerCondition, underStage12Condition}
-	);
-	wonderEntry->AddAnswer
-	(
-		"Your boss is a liar.",
-		"Tell me again about the reasons of the contract",
-		{checkSpeakerCondition, underStage15Condition}
-	);
-	auto* moreWonderEntry = wonderEntry->AddChildEntry("What did he do ?");
-	moreWonderEntry->AddAnswer
-	(
-		"He lied, I'm the good one in the story.",
-		"",
-		{}
-	);
-
-	auto* attackEntry = dialogRoot->AddChildEntry("As you guessed. Prepare to die !");
-	attackEntry->AddAnswer
-	(
-		"Wait a minute ! Could I have a last will please ?",
-		"",
-		{checkSpeakerCondition, underStage12Condition}
-	);
-	attackEntry->AddAnswer
-	(
-		"Wait a minute ! Could I have a last will please ?",
-		"I can't believe my boss would lie. Prepare to die !",
-		{checkSpeakerCondition, underStage15Condition}
-	);
-	auto* lastWillYesEntry = attackEntry->AddChildEntry("Yes, of course, proceed but don't do anything inconsiderate.");
-	lastWillYesEntry->AddAnswer
-	(						
-		"Thank you for your consideration",
-		"",
-		{}
-	);
-	auto lastWillNoEntry = attackEntry->AddChildEntry("No, I came here for business, not charity.");
-	lastWillNoEntry->AddAnswer
-	(
-		"Your lack of dignity is a shame.",
-		"",
-		{}
-	);
-
-	auto* spareEntry = dialogRoot->AddChildEntry("Actually, I decided to spare you.");
-	spareEntry->AddAnswer
-	(
-		"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
-		"",
-		{checkSpeakerCondition, aboveStage12Condition, underStage15Condition}
-	);
-
-
-	ProcessDialogEntry(*dialogRoot, helloTopicInfo);
 }
 
 std::string GenerateQuest(RE::StaticFunctionTag*)
@@ -306,6 +188,10 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	generatedQuest->otherStages->emplace_front(questStage);
 
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 12;
+	generatedQuest->otherStages->emplace_front(questStage);
+
 	//Add objectives
 	//=======================
 	auto* questObjective = new RE::BGSQuestObjective();
@@ -365,6 +251,122 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	propertyValue.SetObject(referenceAliasBaseScriptObject);
 	scriptMachine->SetPropertyValue(questCustomScriptObject, "SQGTestAliasTarget", propertyValue);
 	questCustomScriptObject->initialized = true; //Required when creating object with properties
+
+	//Add dialogs
+	//===========================
+	if(!impossibleCondition)
+	{
+		RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+		conditionItemData.f = 1.f;
+
+		impossibleCondition = new RE::TESConditionItem();
+		impossibleCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		impossibleCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		impossibleCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kIsXBox);
+		impossibleCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+		impossibleCondition->data.comparisonValue = conditionItemData;
+		impossibleCondition->next = nullptr;
+
+		checkSpeakerCondition = new RE::TESConditionItem();
+		checkSpeakerCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		checkSpeakerCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		checkSpeakerCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetIsID);
+		checkSpeakerCondition->data.functionData.params[0] = targetForm->data.objectReference;
+		checkSpeakerCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+		checkSpeakerCondition->data.comparisonValue = conditionItemData;
+		checkSpeakerCondition->next = nullptr;
+
+		conditionItemData.f = 12.f;
+		underStage12Condition = new RE::TESConditionItem();
+		underStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		underStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		underStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+		underStage12Condition->data.functionData.params[0] = generatedQuest;
+		underStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
+		underStage12Condition->data.comparisonValue = conditionItemData;
+		underStage12Condition->next = nullptr;
+
+		aboveStage12Condition = new RE::TESConditionItem();
+		aboveStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		aboveStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		aboveStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+		aboveStage12Condition->data.functionData.params[0] = generatedQuest;
+		aboveStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kGreaterThanOrEqualTo;
+		aboveStage12Condition->data.comparisonValue = conditionItemData;
+		aboveStage12Condition->next = nullptr;
+
+		conditionItemData.f = 15.f;
+		underStage15Condition = new RE::TESConditionItem();
+		underStage15Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		underStage15Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		underStage15Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+		underStage15Condition->data.functionData.params[0] = generatedQuest;
+		underStage15Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
+		underStage15Condition->data.comparisonValue = conditionItemData;
+		underStage15Condition->next = nullptr;
+	}
+	
+	dialogRoot = new DialogEntry();
+	dialogRoot->AddAnswer("So you came here to kill me, right ?", "", {checkSpeakerCondition});
+	
+	auto* wonderEntry = dialogRoot->AddChildEntry("I've not decided yet. I'd like to hear your side of the story.");
+;	wonderEntry->AddAnswer
+	(
+		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
+		"",
+		{checkSpeakerCondition, underStage12Condition}
+	);
+	wonderEntry->AddAnswer
+	(
+		"Your boss is a liar.",
+		"Tell me again about the reasons of the contract",
+		{checkSpeakerCondition, underStage15Condition}
+	);
+	auto* moreWonderEntry = wonderEntry->AddChildEntry("What did he do ?");
+	moreWonderEntry->AddAnswer
+	(
+		"He lied, I'm the good one in the story.",
+		"",
+		{}
+	);
+
+	auto* attackEntry = dialogRoot->AddChildEntry("As you guessed. Prepare to die !");
+	attackEntry->AddAnswer
+	(
+		"Wait a minute ! Could I have a last will please ?",
+		"",
+		{checkSpeakerCondition, underStage12Condition}
+	);
+	attackEntry->AddAnswer
+	(
+		"Wait a minute ! Could I have a last will please ?",
+		"I can't believe my boss would lie. Prepare to die !",
+		{checkSpeakerCondition, underStage15Condition}
+	);
+	auto* lastWillYesEntry = attackEntry->AddChildEntry("Yes, of course, proceed but don't do anything inconsiderate.");
+	lastWillYesEntry->AddAnswer
+	(						
+		"Thank you for your consideration",
+		"",
+		{}
+	);
+	auto lastWillNoEntry = attackEntry->AddChildEntry("No, I came here for business, not charity.");
+	lastWillNoEntry->AddAnswer
+	(
+		"Your lack of dignity is a shame.",
+		"",
+		{}
+	);
+
+	auto* spareEntry = dialogRoot->AddChildEntry("Actually, I decided to spare you.");
+	spareEntry->AddAnswer
+	(
+		"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
+		"",
+		{checkSpeakerCondition, aboveStage12Condition, underStage15Condition}
+	);
+
+	ProcessDialogEntry(targetForm, *dialogRoot, helloTopicInfo);
 
 	//Notify success
 	//===========================
@@ -602,6 +604,7 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
 	//TODO!! debug nvidia exception on close
+	generatedQuest->currentStage = 12;
 	int z = 42;
 }	
 
@@ -691,7 +694,7 @@ public:
 				{
 					if(i < entries.size())
 					{
-						ProcessDialogEntry(*entries[i], subTopicsInfos[i]);
+						ProcessDialogEntry(a_event->speaker, *entries[i], subTopicsInfos[i]);
 					}
 					else
 					{
@@ -809,8 +812,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				subTopicsInfos[1] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF99}, "SQGLib.esp"));
 				subTopicsInfos[2] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9C}, "SQGLib.esp"));
 				subTopicsInfos[3] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9F}, "SQGLib.esp"));
-
-				InitDialog();
 			}
 		})
 	)
