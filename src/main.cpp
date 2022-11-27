@@ -149,14 +149,14 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	//Add stages
 	//=======================
 	auto* logEntries = new RE::TESQuestStageItem[4];
-	std::memset(logEntries, 0, 4 * sizeof(RE::TESQuestStageItem));  // NOLINT(bugprone-undefined-memory-manipulation)
+	std::memset(logEntries, 0, 7 * sizeof(RE::TESQuestStageItem));  // NOLINT(bugprone-undefined-memory-manipulation)
 
 	generatedQuest->initialStage = new RE::TESQuestStage();
 	std::memset(generatedQuest->initialStage, 0, sizeof(RE::TESQuestStage));
 	generatedQuest->initialStage->data.index = 10;
 	generatedQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
 	generatedQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
-	generatedQuest->initialStage->questStageItem = logEntries + 3;
+	generatedQuest->initialStage->questStageItem = logEntries + 6;
 	generatedQuest->initialStage->questStageItem->owner = generatedQuest;
 	generatedQuest->initialStage->questStageItem->owningStage = generatedQuest->initialStage;
 	generatedQuest->initialStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff}; //TODO create real quest log entry
@@ -164,9 +164,9 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	generatedQuest->otherStages = new RE::BSSimpleList<RE::TESQuestStage*>();
 
 	auto* questStage = new RE::TESQuestStage();
-	questStage->data.index = 40;
+	questStage->data.index = 45;
 	questStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
-	questStage->questStageItem = logEntries + 2;
+	questStage->questStageItem = logEntries + 5;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
 	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
@@ -174,7 +174,41 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	generatedQuest->otherStages->emplace_front(questStage);
 
 	questStage = new RE::TESQuestStage();
+	questStage->data.index = 40;
+	questStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
+	questStage->questStageItem = logEntries + 4;
+	questStage->questStageItem->owner = generatedQuest;
+	questStage->questStageItem->owningStage = questStage;
+	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
+	questStage->questStageItem->data = 1; //Means "Last stage"
+	generatedQuest->otherStages->emplace_front(questStage);
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 35;
+	questStage->questStageItem = logEntries + 3;
+	questStage->questStageItem->owner = generatedQuest;
+	questStage->questStageItem->owningStage = questStage;
+	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
+	generatedQuest->otherStages->emplace_front(questStage);
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 32;
+	questStage->questStageItem = logEntries + 2;
+	questStage->questStageItem->owner = generatedQuest;
+	questStage->questStageItem->owningStage = questStage;
+	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
+	generatedQuest->otherStages->emplace_front(questStage);
+
+	questStage = new RE::TESQuestStage();
 	questStage->data.index = 30;
+	generatedQuest->otherStages->emplace_front(questStage);
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 20;
+	generatedQuest->otherStages->emplace_front(questStage);
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 15;
 	questStage->questStageItem = logEntries + 1;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
@@ -182,22 +216,32 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	generatedQuest->otherStages->emplace_front(questStage);
 
 	questStage = new RE::TESQuestStage();
-	questStage->data.index = 20;
+	questStage->data.index = 12;
 	questStage->questStageItem = logEntries;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
 	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	generatedQuest->otherStages->emplace_front(questStage);
 
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 12;
-	generatedQuest->otherStages->emplace_front(questStage);
-
 	//Add objectives
 	//=======================
 	auto* questObjective = new RE::BGSQuestObjective();
 	questObjective->index = 10;
-	questObjective->displayText = "First objective";
+	questObjective->displayText = "Kill Gibier";
+	questObjective->ownerQuest = generatedQuest;
+	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
+	generatedQuest->objectives.push_front(questObjective);
+
+	questObjective = new RE::BGSQuestObjective();
+	questObjective->index = 12;
+	questObjective->displayText = "(Optional) Spare Gibier";
+	questObjective->ownerQuest = generatedQuest;
+	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
+	generatedQuest->objectives.push_front(questObjective);
+
+	questObjective = new RE::BGSQuestObjective();
+	questObjective->index = 15;
+	questObjective->displayText = "(Optional) Let Gibier do his last will";
 	questObjective->ownerQuest = generatedQuest;
 	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
 	generatedQuest->objectives.push_front(questObjective);
@@ -376,7 +420,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 		"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
 		"",
 		{checkSpeakerCondition, aboveStage12Condition, underStage15Condition},
-		40,
+		45,
 		3
 	);
 
@@ -415,9 +459,33 @@ public:
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
-		else if(a_event->targetStage == 40)
+		else if(a_event->targetStage == 12)
 		{
 			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 1;
+			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+		}
+		else if(a_event->targetStage == 15)
+		{
+			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 2;
+			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+		}
+		else if(a_event->targetStage == 32)
+		{
+			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 3;
+			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+		}
+		else if(a_event->targetStage == 40)
+		{
+			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 4;
+			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+		}
+		else if(a_event->targetStage == 45)
+		{
+			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 5;
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
@@ -466,7 +534,7 @@ public:
 
 							std::list<SQG::PackageConditionDescriptor> packageConditionList;
 							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-							conditionItemData.f = 10.f;
+							conditionItemData.f = 15.f;
 							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
 							FillPackageCondition(customAcquirePackage, packageConditionList);
 

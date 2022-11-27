@@ -2,6 +2,7 @@ Scriptname PF_SQGTravelPackage Extends Package Hidden
 
 Function Fragment_1()
 Debug.MessageBox("moved")
+getowningquest().setstage(32)
 EndFunction
 
 Function Fragment_2()
