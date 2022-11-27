@@ -260,14 +260,20 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	generatedQuest->aliases.push_back(createdAlias);
 	generatedQuest->aliasAccessLock.UnlockForWrite();
 
-	//Add target //TODO Investigate further this part as it is very likely bugged and related to the memory corruption and/or crashes
+	//Add target
 	//=======================
-	const auto target = new RE::TESQuestTarget[3](); 
-	target->alias = 0; 
-	auto* firstObjective = *generatedQuest->objectives.begin();
-	firstObjective->targets = new RE::TESQuestTarget*;
-	std::memset(&target[1], 0, 2 * sizeof(RE::TESQuestTarget*));  // NOLINT(bugprone-undefined-memory-manipulation)
-	*firstObjective->targets = target;
+	auto objectiveIt = generatedQuest->objectives.begin();
+	auto nextObjectiveIt = objectiveIt;
+	do
+	{
+		objectiveIt = nextObjectiveIt;
+		++nextObjectiveIt;
+	} while(nextObjectiveIt != generatedQuest->objectives.end());
+
+	auto* firstObjective = *objectiveIt;
+	firstObjective->targets = new RE::TESQuestTarget*();
+	*firstObjective->targets = new RE::TESQuestTarget();
+	firstObjective->targets[0]->alias = 0;
 	firstObjective->numTargets = 1;
 
 	//Sets some additional variables (pad24, pad22c and questObjective's pad04 among others)
@@ -686,7 +692,6 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
 	//TODO!! debug nvidia exception on close
-	generatedQuest->currentStage = 12;
 	int z = 42;
 }	
 
