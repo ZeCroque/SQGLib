@@ -6,6 +6,7 @@ Scriptname PF_SQGGibierSamplePackage_010053C2 Extends Package Hidden
 Function Fragment_1(Actor akActor)
 ;BEGIN CODE
 Debug.MessageBox("moved")
+getowningquest().setstage(32)
 ;END CODE
 EndFunction
 ;END FRAGMENT

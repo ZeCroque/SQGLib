@@ -675,7 +675,7 @@ class TopicInfoEventSink final : public RE::BSTEventSink<RE::TESTopicInfoEvent>
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESTopicInfoEvent* a_event, RE::BSTEventSource<RE::TESTopicInfoEvent>* a_eventSource) override
 	{
-		if(a_event->speaker == targetForm)
+		if(generatedQuest && a_event->speaker == targetForm)
 		{
 			AnswerData* answer = nullptr;
 			if(const auto topicInfoBinding = topicsInfosBindings.find(a_event->topicInfoId); a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kEnd &&  topicInfoBinding != topicsInfosBindings.end())
@@ -822,7 +822,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 		{
 			if (auto* dataHandler = RE::TESDataHandler::GetSingleton(); message->type == SKSE::MessagingInterface::kDataLoaded)
 			{
-				referenceQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{0x003371}, "SQGLib.esp"));
+				selectedQuest = referenceQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{0x003371}, "SQGLib.esp"));
 				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
 				targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
