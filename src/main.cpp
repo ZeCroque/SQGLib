@@ -483,15 +483,21 @@ public:
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
-		else if(a_event->targetStage == 40)
+		else if(a_event->targetStage == 35)
 		{
 			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 4;
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
-		else if(a_event->targetStage == 45)
+		else if(a_event->targetStage == 40)
 		{
 			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 5;
+			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+		}
+		else if(a_event->targetStage == 45)
+		{
+			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 6;
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
