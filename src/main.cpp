@@ -54,6 +54,8 @@ RE::TESConditionItem* underStage12Condition = nullptr;
 RE::TESConditionItem* aboveStage12Condition = nullptr;
 RE::TESConditionItem* underStage15Condition = nullptr;
 
+char logEntry[6] = "Salut";
+
 struct AnswerData
 {
 	class DialogEntry& parentEntry; 
@@ -883,6 +885,39 @@ struct OnResponseSaidHookedPatch final : Xbyak::CodeGenerator
     }
 };
 
+bool FillLogEntryHook(const RE::TESQuestStageItem* inQuestStageItem)
+{
+	return inQuestStageItem->owner == referenceQuest;
+}
+
+struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
+{
+    explicit FillLogEntryHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeStandardExecutionAddress, const uintptr_t inBypassAddress, const uintptr_t inStringAdr)
+    {
+	    // ReSharper disable once CppInconsistentNaming
+	    Xbyak::Label BYPASS_STRING_LOAD;
+
+		mov(rax, inHijackedMethodAddress); //Calling the method we hijacked (that is setting in RCX TESQuestStageItem*)
+		call(rax);
+
+		push(rax);
+		mov(rax, inHookAddress);	//Calling hook
+		call(rax);
+		test(al, al); //If the quest for which we're trying to fill the log entry is in one of ours
+		jnz(BYPASS_STRING_LOAD); //Then bypass the classic log entry loading process
+		//Else
+		pop(rax);
+		mov(r15, inResumeStandardExecutionAddress); //Resume standard execution
+		jmp(r15);
+
+		L(BYPASS_STRING_LOAD);
+		pop(rax);	//Removing unecessary data from the stack
+    	mov(rax, inStringAdr); //Manually move our string
+    	mov(r15, inBypassAddress); //Resume execution after the normal string loading process we bypassed
+    	jmp(r15);
+    }
+};
+
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
 {
@@ -940,6 +975,11 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	OnResponseSaidHookedPatch dsh{ reinterpret_cast<uintptr_t>(OnResponseSaidHook), REL::Offset(0x64F360).address(), onResponseSaidHook + 0x7 };
 	const auto onDialogueSayHooked = trampoline.allocate(dsh);
     trampoline.write_branch<5>(onResponseSaidHook, onDialogueSayHooked);
+
+	const auto fillLogEntryHook = REL::Offset(0x378F6C).address();
+	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(logEntry)};
+	const auto fillLogEntryHooked = trampoline.allocate(fleh);
+    trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
 
 	return true;
 }
