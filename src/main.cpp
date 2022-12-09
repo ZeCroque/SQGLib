@@ -54,7 +54,9 @@ RE::TESConditionItem* underStage12Condition = nullptr;
 RE::TESConditionItem* aboveStage12Condition = nullptr;
 RE::TESConditionItem* underStage15Condition = nullptr;
 
-char logEntry[6] = "Salut";
+std::unordered_map<int, std::string> logEntriesBindings;
+int lastValidLogEntryIndex = 0;
+char* targetLogEntry = nullptr;
 
 struct AnswerData
 {
@@ -161,7 +163,8 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	generatedQuest->initialStage->questStageItem = logEntries + 6;
 	generatedQuest->initialStage->questStageItem->owner = generatedQuest;
 	generatedQuest->initialStage->questStageItem->owningStage = generatedQuest->initialStage;
-	generatedQuest->initialStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff}; //TODO create real quest log entry
+	generatedQuest->initialStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
+	logEntriesBindings[10] = "My boss told me to kill a man named \"Gibier\"";
 
 	generatedQuest->otherStages = new RE::BSSimpleList<RE::TESQuestStage*>();
 
@@ -174,6 +177,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	questStage->questStageItem->data = 1; //Means "Last stage"
 	generatedQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[45] = "I decided to spare Gibier.";
 
 	questStage = new RE::TESQuestStage();
 	questStage->data.index = 40;
@@ -184,6 +188,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	questStage->questStageItem->data = 1; //Means "Last stage"
 	generatedQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[40] = "Gibier is dead.";
 
 	questStage = new RE::TESQuestStage();
 	questStage->data.index = 35;
@@ -192,6 +197,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem->owningStage = questStage;
 	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	generatedQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[35] = "When I told Gibier I was going to kill him he asked for a last will. I refused.";
 
 	questStage = new RE::TESQuestStage();
 	questStage->data.index = 32;
@@ -200,6 +206,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem->owningStage = questStage;
 	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	generatedQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[32] = "Gibier has done his last will. The time has came for him to die.";
 
 	questStage = new RE::TESQuestStage();
 	questStage->data.index = 30;
@@ -216,6 +223,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem->owningStage = questStage;
 	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	generatedQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[15] = "When I told Gibier I was going to kill him he asked for a last will. I let him do what he wanted but advised him to not do anything inconsiderate.";
 
 	questStage = new RE::TESQuestStage();
 	questStage->data.index = 12;
@@ -224,6 +232,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem->owningStage = questStage;
 	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	generatedQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[12] = "I spoke with Gibier, whom told me my boss was a liar and begged me to spare him. I need to decide what to do.";
 
 	//Add objectives
 	//=======================
@@ -513,7 +522,7 @@ class QuestInitEventSink : public RE::BSTEventSink<RE::TESQuestInitEvent>
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESQuestInitEvent* a_event, RE::BSTEventSource<RE::TESQuestInitEvent>* a_eventSource) override
 	{
-		if(const auto* updatedQuest = RE::TESForm::LookupByID<RE::TESQuest>(a_event->formID); updatedQuest == generatedQuest) //TODO find a proper way to bypass unwanted events
+		if(auto* updatedQuest = RE::TESForm::LookupByID<RE::TESQuest>(a_event->formID); updatedQuest == generatedQuest) //TODO find a proper way to bypass unwanted events
 		{
 			if(const auto* aliasInstancesList = reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray)))
 			{
@@ -618,6 +627,10 @@ public:
 				}
 				aliasInstancesList->lock.UnlockForRead();
 			}
+
+			auto* instanceData = updatedQuest->instanceData.emplace_back(new RE::BGSQuestInstanceText());
+			instanceData->id = 1;
+			instanceData->journalStage = 10;
 		}
 		return RE::BSEventNotifyControl::kContinue;
 	}
@@ -885,9 +898,45 @@ struct OnResponseSaidHookedPatch final : Xbyak::CodeGenerator
     }
 };
 
+bool CreateJournalEntryHook(const RE::TESQuest* inQuest)
+{
+	return inQuest == generatedQuest;
+}
+
+struct CreateJournalEntryHookedPatch final : Xbyak::CodeGenerator
+{
+    explicit CreateJournalEntryHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeStandardExecutionAddress)
+    {
+		push(rax); //Saving data
+		mov(r15, inHookAddress); //Calling our our
+		call(r15);
+		mov(r15, 1);	//Store an hardcoded instanceId of 1
+		test(al, al); //If the quest for which we're trying to create the journal entry is in one of ours
+		cmovnz(r8, r15); //Then we pass the hardcoded instanceId as param to the hooked function
+		pop(rax); //We restore the saved data
+
+		mov(r15, inHijackedMethodAddress); //We call the hijacked method that will trigger the other log entry hook
+		call(r15);
+
+		mov(r15, inResumeStandardExecutionAddress); //And finally resume standard execution
+		jmp(r15);
+    }
+};
+
 bool FillLogEntryHook(const RE::TESQuestStageItem* inQuestStageItem)
 {
-	return inQuestStageItem->owner == referenceQuest;
+	const auto isGeneratedQuest = inQuestStageItem->owner == generatedQuest;
+	if(const auto logEntryBinding = logEntriesBindings.find(inQuestStageItem->owner->currentStage); logEntryBinding != logEntriesBindings.end())
+	{
+		targetLogEntry = logEntryBinding->second.data();
+		lastValidLogEntryIndex = inQuestStageItem->owner->currentStage;
+	}
+	else
+	{
+		targetLogEntry = logEntriesBindings[lastValidLogEntryIndex].data();
+	}
+
+	return isGeneratedQuest;
 }
 
 struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
@@ -912,7 +961,7 @@ struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
 
 		L(BYPASS_STRING_LOAD);
 		pop(rax);	//Removing unecessary data from the stack
-    	mov(rax, inStringAdr); //Manually move our string
+    	mov(rax, ptr[inStringAdr]); //Manually move our string
     	mov(r15, inBypassAddress); //Resume execution after the normal string loading process we bypassed
     	jmp(r15);
     }
@@ -976,8 +1025,13 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	const auto onDialogueSayHooked = trampoline.allocate(dsh);
     trampoline.write_branch<5>(onResponseSaidHook, onDialogueSayHooked);
 
+	const auto createJournalEntryHook = REL::Offset(0x8EAB28).address();
+	CreateJournalEntryHookedPatch cjeh{reinterpret_cast<uintptr_t>(CreateJournalEntryHook), REL::Offset(0x378EA0).address(), createJournalEntryHook + 0x5};
+	const auto createJournalEntryHooked = trampoline.allocate(cjeh);
+    trampoline.write_branch<5>(createJournalEntryHook, createJournalEntryHooked);
+
 	const auto fillLogEntryHook = REL::Offset(0x378F6C).address();
-	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(logEntry)};
+	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry)};
 	const auto fillLogEntryHooked = trampoline.allocate(fleh);
     trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
 
