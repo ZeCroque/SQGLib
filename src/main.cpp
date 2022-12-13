@@ -152,7 +152,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 
 	//Add stages
 	//=======================
-	auto* logEntries = new RE::TESQuestStageItem[4];
+	auto* logEntries = new RE::TESQuestStageItem[7];
 	std::memset(logEntries, 0, 7 * sizeof(RE::TESQuestStageItem));  // NOLINT(bugprone-undefined-memory-manipulation)
 
 	generatedQuest->initialStage = new RE::TESQuestStage();
