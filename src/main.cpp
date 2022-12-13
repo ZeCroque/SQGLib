@@ -698,8 +698,6 @@ std::string SwapSelectedQuest(RE::StaticFunctionTag*)
 void StartQuest(RE::TESQuest* inQuest)
 {
 	inQuest->Start();
-	auto* storyTeller = RE::BGSStoryTeller::GetSingleton();
-	storyTeller->BeginStartUpQuest(inQuest);
 }
 
 void StartSelectedQuest(RE::StaticFunctionTag*)
