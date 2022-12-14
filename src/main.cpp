@@ -435,8 +435,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 		3
 	);
 
-	ProcessDialogEntry(targetForm, *dialogRoot, helloTopicInfo);
-
 	//Notify success
 	//===========================
 	std::ostringstream ss;
@@ -625,6 +623,8 @@ public:
 			auto* instanceData = updatedQuest->instanceData.emplace_back(new RE::BGSQuestInstanceText());
 			instanceData->id = 1;
 			instanceData->journalStage = 10;
+
+			ProcessDialogEntry(targetForm, *dialogRoot, helloTopicInfo);
 		}
 		return RE::BSEventNotifyControl::kContinue;
 	}
@@ -761,7 +761,7 @@ class TopicInfoEventSink final : public RE::BSTEventSink<RE::TESTopicInfoEvent>
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESTopicInfoEvent* a_event, RE::BSTEventSource<RE::TESTopicInfoEvent>* a_eventSource) override
 	{
-		if(generatedQuest && a_event->speaker == targetForm)
+		if(generatedQuest && generatedQuest->currentStage && a_event->speaker == targetForm)
 		{
 			AnswerData* answer = nullptr;
 			if(const auto topicInfoBinding = topicsInfosBindings.find(a_event->topicInfoId); a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kEnd &&  topicInfoBinding != topicsInfosBindings.end())
