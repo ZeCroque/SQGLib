@@ -164,7 +164,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	generatedQuest->initialStage->questStageItem = logEntries + 6;
 	generatedQuest->initialStage->questStageItem->owner = generatedQuest;
 	generatedQuest->initialStage->questStageItem->owningStage = generatedQuest->initialStage;
-	generatedQuest->initialStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	logEntriesBindings[10] = "My boss told me to kill a man named \"Gibier\"";
 
 	generatedQuest->otherStages = new RE::BSSimpleList<RE::TESQuestStage*>();
@@ -175,7 +174,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem = logEntries + 5;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
-	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	questStage->questStageItem->data = 1; //Means "Last stage"
 	generatedQuest->otherStages->emplace_front(questStage);
 	logEntriesBindings[45] = "I decided to spare Gibier.";
@@ -186,7 +184,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem = logEntries + 4;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
-	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	questStage->questStageItem->data = 1; //Means "Last stage"
 	generatedQuest->otherStages->emplace_front(questStage);
 	logEntriesBindings[40] = "Gibier is dead.";
@@ -196,7 +193,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem = logEntries + 3;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
-	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	generatedQuest->otherStages->emplace_front(questStage);
 	logEntriesBindings[35] = "When I told Gibier I was going to kill him he asked for a last will. I refused.";
 
@@ -205,7 +201,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem = logEntries + 2;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
-	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	generatedQuest->otherStages->emplace_front(questStage);
 	logEntriesBindings[32] = "Gibier has done his last will. The time has came for him to die.";
 
@@ -222,7 +217,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem = logEntries + 1;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
-	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	generatedQuest->otherStages->emplace_front(questStage);
 	logEntriesBindings[15] = "When I told Gibier I was going to kill him he asked for a last will. I let him do what he wanted but advised him to not do anything inconsiderate.";
 
@@ -231,7 +225,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->questStageItem = logEntries;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
-	questStage->questStageItem->logEntry  = RE::BGSLocalizedStringDL{0xffffffff};
 	generatedQuest->otherStages->emplace_front(questStage);
 	logEntriesBindings[12] = "I spoke with Gibier, whom told me my boss was a liar and begged me to spare him. I need to decide what to do.";
 
