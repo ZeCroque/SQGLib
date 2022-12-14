@@ -126,7 +126,8 @@ void ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, const DialogEntry& inDialo
 
 	if(!hasAnyValidEntry)
 	{
-		inOutTopicInfo->objConditions.head = impossibleCondition;
+		inOutTopicInfo->objConditions.head = new RE::TESConditionItem();
+		std::memcpy(inOutTopicInfo->objConditions.head, impossibleCondition, sizeof(RE::TESConditionItem));  // NOLINT(bugprone-undefined-memory-manipulation)
 	}
 }
 
@@ -821,7 +822,8 @@ public:
 					}
 					else
 					{
-						subTopicsInfos[i]->objConditions.head = impossibleCondition;
+						subTopicsInfos[i]->objConditions.head = new RE::TESConditionItem();
+						std::memcpy(subTopicsInfos[i]->objConditions.head, impossibleCondition, sizeof(RE::TESConditionItem));  // NOLINT(bugprone-undefined-memory-manipulation)
 					}
 				}
 			}
