@@ -162,6 +162,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	generatedQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
 	generatedQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
 	generatedQuest->initialStage->questStageItem = logEntries + 6;
+	generatedQuest->initialStage->questStageItem->hasLogEntry = true;
 	generatedQuest->initialStage->questStageItem->owner = generatedQuest;
 	generatedQuest->initialStage->questStageItem->owningStage = generatedQuest->initialStage;
 	logEntriesBindings[10] = "My boss told me to kill a man named \"Gibier\"";
@@ -182,6 +183,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage->data.index = 40;
 	questStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
 	questStage->questStageItem = logEntries + 4;
+	questStage->questStageItem->hasLogEntry = true;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
 	questStage->questStageItem->data = 1; //Means "Last stage"
@@ -191,6 +193,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage = new RE::TESQuestStage();
 	questStage->data.index = 35;
 	questStage->questStageItem = logEntries + 3;
+	questStage->questStageItem->hasLogEntry = true;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
 	generatedQuest->otherStages->emplace_front(questStage);
@@ -199,6 +202,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage = new RE::TESQuestStage();
 	questStage->data.index = 32;
 	questStage->questStageItem = logEntries + 2;
+	questStage->questStageItem->hasLogEntry = true;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
 	generatedQuest->otherStages->emplace_front(questStage);
@@ -215,6 +219,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage = new RE::TESQuestStage();
 	questStage->data.index = 15;
 	questStage->questStageItem = logEntries + 1;
+	questStage->questStageItem->hasLogEntry = true;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
 	generatedQuest->otherStages->emplace_front(questStage);
@@ -223,6 +228,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	questStage = new RE::TESQuestStage();
 	questStage->data.index = 12;
 	questStage->questStageItem = logEntries;
+	questStage->questStageItem->hasLogEntry = true;
 	questStage->questStageItem->owner = generatedQuest;
 	questStage->questStageItem->owningStage = questStage;
 	generatedQuest->otherStages->emplace_front(questStage);
@@ -620,10 +626,6 @@ public:
 				aliasInstancesList->lock.UnlockForRead();
 			}
 
-			auto* instanceData = updatedQuest->instanceData.emplace_back(new RE::BGSQuestInstanceText());
-			instanceData->id = 1;
-			instanceData->journalStage = 10;
-
 			ProcessDialogEntry(targetForm, *dialogRoot, helloTopicInfo);
 		}
 		return RE::BSEventNotifyControl::kContinue;
@@ -891,31 +893,6 @@ struct OnResponseSaidHookedPatch final : Xbyak::CodeGenerator
     }
 };
 
-bool CreateJournalEntryHook(const RE::TESQuest* inQuest)
-{
-	return inQuest == generatedQuest;
-}
-
-struct CreateJournalEntryHookedPatch final : Xbyak::CodeGenerator
-{
-    explicit CreateJournalEntryHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeStandardExecutionAddress)
-    {
-		push(rax); //Saving data
-		mov(r15, inHookAddress); //Calling our our
-		call(r15);
-		mov(r15, 1);	//Store an hardcoded instanceId of 1
-		test(al, al); //If the quest for which we're trying to create the journal entry is in one of ours
-		cmovnz(r8, r15); //Then we pass the hardcoded instanceId as param to the hooked function
-		pop(rax); //We restore the saved data
-
-		mov(r15, inHijackedMethodAddress); //We call the hijacked method that will trigger the other log entry hook
-		call(r15);
-
-		mov(r15, inResumeStandardExecutionAddress); //And finally resume standard execution
-		jmp(r15);
-    }
-};
-
 bool FillLogEntryHook(const RE::TESQuestStageItem* inQuestStageItem)
 {
 	const auto isGeneratedQuest = inQuestStageItem->owner == generatedQuest;
@@ -1017,11 +994,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	OnResponseSaidHookedPatch dsh{ reinterpret_cast<uintptr_t>(OnResponseSaidHook), REL::Offset(0x64F360).address(), onResponseSaidHook + 0x7 };
 	const auto onDialogueSayHooked = trampoline.allocate(dsh);
     trampoline.write_branch<5>(onResponseSaidHook, onDialogueSayHooked);
-
-	const auto createJournalEntryHook = REL::Offset(0x8EAB28).address();
-	CreateJournalEntryHookedPatch cjeh{reinterpret_cast<uintptr_t>(CreateJournalEntryHook), REL::Offset(0x378EA0).address(), createJournalEntryHook + 0x5};
-	const auto createJournalEntryHooked = trampoline.allocate(cjeh);
-    trampoline.write_branch<5>(createJournalEntryHook, createJournalEntryHooked);
 
 	const auto fillLogEntryHook = REL::Offset(0x378F6C).address();
 	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry)};
