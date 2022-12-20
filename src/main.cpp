@@ -937,6 +937,73 @@ struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
     }
 };
 
+void TmpHook(const int a, const int b, const int c, const RE::TESQuest* inQuest)
+{
+	//if(inQuest && inQuest == generatedQuest)
+	{
+		int z = 42;
+	}
+}
+
+struct TmpHookedPatch final : Xbyak::CodeGenerator
+{
+    explicit TmpHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeAddress, const uintptr_t inQuestPtr)
+    {
+		Xbyak::Label ZERO_PTR;
+
+		mov(rax, inHijackedMethodAddress); //Calling the method we hijacked (didn't bother to check what it does, it's just at a convenient place for our hook)
+		call(rax);
+
+		mov(r8, inQuestPtr);
+		mov(r8, ptr[r8]);
+		test(r8, r8);
+		jz(ZERO_PTR);
+
+		cmp(rdi, ptr[r8]);
+		cmovnz(eax, ptr[rdi + 0x14]);
+
+		L(ZERO_PTR);
+		mov(r8, inResumeAddress); //Resuming standard execution
+		jmp(r8);
+    }
+};
+
+bool LoadGameHook(RE::TESQuest* inQuest)
+{
+	const auto isGeneratedQuest = generatedQuest && inQuest && inQuest->formID == generatedQuest->formID;
+	if(isGeneratedQuest)
+	{
+		std::memcpy(inQuest, generatedQuest, sizeof(RE::TESQuest));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
+	}
+	return isGeneratedQuest;
+}
+
+struct LoadGameHookedPatch final : Xbyak::CodeGenerator
+{
+    explicit LoadGameHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeStandardExecutionAddress, const uintptr_t inBypassAddress)
+    {
+	    // ReSharper disable once CppInconsistentNaming
+	    Xbyak::Label BYPASS_QUEST_LOAD;
+		push(rax);
+    	mov(rax, inHookAddress);	//Calling hook
+		call(rax);
+		test(al, al); //If the quest for which we're trying to fill the log entry is in one of ours
+		jnz(BYPASS_QUEST_LOAD); //Then bypass the classic log entry loading process
+		//Else
+		pop(rax);
+    	mov(r14, inHijackedMethodAddress); //Calling the method we hijacked (that is setting in RCX TESQuestStageItem*)
+		call(r14);
+		mov(r14, inResumeStandardExecutionAddress); //Resume standard execution
+		jmp(r14);
+
+		L(BYPASS_QUEST_LOAD);
+		pop(rax);	//Removing unecessary data from the stack
+    	mov(r14, inBypassAddress); //Resume execution after the normal string loading process we bypassed
+    	jmp(r14);
+
+    }
+};
+
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
 {
@@ -999,6 +1066,16 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry)};
 	const auto fillLogEntryHooked = trampoline.allocate(fleh);
     trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
+
+	const auto tmpHook = REL::Offset(0x57C88A).address();
+	TmpHookedPatch tmph{ reinterpret_cast<uintptr_t>(TmpHook), REL::Offset(0x16D4D0).address(), tmpHook + 0x5, reinterpret_cast<uintptr_t>(&generatedQuest)};
+	const auto tmpHooked = trampoline.allocate(tmph);
+    trampoline.write_branch<5>(tmpHook, tmpHooked);
+
+	const auto loadGameHook = REL::Offset(0x37190b).address();
+	LoadGameHookedPatch lgh{ reinterpret_cast<uintptr_t>(LoadGameHook), REL::Offset(0x194140).address(), loadGameHook + 0x5, REL::Offset(0x372426).address()};
+	const auto loadGameHooked = trampoline.allocate(lgh);
+    trampoline.write_branch<5>(loadGameHook, loadGameHooked);
 
 	return true;
 }
