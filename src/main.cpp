@@ -35,6 +35,7 @@ constexpr int SUB_TOPIC_COUNT = 4;
 RE::TESQuest* referenceQuest = nullptr;
 RE::TESQuest* generatedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
+RE::TESQuest* ptrAtGameLoad = nullptr;
 RE::TESObjectREFR* targetForm = nullptr;
 RE::TESObjectREFR* activator = nullptr;
 RE::TESObjectREFR* targetActivator;
@@ -511,7 +512,7 @@ public:
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
 
-		return RE::BSEventNotifyControl::kStop;
+		return RE::BSEventNotifyControl::kContinue;
 	}
 };
 
@@ -706,7 +707,28 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
-	//TODO!! debug nvidia exception on close
+	auto* player = RE::PlayerCharacter::GetSingleton();
+
+	for(auto& instancedQuestObjective : player->objectives)
+	{
+		if(instancedQuestObjective.Objective->ownerQuest->formID == generatedQuest->formID)
+		{
+			instancedQuestObjective.Objective->ownerQuest = ptrAtGameLoad;
+			instancedQuestObjective.InstanceState = RE::QUEST_OBJECTIVE_STATE::kDisplayed;
+			instancedQuestObjective.Objective->state = RE::QUEST_OBJECTIVE_STATE::kDisplayed;
+		}
+	}
+
+	if(generatedQuest->instanceData.empty())
+	{
+		auto* instanceData = generatedQuest->instanceData.emplace_back(new RE::BGSQuestInstanceText());
+		instanceData->id = 1;
+		instanceData->journalStage = 10;
+		generatedQuest->currentInstanceID = 1;
+		generatedQuest->alreadyRun = true;
+		generatedQuest->currentStage = 10;
+	}
+
 	int z = 42;
 }	
 
@@ -757,6 +779,40 @@ namespace RE
 		TopicInfoEventType	eventType;		// 14
 	};
 }
+
+RE::TESQuest* generatedQuestCopy = nullptr;
+
+namespace RE
+{
+	class RE::BSSaveDataEvent
+	{
+	public:
+		enum class SaveDataEventType
+		{
+			kLoad = 0,
+			kPreSave = 1,
+			kPostSave = 2
+		};
+		std::uint64_t		unk00;			// 00
+		std::uint64_t		unk08;			// 08
+		std::uint32_t		unk10;			// 10
+		SaveDataEventType	eventType;		// 14
+	};
+}
+class SaveDataEventSink final : public RE::BSTEventSink<RE::BSSaveDataEvent>
+{
+public:
+	RE::BSEventNotifyControl ProcessEvent(const RE::BSSaveDataEvent* a_event, RE::BSTEventSource<RE::BSSaveDataEvent>* a_eventSource) override
+	{
+		
+		if(a_event->eventType == RE::BSSaveDataEvent::SaveDataEventType::kPreSave)
+		{
+			generatedQuestCopy = reinterpret_cast<RE::TESQuest*>(new char[sizeof(RE::TESQuest)]);
+			std::memcpy(generatedQuestCopy, generatedQuest, sizeof(RE::TESQuest));  // NOLINT(clang-diagnostic-dynamic-class-memaccess, bugprone-undefined-memory-manipulation)*/
+		}
+		return RE::BSEventNotifyControl::kContinue;
+	}
+};
 
 class TopicInfoEventSink final : public RE::BSTEventSink<RE::TESTopicInfoEvent>
 {
@@ -937,43 +993,13 @@ struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
     }
 };
 
-void TmpHook(const int a, const int b, const int c, const RE::TESQuest* inQuest)
-{
-	//if(inQuest && inQuest == generatedQuest)
-	{
-		int z = 42;
-	}
-}
-
-struct TmpHookedPatch final : Xbyak::CodeGenerator
-{
-    explicit TmpHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeAddress, const uintptr_t inQuestPtr)
-    {
-		Xbyak::Label ZERO_PTR;
-
-		mov(rax, inHijackedMethodAddress); //Calling the method we hijacked (didn't bother to check what it does, it's just at a convenient place for our hook)
-		call(rax);
-
-		mov(r8, inQuestPtr);
-		mov(r8, ptr[r8]);
-		test(r8, r8);
-		jz(ZERO_PTR);
-
-		cmp(rdi, ptr[r8]);
-		cmovnz(eax, ptr[rdi + 0x14]);
-
-		L(ZERO_PTR);
-		mov(r8, inResumeAddress); //Resuming standard execution
-		jmp(r8);
-    }
-};
-
 bool LoadGameHook(RE::TESQuest* inQuest)
 {
-	const auto isGeneratedQuest = generatedQuest && inQuest && inQuest->formID == generatedQuest->formID;
+	const auto isGeneratedQuest = generatedQuest && inQuest && inQuest->formID == generatedQuestCopy->formID && inQuest != generatedQuest;
 	if(isGeneratedQuest)
 	{
-		std::memcpy(inQuest, generatedQuest, sizeof(RE::TESQuest));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
+		ptrAtGameLoad = inQuest;
+		std::memcpy(inQuest, generatedQuestCopy, sizeof(RE::TESQuest));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
 	}
 	return isGeneratedQuest;
 }
@@ -1035,6 +1061,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestInitEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new PackageEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new TopicInfoEventSink());
+				RE::BSWin32SaveDataSystemUtility::GetSingleton()->AddEventSink(new SaveDataEventSink());
 			}
 			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
 			{
@@ -1066,11 +1093,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry)};
 	const auto fillLogEntryHooked = trampoline.allocate(fleh);
     trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
-
-	const auto tmpHook = REL::Offset(0x57C88A).address();
-	TmpHookedPatch tmph{ reinterpret_cast<uintptr_t>(TmpHook), REL::Offset(0x16D4D0).address(), tmpHook + 0x5, reinterpret_cast<uintptr_t>(&generatedQuest)};
-	const auto tmpHooked = trampoline.allocate(tmph);
-    trampoline.write_branch<5>(tmpHook, tmpHooked);
 
 	const auto loadGameHook = REL::Offset(0x37190b).address();
 	LoadGameHookedPatch lgh{ reinterpret_cast<uintptr_t>(LoadGameHook), REL::Offset(0x194140).address(), loadGameHook + 0x5, REL::Offset(0x372426).address()};
