@@ -1,3 +1,12 @@
 build/
 *.ignore.*
+*.ignore
 .vscode/
+*.pex
+SF1Edit Backups
+SF1Edit Cache
+meta.ini
+Backup
+Release
+SKSE
+Logs
