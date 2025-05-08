@@ -37,11 +37,13 @@ configure_file(
 set(HEADERS
 	${HEADER_DIR}/PCH.h
 	${HEADER_DIR}/PackageUtils.h
+	${HEADER_DIR}/SerializationUtils.h
 )
 
 set(SOURCES
 	${SOURCE_DIR}/main.cpp
 	${SOURCE_DIR}/PackageUtils.cpp
+	#${SOURCE_DIR}/SerializationUtils.cpp
 )
 
 configure_file(
