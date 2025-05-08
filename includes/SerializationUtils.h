@@ -879,52 +879,6 @@ void RestoreEachFormData(Serializer<T>* serializer, FormRecord* elem) {
 
 std::mutex callbackMutext;
 
-void LoadCache();
-void SaveCache();
-
-static void SaveCallback(SKSE::SerializationInterface* a_intfc) {
-    std::lock_guard<std::mutex> lock(callbackMutext);
-    try {
-        if (!a_intfc->OpenRecord('ARR_', 1)) {
-        } else {
-            auto serializer = new SaveDataSerializer(a_intfc);
-            StoreAllFormRecords(serializer);
-        }
-        SaveCache();
-    } catch (const std::exception&) {
-    }
-}
-
-static void LoadCallback(SKSE::SerializationInterface* a_intfc) {
-    std::lock_guard<std::mutex> lock(callbackMutext);
-    try {
-
-        uint32_t type;
-        uint32_t version;
-        uint32_t length;
-        bool refreshGame = false;
-
-        while (a_intfc->GetNextRecordInfo(type, version, length)) {
-            switch (type) {
-                case 'ARR_': {
-                    auto serializer = new SaveDataSerializer(a_intfc);
-                    refreshGame = RestoreAllFormRecords(serializer);
-                    delete serializer;
-                } break;
-                default:
-                    break;
-            }
-        }
-        if (refreshGame) {
-            SaveCache();
-            UpdateId();
-            RE::PlayerCharacter::GetSingleton()->KillDying();
-        }
-
-
-    } catch (const std::exception&) {
-    }
-}
 void SaveCache() {
 
     auto fileWriter = new FileWriter("DynamicPersistentFormsCache.bin", std::ios::out | std::ios::binary | std::ios::trunc);
