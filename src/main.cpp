@@ -35,6 +35,7 @@ constexpr int SUB_TOPIC_COUNT = 4;
 RE::TESQuest* referenceQuest = nullptr;
 RE::TESQuest* generatedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
+RE::TESQuest* ptrAtGameLoad = nullptr;
 RE::TESObjectREFR* targetForm = nullptr;
 RE::TESObjectREFR* activator = nullptr;
 RE::TESObjectREFR* targetActivator;
@@ -130,7 +131,7 @@ void ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, const DialogEntry& inDialo
 		std::memcpy(inOutTopicInfo->objConditions.head, impossibleCondition, sizeof(RE::TESConditionItem));  // NOLINT(bugprone-undefined-memory-manipulation)
 	}
 }
-
+RE::BGSQuestObjective* initialObjective = nullptr;
 std::string GenerateQuest(RE::StaticFunctionTag*)
 {
 	//Create quest if needed
@@ -236,7 +237,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 
 	//Add objectives
 	//=======================
-	auto* questObjective = new RE::BGSQuestObjective();
+	auto* questObjective = initialObjective = new RE::BGSQuestObjective();
 	questObjective->index = 10;
 	questObjective->displayText = "Kill Gibier";
 	questObjective->ownerQuest = generatedQuest;
@@ -937,45 +938,15 @@ struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
     }
 };
 
-void TmpHook(const int a, const int b, const int c, const RE::TESQuest* inQuest)
-{
-	//if(inQuest && inQuest == generatedQuest)
-	{
-		int z = 42;
-	}
-}
-
-struct TmpHookedPatch final : Xbyak::CodeGenerator
-{
-    explicit TmpHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeAddress, const uintptr_t inQuestPtr)
-    {
-		Xbyak::Label ZERO_PTR;
-
-		mov(rax, inHijackedMethodAddress); //Calling the method we hijacked (didn't bother to check what it does, it's just at a convenient place for our hook)
-		call(rax);
-
-		mov(r8, inQuestPtr);
-		mov(r8, ptr[r8]);
-		test(r8, r8);
-		jz(ZERO_PTR);
-
-		cmp(rdi, ptr[r8]);
-		cmovnz(eax, ptr[rdi + 0x14]);
-
-		L(ZERO_PTR);
-		mov(r8, inResumeAddress); //Resuming standard execution
-		jmp(r8);
-    }
-};
-
 bool LoadGameHook(RE::TESQuest* inQuest)
 {
-	const auto isGeneratedQuest = generatedQuest && inQuest && inQuest->formID == generatedQuest->formID;
-	if(isGeneratedQuest)
+	//If we're trying to load a save generated in a previous session
+	if(inQuest && ((inQuest->formID & 0xFF000000) == 0xFF000000))
 	{
-		std::memcpy(inQuest, generatedQuest, sizeof(RE::TESQuest));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
+		ptrAtGameLoad = inQuest; //We keep track of this form to fill when we'll deserialize it from SKSE data
 	}
-	return isGeneratedQuest;
+
+	return false;
 }
 
 struct LoadGameHookedPatch final : Xbyak::CodeGenerator
@@ -1003,6 +974,25 @@ struct LoadGameHookedPatch final : Xbyak::CodeGenerator
 
     }
 };
+
+void SerializationLoadCallback(SKSE::SerializationInterface* inSerializationInterface)
+{
+	if(ptrAtGameLoad)
+	{
+		GenerateQuest(nullptr);
+
+		auto a = ptrAtGameLoad->formID;
+		std::memcpy(ptrAtGameLoad, generatedQuest, sizeof(RE::TESQuest));
+		ptrAtGameLoad->formID= a;
+		ptrAtGameLoad->instanceData.emplace_back(new RE::BGSQuestInstanceText{1, 0, RE::BSTArray<RE::BGSQuestInstanceText::StringData>(), RE::BSTArray<RE::BGSQuestInstanceText::GlobalValueData>(), 10, 0, 0, 0});
+		ptrAtGameLoad->currentInstanceID = 1;
+
+		auto* player = RE::PlayerCharacter::GetSingleton();
+		player->questLog.emplace_front(new RE::TESQuestStageItem{RE::TESCondition(), nullptr, {0}, 0, 0, true, 0, ptrAtGameLoad, ptrAtGameLoad->initialStage});
+		player->objectives.emplace_back(RE::BGSInstancedQuestObjective{initialObjective, 1, RE::QUEST_OBJECTIVE_STATE::kDisplayed});
+		initialObjective->state.set(RE::QUEST_OBJECTIVE_STATE::kDisplayed);
+	}
+}
 
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
@@ -1067,15 +1057,18 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	const auto fillLogEntryHooked = trampoline.allocate(fleh);
     trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
 
-	const auto tmpHook = REL::Offset(0x57C88A).address();
-	TmpHookedPatch tmph{ reinterpret_cast<uintptr_t>(TmpHook), REL::Offset(0x16D4D0).address(), tmpHook + 0x5, reinterpret_cast<uintptr_t>(&generatedQuest)};
-	const auto tmpHooked = trampoline.allocate(tmph);
-    trampoline.write_branch<5>(tmpHook, tmpHooked);
-
 	const auto loadGameHook = REL::Offset(0x37190b).address();
 	LoadGameHookedPatch lgh{ reinterpret_cast<uintptr_t>(LoadGameHook), REL::Offset(0x194140).address(), loadGameHook + 0x5, REL::Offset(0x372426).address()};
 	const auto loadGameHooked = trampoline.allocate(lgh);
     trampoline.write_branch<5>(loadGameHook, loadGameHooked);
+
+	const auto* serializationInterface = SKSE::GetSerializationInterface();
+	if(!serializationInterface)
+	{
+		return false;
+	}
+	serializationInterface->SetUniqueID('SQG');
+	serializationInterface->SetLoadCallback(SerializationLoadCallback);
 
 	return true;
 }
