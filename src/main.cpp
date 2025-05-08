@@ -993,6 +993,45 @@ struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
     }
 };
 
+bool ClearFormHook(RE::TESQuest* inQuest)
+{
+	auto isGeneratedQuest = inQuest && generatedQuest && inQuest == generatedQuest;
+	if(isGeneratedQuest && generatedQuest)
+	{
+		int z = 42;
+	}
+	return isGeneratedQuest;
+}
+
+struct ClearFormHookedPatch final : Xbyak::CodeGenerator
+{
+    explicit ClearFormHookedPatch(const uintptr_t inHookAddress, const uintptr_t inResumeAddress, const uintptr_t inBypassAddress)
+    {
+		Xbyak::Label BYPASS_CLEAR;
+
+    	push(rax);
+		push(rcx);
+    	jz(BYPASS_CLEAR); //Mirrored null check from hooked line
+
+		mov(rcx, rdx);
+		mov(rax, inHookAddress);
+		call(rax);
+		test(al, al); //If the form for which we're trying to clear is in one of ours quest
+		jnz(BYPASS_CLEAR); //Then bypass
+
+		pop(rcx);
+		pop(rax);
+		mov(r8, inResumeAddress); //Resuming standard execution
+		jmp(r8);
+
+		L(BYPASS_CLEAR);
+		pop(rcx);
+    	pop(rax);
+		mov(r8, inBypassAddress); //Prevent our form to be cleared
+		jmp(r8);
+    }
+};
+
 bool LoadGameHook(RE::TESQuest* inQuest)
 {
 	const auto isGeneratedQuest = generatedQuest && inQuest && inQuest->formID == generatedQuestCopy->formID && inQuest != generatedQuest;
@@ -1093,6 +1132,12 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry)};
 	const auto fillLogEntryHooked = trampoline.allocate(fleh);
     trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
+
+	const auto clearFormHook = REL::Offset(0x57C803).address();
+	ClearFormHookedPatch cfh{ reinterpret_cast<uintptr_t>(ClearFormHook), clearFormHook + 0x6, clearFormHook + 0xA4};
+	const auto clearFormHooked = trampoline.allocate(cfh);
+	REL::safe_fill(clearFormHook, 0x90, 6);
+    trampoline.write_branch<5>(clearFormHook, clearFormHooked);
 
 	const auto loadGameHook = REL::Offset(0x37190b).address();
 	LoadGameHookedPatch lgh{ reinterpret_cast<uintptr_t>(LoadGameHook), REL::Offset(0x194140).address(), loadGameHook + 0x5, REL::Offset(0x372426).address()};
