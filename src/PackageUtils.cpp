@@ -84,7 +84,7 @@ namespace SQG
 
 								RE::BSString result;
 								bgsPackageDataLocation->GetDataAsString(&result);
-								SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, packageDataTypeName, result);
+								SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, packageDataTypeName.c_str(), result.c_str());
 							}
 							else
 							{
@@ -117,7 +117,7 @@ namespace SQG
 								}
 								RE::BSString result;
 								customPackageData->data.data[i]->GetDataAsString(&result);
-								SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, packageDataTypeName, result);
+								SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, packageDataTypeName.c_str(), result.c_str());
 							}
 							break;
 						}
