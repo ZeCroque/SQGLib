@@ -940,8 +940,9 @@ struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
 void TmpHook(RE::TESQuest* inQuest)
 {
 	//If we're trying to load a save generated in a previous session
-	if(inQuest && inQuest->formID == referenceQuest->formID) //TODO filter all quests that starts with FF
+	if(inQuest /*&& inQuest->formID > 0xFF000000*/) //TODO filter all quests that starts with FF
 	{
+		auto a = inQuest->formID;
 		int z = 42;
 	}
 }
@@ -951,15 +952,18 @@ struct TmpHookedPatch final : Xbyak::CodeGenerator
     explicit TmpHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeStandardExecutionAddress)
     {
 	    // ReSharper disable once CppInconsistentNaming
+    	mov(rdx, inHijackedMethodAddress); //Calling the method we hijacked (that is setting in RCX TESQuestStageItem*)
+		call(rdx);
 
+		//push(rdx);
 		mov(rcx, r15);
-    	mov(r12, inHookAddress);	//Calling hook
-		call(r12);
-		mov(rcx, r13);
-    	mov(r12, inHijackedMethodAddress); //Calling the method we hijacked (that is setting in RCX TESQuestStageItem*)
-		call(r12);
-		mov(r12, inResumeStandardExecutionAddress); //Resume standard execution
-		jmp(r12);
+    	mov(rdx, inHookAddress);	//Calling hook
+		call(rdx);
+		//pop(rdx);
+		//mov(r8, rdx);
+
+		mov(rdx, inResumeStandardExecutionAddress); //Resume standard execution
+		jmp(rdx);
     }
 };
 
@@ -1032,8 +1036,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	const auto fillLogEntryHooked = trampoline.allocate(fleh);
     trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
 
-	const auto tmpHook = REL::Offset(0x3718E0).address() + 0xA58;
-	TmpHookedPatch tmph{ reinterpret_cast<uintptr_t>(TmpHook), REL::ID(35112).address(), tmpHook + 0x5};
+	const auto tmpHook = REL::Offset(0x3718E0).address() + 0xB04;
+	TmpHookedPatch tmph{ reinterpret_cast<uintptr_t>(TmpHook), REL::ID(23413).address(), tmpHook + 0x5};
 	const auto tmpHooked = trampoline.allocate(tmph);
     trampoline.write_branch<5>(tmpHook, tmpHooked);
 
