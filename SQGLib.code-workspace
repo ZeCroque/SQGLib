@@ -5,8 +5,16 @@
             "path": "."
         },
         {
+            "name": "Vanilla Scripts",
 			"path": "H:/Games/SkyrimSE/Data/Scripts/Source"
 		},
+        {
+			"path": "H:/Games/SkyrimSE/Logs"
+		},
+        {
+            "name": "Notes",
+			"path": "C:/Users/ZeCroque/Nextcloud/Workspace/Skyrim/SQGLib"
+		}
     ],
     "settings": {
         "papyrus.skyrimSpecialEdition.enabled": true,

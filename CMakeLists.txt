@@ -22,8 +22,6 @@ if(NOT DEFINED Skyrim64Path)
 	message(FATAL_ERROR "Skyrim64Path is not set")
 endif()
 
-option(COPY_OUTPUT "copy the output of build operations to the game directory" OFF)
-
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -59,6 +57,12 @@ add_library(
 	${SOURCES}
 	"${VERSION_HEADER}"
 	"${CMAKE_CURRENT_BINARY_DIR}/version.rc"
+)
+
+set_target_properties("${PROJECT_NAME}"
+    PROPERTIES
+		VS_DEBUGGER_COMMAND J:/100Install/mo2/ModOrganizer.exe
+		VS_DEBUGGER_COMMAND_ARGUMENTS  -p "SQGLib" "moshortcut://SkyrimSE:Skyrim Special Edition"
 )
 
 target_compile_features(
@@ -128,15 +132,12 @@ install(
 	COMPONENT "pdbs"
 )
 
-if("${COPY_OUTPUT}")
-	add_custom_command(
-		TARGET "${PROJECT_NAME}"
-		POST_BUILD
-		COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${Skyrim64Path}/Data/SKSE/Plugins/"
-		COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${Skyrim64Path}/Data/SKSE/Plugins/"
-		COMMAND "${CMAKE_COMMAND}" -E copy_directory "${CMAKE_SOURCE_DIR}/data" "${Skyrim64Path}/Data"
-		VERBATIM
-	)
-endif()
+add_custom_command(
+	TARGET "${PROJECT_NAME}"
+	POST_BUILD
+	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/Data/SKSE/Plugins/"
+	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/Data/SKSE/Plugins/"
+	VERBATIM
+)
 
 include(cmake/packaging.cmake)

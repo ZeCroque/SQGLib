@@ -48,7 +48,8 @@
         "value": "x64"
       },
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "/EHsc /MP /W4"
+        "CMAKE_CXX_FLAGS": "/EHsc /MP /W4",
+        "SKSE_SUPPORT_XBYAK": "ON"
       },
       "generator": "Visual Studio 17 2022",
       "inherits": [
