@@ -706,7 +706,7 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
-	//TODO!! debug nvidia exception on close
+	auto a = REL::Offset(0x3718E0).address();
 	int z = 42;
 }	
 
@@ -937,6 +937,32 @@ struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
     }
 };
 
+void TmpHook(RE::TESQuest* inQuest)
+{
+	//If we're trying to load a save generated in a previous session
+	if(inQuest && inQuest->formID == referenceQuest->formID) //TODO filter all quests that starts with FF
+	{
+		int z = 42;
+	}
+}
+
+struct TmpHookedPatch final : Xbyak::CodeGenerator
+{
+    explicit TmpHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeStandardExecutionAddress)
+    {
+	    // ReSharper disable once CppInconsistentNaming
+
+		mov(rcx, r15);
+    	mov(r12, inHookAddress);	//Calling hook
+		call(r12);
+		mov(rcx, r13);
+    	mov(r12, inHijackedMethodAddress); //Calling the method we hijacked (that is setting in RCX TESQuestStageItem*)
+		call(r12);
+		mov(r12, inResumeStandardExecutionAddress); //Resume standard execution
+		jmp(r12);
+    }
+};
+
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
 {
@@ -969,6 +995,12 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new PackageEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new TopicInfoEventSink());
 			}
+			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
+			{
+				std::stringstream ss;
+				ss <<  std::hex << referenceQuest;
+				SKSE::log::debug("refQuestAdr:{0}"sv, ss.str());
+			}
 			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
 			{
 				helloTopicInfo = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00C503}, "SQGLib.esp"));
@@ -999,6 +1031,11 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry)};
 	const auto fillLogEntryHooked = trampoline.allocate(fleh);
     trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
+
+	const auto tmpHook = REL::Offset(0x3718E0).address() + 0xA58;
+	TmpHookedPatch tmph{ reinterpret_cast<uintptr_t>(TmpHook), REL::ID(35112).address(), tmpHook + 0x5};
+	const auto tmpHooked = trampoline.allocate(tmph);
+    trampoline.write_branch<5>(tmpHook, tmpHooked);
 
 	return true;
 }
