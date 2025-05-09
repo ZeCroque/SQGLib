@@ -132,7 +132,309 @@ void ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, const DialogEntry& inDialo
 		std::memcpy(inOutTopicInfo->objConditions.head, impossibleCondition, sizeof(RE::TESConditionItem));  // NOLINT(bugprone-undefined-memory-manipulation)
 	}
 }
-RE::BGSQuestObjective* initialObjective = nullptr;
+
+void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
+{
+	//Parametrize quest
+	//=======================
+	inQuest->SetFormEditorID("SQGTestQuest");
+	inQuest->fullName = "00_SQG_POC";
+	inQuest->InitItem(); //Initializes formFlags
+	inQuest->formFlags |= RE::TESForm::RecordFlags::kFormRetainsID | RE::TESForm::RecordFlags::kPersistent;
+	inQuest->AddChange(RE::TESForm::ChangeFlags::kCreated); //Seems to save the whole quest data and hence supersede the others (except for stages and objective for some reason)
+	inQuest->data.flags.set(RE::QuestFlag::kRunOnce);
+
+	//Add stages
+	//=======================
+	auto* logEntries = new RE::TESQuestStageItem[7];
+	std::memset(logEntries, 0, 7 * sizeof(RE::TESQuestStageItem));  // NOLINT(bugprone-undefined-memory-manipulation)
+
+	inQuest->initialStage = new RE::TESQuestStage();
+	std::memset(inQuest->initialStage, 0, sizeof(RE::TESQuestStage));
+	inQuest->initialStage->data.index = 10;
+	inQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
+	inQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
+	inQuest->initialStage->questStageItem = logEntries + 6;
+	inQuest->initialStage->questStageItem->hasLogEntry = true;
+	inQuest->initialStage->questStageItem->owner = inQuest;
+	inQuest->initialStage->questStageItem->owningStage = inQuest->initialStage;
+	logEntriesBindings[10] = "My boss told me to kill a man named \"Gibier\"";
+
+	inQuest->otherStages = new RE::BSSimpleList<RE::TESQuestStage*>();
+
+	auto* questStage = new RE::TESQuestStage();
+	questStage->data.index = 45;
+	questStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
+	questStage->questStageItem = logEntries + 5;
+	questStage->questStageItem->owner = inQuest;
+	questStage->questStageItem->owningStage = questStage;
+	questStage->questStageItem->data = 1; //Means "Last stage"
+	inQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[45] = "I decided to spare Gibier.";
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 40;
+	questStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
+	questStage->questStageItem = logEntries + 4;
+	questStage->questStageItem->hasLogEntry = true;
+	questStage->questStageItem->owner = inQuest;
+	questStage->questStageItem->owningStage = questStage;
+	questStage->questStageItem->data = 1; //Means "Last stage"
+	inQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[40] = "Gibier is dead.";
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 35;
+	questStage->questStageItem = logEntries + 3;
+	questStage->questStageItem->hasLogEntry = true;
+	questStage->questStageItem->owner = inQuest;
+	questStage->questStageItem->owningStage = questStage;
+	inQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[35] = "When I told Gibier I was going to kill him he asked for a last will. I refused.";
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 32;
+	questStage->questStageItem = logEntries + 2;
+	questStage->questStageItem->hasLogEntry = true;
+	questStage->questStageItem->owner = inQuest;
+	questStage->questStageItem->owningStage = questStage;
+	inQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[32] = "Gibier has done his last will. The time has came for him to die.";
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 30;
+	inQuest->otherStages->emplace_front(questStage);
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 20;
+	inQuest->otherStages->emplace_front(questStage);
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 15;
+	questStage->questStageItem = logEntries + 1;
+	questStage->questStageItem->hasLogEntry = true;
+	questStage->questStageItem->owner = inQuest;
+	questStage->questStageItem->owningStage = questStage;
+	inQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[15] = "When I told Gibier I was going to kill him he asked for a last will. I let him do what he wanted but advised him to not do anything inconsiderate.";
+
+	questStage = new RE::TESQuestStage();
+	questStage->data.index = 12;
+	questStage->questStageItem = logEntries;
+	questStage->questStageItem->hasLogEntry = true;
+	questStage->questStageItem->owner = inQuest;
+	questStage->questStageItem->owningStage = questStage;
+	inQuest->otherStages->emplace_front(questStage);
+	logEntriesBindings[12] = "I spoke with Gibier, whom told me my boss was a liar and begged me to spare him. I need to decide what to do.";
+
+	//Add objectives
+	//=======================
+	auto* questObjective = new RE::BGSQuestObjective();
+	questObjective->index = 10;
+	questObjective->displayText = "Kill Gibier";
+	questObjective->ownerQuest = inQuest;
+	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
+	inQuest->objectives.push_front(questObjective);
+
+	questObjective = new RE::BGSQuestObjective();
+	questObjective->index = 12;
+	questObjective->displayText = "(Optional) Spare Gibier";
+	questObjective->ownerQuest = inQuest;
+	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
+	inQuest->objectives.push_front(questObjective);
+
+	questObjective = new RE::BGSQuestObjective();
+	questObjective->index = 15;
+	questObjective->displayText = "(Optional) Let Gibier do his last will";
+	questObjective->ownerQuest = inQuest;
+	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
+	inQuest->objectives.push_front(questObjective);
+
+	//Add aliases
+	//=======================
+	auto* rawCreatedAlias = new char[sizeof(RE::BGSRefAlias)];
+	std::memcpy(rawCreatedAlias, referenceQuest->aliases[0], sizeof(RE::BGSRefAlias));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess) //TODO relocate vtable and copy it from here instead of using reference quest
+	auto* createdAlias = reinterpret_cast<RE::BGSRefAlias*>(rawCreatedAlias); 
+	createdAlias->aliasID = 0;
+	createdAlias->aliasName = "SQGTestAliasTarget";
+	createdAlias->fillType = RE::BGSBaseAlias::FILL_TYPE::kForced;
+	createdAlias->owningQuest = inQuest;
+	createdAlias->fillData.forced = RE::BGSRefAlias::ForcedFillData{targetForm->CreateRefHandle()};
+	inQuest->aliasAccessLock.LockForWrite();
+	inQuest->aliases.push_back(createdAlias);
+	inQuest->aliasAccessLock.UnlockForWrite();
+
+	//Add target
+	//=======================
+	auto objectiveIt = inQuest->objectives.begin();
+	auto nextObjectiveIt = objectiveIt;
+	do
+	{
+		objectiveIt = nextObjectiveIt;
+		++nextObjectiveIt;
+	} while(nextObjectiveIt != inQuest->objectives.end());
+
+	auto* firstObjective = *objectiveIt;
+	firstObjective->targets = new RE::TESQuestTarget*();
+	*firstObjective->targets = new RE::TESQuestTarget();
+	firstObjective->targets[0]->alias = 0;
+	firstObjective->numTargets = 1;
+
+	//Sets some additional variables (pad24, pad22c and questObjective's pad04 among others)
+	//=======================
+	inQuest->InitializeData();
+
+	//Add dialogs
+	//===========================
+	RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+	conditionItemData.f = 1.f;
+
+	impossibleCondition = new RE::TESConditionItem();
+	impossibleCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+	impossibleCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+	impossibleCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kIsXBox);
+	impossibleCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+	impossibleCondition->data.comparisonValue = conditionItemData;
+	impossibleCondition->next = nullptr;
+
+	checkSpeakerCondition = new RE::TESConditionItem();
+	checkSpeakerCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+	checkSpeakerCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+	checkSpeakerCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetIsID);
+	checkSpeakerCondition->data.functionData.params[0] = targetForm->data.objectReference;
+	checkSpeakerCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+	checkSpeakerCondition->data.comparisonValue = conditionItemData;
+	checkSpeakerCondition->next = nullptr;
+
+	conditionItemData.f = 12.f;
+	underStage12Condition = new RE::TESConditionItem();
+	underStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+	underStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+	underStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+	underStage12Condition->data.functionData.params[0] = inQuest;
+	underStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
+	underStage12Condition->data.comparisonValue = conditionItemData;
+	underStage12Condition->next = nullptr;
+
+	aboveStage12Condition = new RE::TESConditionItem();
+	aboveStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+	aboveStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+	aboveStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+	aboveStage12Condition->data.functionData.params[0] = inQuest;
+	aboveStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kGreaterThanOrEqualTo;
+	aboveStage12Condition->data.comparisonValue = conditionItemData;
+	aboveStage12Condition->next = nullptr;
+
+	conditionItemData.f = 15.f;
+	underStage15Condition = new RE::TESConditionItem();
+	underStage15Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+	underStage15Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+	underStage15Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+	underStage15Condition->data.functionData.params[0] = inQuest;
+	underStage15Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
+	underStage15Condition->data.comparisonValue = conditionItemData;
+	underStage15Condition->next = nullptr;
+	
+	dialogRoot = new DialogEntry();
+	dialogRoot->AddAnswer("So you came here to kill me, right ?", "", {checkSpeakerCondition});
+	
+	auto* wonderEntry = dialogRoot->AddChildEntry("I've not decided yet. I'd like to hear your side of the story.");
+;	wonderEntry->AddAnswer
+	(
+		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
+		"",
+		{checkSpeakerCondition, underStage12Condition}
+	);
+	wonderEntry->AddAnswer
+	(
+		"Your boss is a liar.",
+		"Tell me again about the reasons of the contract",
+		{checkSpeakerCondition, underStage15Condition}
+	);
+	auto* moreWonderEntry = wonderEntry->AddChildEntry("What did he do ?");
+	moreWonderEntry->AddAnswer
+	(
+		"He lied, I'm the good one in the story.",
+		"",
+		{},
+		12,
+		0
+	);
+
+	auto* attackEntry = dialogRoot->AddChildEntry("As you guessed. Prepare to die !");
+	attackEntry->AddAnswer
+	(
+		"Wait a minute ! Could I have a last will please ?",
+		"",
+		{checkSpeakerCondition, underStage12Condition}
+	);
+	attackEntry->AddAnswer
+	(
+		"Wait a minute ! Could I have a last will please ?",
+		"I can't believe my boss would lie. Prepare to die !",
+		{checkSpeakerCondition, underStage15Condition}
+	);
+	auto* lastWillYesEntry = attackEntry->AddChildEntry("Yes, of course, proceed but don't do anything inconsiderate.");
+	lastWillYesEntry->AddAnswer
+	(						
+		"Thank you for your consideration",
+		"",
+		{},
+		15,
+		1
+	);
+	auto lastWillNoEntry = attackEntry->AddChildEntry("No, I came here for business, not charity.");
+	lastWillNoEntry->AddAnswer
+	(
+		"Your lack of dignity is a shame.",
+		"",
+		{},
+		35,
+		2
+	);
+
+	auto* spareEntry = dialogRoot->AddChildEntry("Actually, I decided to spare you.");
+	spareEntry->AddAnswer
+	(
+		"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
+		"",
+		{checkSpeakerCondition, aboveStage12Condition, underStage15Condition},
+		45,
+		3
+	);
+}
+
+void AttachScriptsToQuest(const RE::TESQuest* inQuest)
+{
+	//Add script logic
+	//===========================
+	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+	auto* policy = scriptMachine->GetObjectHandlePolicy();
+
+	const auto selectedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, inQuest);
+	//TODO!! try to call script compiler from c++ before loading custom script
+	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
+	scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject); //TODO defensive pattern against return value;
+	scriptMachine->BindObject(questCustomScriptObject, selectedQuestHandle, false);
+	policy->PersistHandle(selectedQuestHandle); //TODO check if useful
+
+	RE::BSTSmartPointer<RE::BSScript::Object> referenceAliasBaseScriptObject;
+	scriptMachine->CreateObject("SQGQuestTargetScript", referenceAliasBaseScriptObject);
+	const auto questAliasHandle = selectedQuestHandle & 0x0000FFFFFFFF;
+	scriptMachine->BindObject(referenceAliasBaseScriptObject, questAliasHandle, false);
+	policy->PersistHandle(questAliasHandle); //TODO check if useful
+
+	RE::BSScript::Variable propertyValue;
+	propertyValue.SetObject(referenceAliasBaseScriptObject);
+	scriptMachine->SetPropertyValue(questCustomScriptObject, "SQGTestAliasTarget", propertyValue);
+	questCustomScriptObject->initialized = true; //Required when creating object with properties
+
+	RE::BSTSmartPointer<RE::BSScript::Object> dialogFragmentsCustomScriptObject;
+	scriptMachine->CreateObject("SQGTopicFragments", dialogFragmentsCustomScriptObject); //TODO defensive pattern against return value;
+	scriptMachine->BindObject(dialogFragmentsCustomScriptObject, selectedQuestHandle, false);
+	policy->PersistHandle(selectedQuestHandle); //TODO check if useful
+}
+
 std::string GenerateQuest(RE::StaticFunctionTag*)
 {
 	//Create quest if needed
@@ -150,304 +452,8 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	applyPattern(slot);
 	AddFormData(slot);
 
-	//Parametrize quest
-	//=======================
-	generatedQuest->SetFormEditorID("SQGTestQuest");
-	generatedQuest->fullName = "00_SQG_POC";
-	generatedQuest->InitItem(); //Initializes formFlags
-	generatedQuest->formFlags |= RE::TESForm::RecordFlags::kFormRetainsID | RE::TESForm::RecordFlags::kPersistent;
-	generatedQuest->AddChange(RE::TESForm::ChangeFlags::kCreated); //Seems to save the whole quest data and hence supersede the others (except for stages and objective for some reason)
-	generatedQuest->data.flags.set(RE::QuestFlag::kRunOnce);
-
-	//Add stages
-	//=======================
-	auto* logEntries = new RE::TESQuestStageItem[7];
-	std::memset(logEntries, 0, 7 * sizeof(RE::TESQuestStageItem));  // NOLINT(bugprone-undefined-memory-manipulation)
-
-	generatedQuest->initialStage = new RE::TESQuestStage();
-	std::memset(generatedQuest->initialStage, 0, sizeof(RE::TESQuestStage));
-	generatedQuest->initialStage->data.index = 10;
-	generatedQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
-	generatedQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
-	generatedQuest->initialStage->questStageItem = logEntries + 6;
-	generatedQuest->initialStage->questStageItem->hasLogEntry = true;
-	generatedQuest->initialStage->questStageItem->owner = generatedQuest;
-	generatedQuest->initialStage->questStageItem->owningStage = generatedQuest->initialStage;
-	logEntriesBindings[10] = "My boss told me to kill a man named \"Gibier\"";
-
-	generatedQuest->otherStages = new RE::BSSimpleList<RE::TESQuestStage*>();
-
-	auto* questStage = new RE::TESQuestStage();
-	questStage->data.index = 45;
-	questStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
-	questStage->questStageItem = logEntries + 5;
-	questStage->questStageItem->owner = generatedQuest;
-	questStage->questStageItem->owningStage = questStage;
-	questStage->questStageItem->data = 1; //Means "Last stage"
-	generatedQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[45] = "I decided to spare Gibier.";
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 40;
-	questStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
-	questStage->questStageItem = logEntries + 4;
-	questStage->questStageItem->hasLogEntry = true;
-	questStage->questStageItem->owner = generatedQuest;
-	questStage->questStageItem->owningStage = questStage;
-	questStage->questStageItem->data = 1; //Means "Last stage"
-	generatedQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[40] = "Gibier is dead.";
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 35;
-	questStage->questStageItem = logEntries + 3;
-	questStage->questStageItem->hasLogEntry = true;
-	questStage->questStageItem->owner = generatedQuest;
-	questStage->questStageItem->owningStage = questStage;
-	generatedQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[35] = "When I told Gibier I was going to kill him he asked for a last will. I refused.";
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 32;
-	questStage->questStageItem = logEntries + 2;
-	questStage->questStageItem->hasLogEntry = true;
-	questStage->questStageItem->owner = generatedQuest;
-	questStage->questStageItem->owningStage = questStage;
-	generatedQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[32] = "Gibier has done his last will. The time has came for him to die.";
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 30;
-	generatedQuest->otherStages->emplace_front(questStage);
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 20;
-	generatedQuest->otherStages->emplace_front(questStage);
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 15;
-	questStage->questStageItem = logEntries + 1;
-	questStage->questStageItem->hasLogEntry = true;
-	questStage->questStageItem->owner = generatedQuest;
-	questStage->questStageItem->owningStage = questStage;
-	generatedQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[15] = "When I told Gibier I was going to kill him he asked for a last will. I let him do what he wanted but advised him to not do anything inconsiderate.";
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 12;
-	questStage->questStageItem = logEntries;
-	questStage->questStageItem->hasLogEntry = true;
-	questStage->questStageItem->owner = generatedQuest;
-	questStage->questStageItem->owningStage = questStage;
-	generatedQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[12] = "I spoke with Gibier, whom told me my boss was a liar and begged me to spare him. I need to decide what to do.";
-
-	//Add objectives
-	//=======================
-	auto* questObjective = initialObjective = new RE::BGSQuestObjective();
-	questObjective->index = 10;
-	questObjective->displayText = "Kill Gibier";
-	questObjective->ownerQuest = generatedQuest;
-	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
-	generatedQuest->objectives.push_front(questObjective);
-
-	questObjective = new RE::BGSQuestObjective();
-	questObjective->index = 12;
-	questObjective->displayText = "(Optional) Spare Gibier";
-	questObjective->ownerQuest = generatedQuest;
-	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
-	generatedQuest->objectives.push_front(questObjective);
-
-	questObjective = new RE::BGSQuestObjective();
-	questObjective->index = 15;
-	questObjective->displayText = "(Optional) Let Gibier do his last will";
-	questObjective->ownerQuest = generatedQuest;
-	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
-	generatedQuest->objectives.push_front(questObjective);
-
-	//Add aliases
-	//=======================
-	auto* rawCreatedAlias = new char[sizeof(RE::BGSRefAlias)];
-	std::memcpy(rawCreatedAlias, referenceQuest->aliases[0], sizeof(RE::BGSRefAlias));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess) //TODO relocate vtable and copy it from here instead of using reference quest
-	auto* createdAlias = reinterpret_cast<RE::BGSRefAlias*>(rawCreatedAlias); 
-	createdAlias->aliasID = 0;
-	createdAlias->aliasName = "SQGTestAliasTarget";
-	createdAlias->fillType = RE::BGSBaseAlias::FILL_TYPE::kForced;
-	createdAlias->owningQuest = generatedQuest;
-	createdAlias->fillData.forced = RE::BGSRefAlias::ForcedFillData{targetForm->CreateRefHandle()};
-	generatedQuest->aliasAccessLock.LockForWrite();
-	generatedQuest->aliases.push_back(createdAlias);
-	generatedQuest->aliasAccessLock.UnlockForWrite();
-
-	//Add target
-	//=======================
-	auto objectiveIt = generatedQuest->objectives.begin();
-	auto nextObjectiveIt = objectiveIt;
-	do
-	{
-		objectiveIt = nextObjectiveIt;
-		++nextObjectiveIt;
-	} while(nextObjectiveIt != generatedQuest->objectives.end());
-
-	auto* firstObjective = *objectiveIt;
-	firstObjective->targets = new RE::TESQuestTarget*();
-	*firstObjective->targets = new RE::TESQuestTarget();
-	firstObjective->targets[0]->alias = 0;
-	firstObjective->numTargets = 1;
-
-	//Sets some additional variables (pad24, pad22c and questObjective's pad04 among others)
-	//=======================
-	generatedQuest->InitializeData();
-
-	//Add script logic
-	//===========================
-	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-	auto* policy = scriptMachine->GetObjectHandlePolicy();
-
-	const auto selectedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, generatedQuest);
-	//TODO!! try to call script compiler from c++ before loading custom script
-	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
-	scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject); //TODO defensive pattern against return value;
-	scriptMachine->BindObject(questCustomScriptObject, selectedQuestHandle, false);
-	policy->PersistHandle(selectedQuestHandle); //TODO check if useful
-
-	RE::BSTSmartPointer<RE::BSScript::Object> referenceAliasBaseScriptObject;
-	scriptMachine->CreateObject("SQGQuestTargetScript", referenceAliasBaseScriptObject);
-	const auto questAliasHandle = selectedQuestHandle & 0x0000FFFFFFFF;
-	scriptMachine->BindObject(referenceAliasBaseScriptObject, questAliasHandle, false);
-	policy->PersistHandle(questAliasHandle); //TODO check if useful
-
-	RE::BSScript::Variable propertyValue;
-	propertyValue.SetObject(referenceAliasBaseScriptObject);
-	scriptMachine->SetPropertyValue(questCustomScriptObject, "SQGTestAliasTarget", propertyValue);
-	questCustomScriptObject->initialized = true; //Required when creating object with properties
-//
-//	RE::BSTSmartPointer<RE::BSScript::Object> dialogFragmentsCustomScriptObject;
-//	scriptMachine->CreateObject("SQGTopicFragments", dialogFragmentsCustomScriptObject); //TODO defensive pattern against return value;
-//	scriptMachine->BindObject(dialogFragmentsCustomScriptObject, selectedQuestHandle, false);
-//	policy->PersistHandle(selectedQuestHandle); //TODO check if useful
-//
-//	//Add dialogs
-//	//===========================
-//	if(!impossibleCondition)
-//	{
-//		RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-//		conditionItemData.f = 1.f;
-//
-//		impossibleCondition = new RE::TESConditionItem();
-//		impossibleCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-//		impossibleCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-//		impossibleCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kIsXBox);
-//		impossibleCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-//		impossibleCondition->data.comparisonValue = conditionItemData;
-//		impossibleCondition->next = nullptr;
-//
-//		checkSpeakerCondition = new RE::TESConditionItem();
-//		checkSpeakerCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-//		checkSpeakerCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-//		checkSpeakerCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetIsID);
-//		checkSpeakerCondition->data.functionData.params[0] = targetForm->data.objectReference;
-//		checkSpeakerCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-//		checkSpeakerCondition->data.comparisonValue = conditionItemData;
-//		checkSpeakerCondition->next = nullptr;
-//
-//		conditionItemData.f = 12.f;
-//		underStage12Condition = new RE::TESConditionItem();
-//		underStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-//		underStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-//		underStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-//		underStage12Condition->data.functionData.params[0] = generatedQuest;
-//		underStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
-//		underStage12Condition->data.comparisonValue = conditionItemData;
-//		underStage12Condition->next = nullptr;
-//
-//		aboveStage12Condition = new RE::TESConditionItem();
-//		aboveStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-//		aboveStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-//		aboveStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-//		aboveStage12Condition->data.functionData.params[0] = generatedQuest;
-//		aboveStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kGreaterThanOrEqualTo;
-//		aboveStage12Condition->data.comparisonValue = conditionItemData;
-//		aboveStage12Condition->next = nullptr;
-//
-//		conditionItemData.f = 15.f;
-//		underStage15Condition = new RE::TESConditionItem();
-//		underStage15Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-//		underStage15Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-//		underStage15Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-//		underStage15Condition->data.functionData.params[0] = generatedQuest;
-//		underStage15Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
-//		underStage15Condition->data.comparisonValue = conditionItemData;
-//		underStage15Condition->next = nullptr;
-//	}
-//	
-//	dialogRoot = new DialogEntry();
-//	dialogRoot->AddAnswer("So you came here to kill me, right ?", "", {checkSpeakerCondition});
-//	
-//	auto* wonderEntry = dialogRoot->AddChildEntry("I've not decided yet. I'd like to hear your side of the story.");
-//;	wonderEntry->AddAnswer
-//	(
-//		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
-//		"",
-//		{checkSpeakerCondition, underStage12Condition}
-//	);
-//	wonderEntry->AddAnswer
-//	(
-//		"Your boss is a liar.",
-//		"Tell me again about the reasons of the contract",
-//		{checkSpeakerCondition, underStage15Condition}
-//	);
-//	auto* moreWonderEntry = wonderEntry->AddChildEntry("What did he do ?");
-//	moreWonderEntry->AddAnswer
-//	(
-//		"He lied, I'm the good one in the story.",
-//		"",
-//		{},
-//		12,
-//		0
-//	);
-//
-//	auto* attackEntry = dialogRoot->AddChildEntry("As you guessed. Prepare to die !");
-//	attackEntry->AddAnswer
-//	(
-//		"Wait a minute ! Could I have a last will please ?",
-//		"",
-//		{checkSpeakerCondition, underStage12Condition}
-//	);
-//	attackEntry->AddAnswer
-//	(
-//		"Wait a minute ! Could I have a last will please ?",
-//		"I can't believe my boss would lie. Prepare to die !",
-//		{checkSpeakerCondition, underStage15Condition}
-//	);
-//	auto* lastWillYesEntry = attackEntry->AddChildEntry("Yes, of course, proceed but don't do anything inconsiderate.");
-//	lastWillYesEntry->AddAnswer
-//	(						
-//		"Thank you for your consideration",
-//		"",
-//		{},
-//		15,
-//		1
-//	);
-//	auto lastWillNoEntry = attackEntry->AddChildEntry("No, I came here for business, not charity.");
-//	lastWillNoEntry->AddAnswer
-//	(
-//		"Your lack of dignity is a shame.",
-//		"",
-//		{},
-//		35,
-//		2
-//	);
-//
-//	auto* spareEntry = dialogRoot->AddChildEntry("Actually, I decided to spare you.");
-//	spareEntry->AddAnswer
-//	(
-//		"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
-//		"",
-//		{checkSpeakerCondition, aboveStage12Condition, underStage15Condition},
-//		45,
-//		3
-//	);
+	FillQuestWithGeneratedData(generatedQuest);
+	AttachScriptsToQuest(generatedQuest);
 
 	//Notify success
 	//===========================
@@ -528,114 +534,114 @@ class QuestInitEventSink : public RE::BSTEventSink<RE::TESQuestInitEvent>
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESQuestInitEvent* a_event, RE::BSTEventSource<RE::TESQuestInitEvent>* a_eventSource) override
 	{
-		//if(auto* updatedQuest = RE::TESForm::LookupByID<RE::TESQuest>(a_event->formID); updatedQuest == generatedQuest) //TODO find a proper way to bypass unwanted events
-		//{
-		//	if(const auto* aliasInstancesList = reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray)))
-		//	{
-		//		aliasInstancesList->lock.LockForRead();
-		//		for(auto* aliasInstanceData : aliasInstancesList->aliases)
-		//		{
-		//			if(aliasInstanceData->quest == generatedQuest)
-		//			{
-		//				auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
-		//				aliasInstanceData->instancedPackages = instancedPackages;
+		if(auto* updatedQuest = RE::TESForm::LookupByID<RE::TESQuest>(a_event->formID); updatedQuest == generatedQuest) //TODO find a proper way to bypass unwanted events
+		{
+			if(const auto* aliasInstancesList = reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray)))
+			{
+				aliasInstancesList->lock.LockForRead();
+				for(auto* aliasInstanceData : aliasInstancesList->aliases)
+				{
+					if(aliasInstanceData->quest == generatedQuest)
+					{
+						auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
+						aliasInstanceData->instancedPackages = instancedPackages;
 
-		//				auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-		//				auto* policy = scriptMachine->GetObjectHandlePolicy();
+						auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+						auto* policy = scriptMachine->GetObjectHandlePolicy();
 
-		//				{
-		//					//ACQUIRE PACKAGE
-		//					//=============================
+						{
+							//ACQUIRE PACKAGE
+							//=============================
 
-		//					customAcquirePackage = SQG::CreatePackageFromTemplate(acquirePackage, generatedQuest);
+							customAcquirePackage = SQG::CreatePackageFromTemplate(acquirePackage, generatedQuest);
 
-		//					std::unordered_map<std::string, SQG::PackageData> packageDataMap;
-		//					RE::PackageTarget::Target targetData{};
-		//					targetData.objType = RE::PACKAGE_OBJECT_TYPE::kWEAP;
-		//					packageDataMap["Target Criteria"] = SQG::PackageData(RE::PackageTarget::Type::kObjectType, targetData);
-		//					RE::BGSNamedPackageData<RE::IPackageData>::Data numData{};
-		//					numData.i = 2;
-		//					packageDataMap["Num to acquire"] = SQG::PackageData(numData); 
-		//					RE::BGSNamedPackageData<RE::IPackageData>::Data allowStealingData{};
-		//					allowStealingData.b = true;
-		//					packageDataMap["AllowStealing"] = SQG::PackageData(allowStealingData);
-		//					FillPackageData(customAcquirePackage, packageDataMap);
+							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
+							RE::PackageTarget::Target targetData{};
+							targetData.objType = RE::PACKAGE_OBJECT_TYPE::kWEAP;
+							packageDataMap["Target Criteria"] = SQG::PackageData(RE::PackageTarget::Type::kObjectType, targetData);
+							RE::BGSNamedPackageData<RE::IPackageData>::Data numData{};
+							numData.i = 2;
+							packageDataMap["Num to acquire"] = SQG::PackageData(numData); 
+							RE::BGSNamedPackageData<RE::IPackageData>::Data allowStealingData{};
+							allowStealingData.b = true;
+							packageDataMap["AllowStealing"] = SQG::PackageData(allowStealingData);
+							FillPackageData(customAcquirePackage, packageDataMap);
 
-		//					std::list<SQG::PackageConditionDescriptor> packageConditionList;
-		//					RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-		//					conditionItemData.f = 15.f;
-		//					packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
-		//					FillPackageCondition(customAcquirePackage, packageConditionList);
+							std::list<SQG::PackageConditionDescriptor> packageConditionList;
+							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+							conditionItemData.f = 15.f;
+							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+							FillPackageCondition(customAcquirePackage, packageConditionList);
 
-		//					const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customAcquirePackage);
-		//					RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
-		//					scriptMachine->CreateObject("PF_SQGAcquirePackage", packageCustomScriptObject); //TODO defensive pattern against return value;
-		//					scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
-		//					policy->PersistHandle(packageHandle); //TODO check if useful
+							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customAcquirePackage);
+							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
+							scriptMachine->CreateObject("PF_SQGAcquirePackage", packageCustomScriptObject); //TODO defensive pattern against return value;
+							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
+							policy->PersistHandle(packageHandle); //TODO check if useful
 
-		//					instancedPackages->push_back(customAcquirePackage);
-		//				}
+							instancedPackages->push_back(customAcquirePackage);
+						}
 
-		//				{
-		//					//ACTIVATE PACKAGE
-		//					//=============================
+						{
+							//ACTIVATE PACKAGE
+							//=============================
 
-		//					customActivatePackage = SQG::CreatePackageFromTemplate(activatePackage, generatedQuest);
+							customActivatePackage = SQG::CreatePackageFromTemplate(activatePackage, generatedQuest);
 
-		//					std::unordered_map<std::string, SQG::PackageData> packageDataMap;
-		//					RE::PackageTarget::Target targetData{};
-		//					targetData.handle = targetActivator->CreateRefHandle();
-		//					packageDataMap["Target"] = SQG::PackageData(RE::PackageTarget::Type::kNearReference, targetData);
-		//					FillPackageData(customActivatePackage, packageDataMap);
+							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
+							RE::PackageTarget::Target targetData{};
+							targetData.handle = targetActivator->CreateRefHandle();
+							packageDataMap["Target"] = SQG::PackageData(RE::PackageTarget::Type::kNearReference, targetData);
+							FillPackageData(customActivatePackage, packageDataMap);
 
-		//					std::list<SQG::PackageConditionDescriptor> packageConditionList;
-		//					RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-		//					conditionItemData.f = 20.f;
-		//					packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
-		//					FillPackageCondition(customActivatePackage, packageConditionList);
+							std::list<SQG::PackageConditionDescriptor> packageConditionList;
+							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+							conditionItemData.f = 20.f;
+							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+							FillPackageCondition(customActivatePackage, packageConditionList);
 
-		//					const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customActivatePackage);
-		//					RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
-		//					scriptMachine->CreateObject("PF_SQGActivatePackage", packageCustomScriptObject); //TODO defensive pattern against return value;
-		//					scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
-		//					policy->PersistHandle(packageHandle); //TODO check if useful
+							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customActivatePackage);
+							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
+							scriptMachine->CreateObject("PF_SQGActivatePackage", packageCustomScriptObject); //TODO defensive pattern against return value;
+							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
+							policy->PersistHandle(packageHandle); //TODO check if useful
 
-		//					instancedPackages->push_back(customActivatePackage);
-		//				}
+							instancedPackages->push_back(customActivatePackage);
+						}
 
-		//				{
-		//					//TRAVEL PACKAGE
-		//					//=============================
+						{
+							//TRAVEL PACKAGE
+							//=============================
 
-		//					customTravelPackage = SQG::CreatePackageFromTemplate(travelPackage, generatedQuest);
+							customTravelPackage = SQG::CreatePackageFromTemplate(travelPackage, generatedQuest);
 
-		//					std::unordered_map<std::string, SQG::PackageData> packageDataMap;
-		//					RE::PackageLocation::Data locationData{};
-		//					locationData.refHandle = activator->CreateRefHandle();
-		//					packageDataMap["Place to Travel"] = SQG::PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
-		//					FillPackageData(customTravelPackage, packageDataMap);
+							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
+							RE::PackageLocation::Data locationData{};
+							locationData.refHandle = activator->CreateRefHandle();
+							packageDataMap["Place to Travel"] = SQG::PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
+							FillPackageData(customTravelPackage, packageDataMap);
 
-		//					std::list<SQG::PackageConditionDescriptor> packageConditionList;
-		//					RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-		//					conditionItemData.f = 30.f;
-		//					packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
-		//					FillPackageCondition(customTravelPackage, packageConditionList);
+							std::list<SQG::PackageConditionDescriptor> packageConditionList;
+							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+							conditionItemData.f = 30.f;
+							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+							FillPackageCondition(customTravelPackage, packageConditionList);
 
-		//					const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
-		//					RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
-		//					scriptMachine->CreateObject("PF_SQGTravelPackage", packageCustomScriptObject); //TODO defensive pattern against return value;
-		//					scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
-		//					policy->PersistHandle(packageHandle); //TODO check if useful
+							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
+							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
+							scriptMachine->CreateObject("PF_SQGTravelPackage", packageCustomScriptObject); //TODO defensive pattern against return value;
+							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
+							policy->PersistHandle(packageHandle); //TODO check if useful
 
-		//					instancedPackages->push_back(customTravelPackage);
-		//				}
-		//			}
-		//		}
-		//		aliasInstancesList->lock.UnlockForRead();
-		//	}
+							instancedPackages->push_back(customTravelPackage);
+						}
+					}
+				}
+				aliasInstancesList->lock.UnlockForRead();
+			}
 
-		//	ProcessDialogEntry(targetForm, *dialogRoot, helloTopicInfo);
-		//}
+			ProcessDialogEntry(targetForm, *dialogRoot, helloTopicInfo);
+		}
 		return RE::BSEventNotifyControl::kContinue;
 	}
 };
@@ -947,10 +953,17 @@ struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
 
 bool LoadGameHook(RE::TESQuest* inQuest)
 {
-	//If we're trying to load a save generated in a previous session
+	//If we're trying to load a quest generated in a previous session
 	if((inQuest->formID & 0xFF000000) >> 3*8 == RE::TESDataHandler::GetSingleton()->GetModIndex("Dynamic Persistent Forms.esp"))
 	{
-		ptrAtGameLoad = inQuest; //We keep track of this form to fill when we'll deserialize it from SKSE data
+		if(!generatedQuest)
+		{
+			ptrAtGameLoad = inQuest;
+		}
+		else
+		{
+			ptrAtGameLoad = nullptr;
+		}
 	}
 
 	return false;
@@ -982,6 +995,33 @@ struct LoadGameHookedPatch final : Xbyak::CodeGenerator
     }
 };
 
+class MenuOpenCloseEventSink* sink;
+class MenuOpenCloseEventSink final : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
+{
+public:
+	RE::BSEventNotifyControl ProcessEvent(const RE::MenuOpenCloseEvent* a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>* a_eventSource) override
+	{
+		auto menu = RE::UI::GetSingleton()->GetMenu(RE::LoadingMenu::MENU_NAME);
+		if(a_event->menuName == RE::LoadingMenu::MENU_NAME && !a_event->opening)
+		{
+			
+			if(menu->menuFlags.all(RE::UI_MENU_FLAGS::kPausesGame))
+			{
+				menu->menuFlags.reset(RE::UI_MENU_FLAGS::kPausesGame);
+				auto messageQueue = RE::UIMessageQueue::GetSingleton();
+				messageQueue->AddMessage(RE::LoadingMenu::MENU_NAME, RE::UI_MESSAGE_TYPE::kShow, messageQueue->CreateUIMessageData(RE::LoadingMenu::MENU_NAME));
+			}
+			else
+			{
+				menu->menuFlags.set(RE::UI_MENU_FLAGS::kPausesGame);
+				RE::UI::GetSingleton()->RemoveEventSink(sink);
+				delete sink;
+			}
+		}
+		return RE::BSEventNotifyControl::kContinue;
+	}
+};
+
 static void SaveCallback(SKSE::SerializationInterface* a_intfc) {
     std::lock_guard<std::mutex> lock(callbackMutext);
     try {
@@ -1008,7 +1048,7 @@ static void LoadCallback(SKSE::SerializationInterface* a_intfc) {
             switch (type) {
                 case 'ARR_': {
                     auto serializer = new SaveDataSerializer(a_intfc);
-                    refreshGame = RestoreAllFormRecords(serializer);
+                    //refreshGame = RestoreAllFormRecords(serializer);
                     delete serializer;
                 } break;
                 default:
@@ -1023,19 +1063,13 @@ static void LoadCallback(SKSE::SerializationInterface* a_intfc) {
 
 	    if(ptrAtGameLoad)
 		{
-			auto z = RE::PlayerCharacter::GetSingleton()->questLog;
-			GenerateQuest(nullptr);
+			generatedQuest = ptrAtGameLoad;
 
-			auto a = ptrAtGameLoad->formID;
-			std::memcpy(ptrAtGameLoad, generatedQuest, sizeof(RE::TESQuest));
-			ptrAtGameLoad->formID= a;
-			ptrAtGameLoad->instanceData.emplace_back(new RE::BGSQuestInstanceText{1, 0, RE::BSTArray<RE::BGSQuestInstanceText::StringData>(), RE::BSTArray<RE::BGSQuestInstanceText::GlobalValueData>(), 10, 0, 0, 0});
-			ptrAtGameLoad->currentInstanceID = 1;
+			sink = new MenuOpenCloseEventSink();
+			RE::PlayerCharacter::GetSingleton()->KillImmediate();
+			RE::UI::GetSingleton()->AddEventSink(sink);
 
-			auto* player = RE::PlayerCharacter::GetSingleton();
-			player->questLog.emplace_front(new RE::TESQuestStageItem{RE::TESCondition(), nullptr, {0}, 0, 0, true, 0, ptrAtGameLoad, ptrAtGameLoad->initialStage});
-			player->objectives.emplace_back(RE::BGSInstancedQuestObjective{initialObjective, 1, RE::QUEST_OBJECTIVE_STATE::kDisplayed});
-			initialObjective->state.set(RE::QUEST_OBJECTIVE_STATE::kDisplayed);
+			FillQuestWithGeneratedData(generatedQuest);
 		}
     } catch (const std::exception&) {
     }
@@ -1070,8 +1104,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestInitEventSink());
-				//RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new PackageEventSink());
-				//RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new TopicInfoEventSink());
+				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new PackageEventSink());
+				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new TopicInfoEventSink());
 
 				SQG::ReadFirstFormIdFromESP();
 			}
@@ -1092,14 +1126,14 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	SKSE::AllocTrampoline(1<<10);
 	auto& trampoline = SKSE::GetTrampoline();
 
-	//const auto hookAddress = REL::Offset(0x393A32).address();
-	//PopulateResponseTextHookedPatch tsh{ reinterpret_cast<uintptr_t>(PopulateResponseTextHook), REL::ID(24985).address(), hookAddress + 0x5 };
- //   trampoline.write_branch<5>(hookAddress, trampoline.allocate(tsh));
+	const auto hookAddress = REL::Offset(0x393A32).address();
+	PopulateResponseTextHookedPatch tsh{ reinterpret_cast<uintptr_t>(PopulateResponseTextHook), REL::ID(24985).address(), hookAddress + 0x5 };
+    trampoline.write_branch<5>(hookAddress, trampoline.allocate(tsh));
 
-	//const auto onResponseSaidHook = REL::Offset(0x5E869D).address();
-	//OnResponseSaidHookedPatch dsh{ reinterpret_cast<uintptr_t>(OnResponseSaidHook), REL::Offset(0x64F360).address(), onResponseSaidHook + 0x7 };
-	//const auto onDialogueSayHooked = trampoline.allocate(dsh);
- //   trampoline.write_branch<5>(onResponseSaidHook, onDialogueSayHooked);
+	const auto onResponseSaidHook = REL::Offset(0x5E869D).address();
+	OnResponseSaidHookedPatch dsh{ reinterpret_cast<uintptr_t>(OnResponseSaidHook), REL::Offset(0x64F360).address(), onResponseSaidHook + 0x7 };
+	const auto onDialogueSayHooked = trampoline.allocate(dsh);
+    trampoline.write_branch<5>(onResponseSaidHook, onDialogueSayHooked);
 
 	const auto fillLogEntryHook = REL::Offset(0x378F6C).address();
 	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry)};
