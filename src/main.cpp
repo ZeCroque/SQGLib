@@ -448,6 +448,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 
 	generatedQuest->SetFormID(SQG::lastFormId, false);
 	 auto slot = FormRecord::CreateNew(generatedQuest, selectedQuest->GetFormType(), SQG::lastFormId);
+	incrementLastFormID();
 	slot->baseForm = referenceQuest;
 	applyPattern(slot);
 	AddFormData(slot);
@@ -1030,7 +1031,7 @@ static void SaveCallback(SKSE::SerializationInterface* a_intfc) {
             auto serializer = new SaveDataSerializer(a_intfc);
             StoreAllFormRecords(serializer);
         }
-        SaveCache();
+        //SaveCache();
     } catch (const std::exception&) {
     }
 }
@@ -1056,21 +1057,21 @@ static void LoadCallback(SKSE::SerializationInterface* a_intfc) {
             }
         }
         if (refreshGame) {
-            SaveCache();
+            //SaveCache();
             UpdateId();
             RE::PlayerCharacter::GetSingleton()->KillDying();
         }
 
-	    if(ptrAtGameLoad)
-		{
-			generatedQuest = ptrAtGameLoad;
+	 //   if(ptrAtGameLoad)
+		//{
+		//	generatedQuest = ptrAtGameLoad;
 
-			sink = new MenuOpenCloseEventSink();
-			RE::PlayerCharacter::GetSingleton()->KillImmediate();
-			RE::UI::GetSingleton()->AddEventSink(sink);
+		//	sink = new MenuOpenCloseEventSink();
+		//	RE::PlayerCharacter::GetSingleton()->KillImmediate();
+		//	RE::UI::GetSingleton()->AddEventSink(sink);
 
-			FillQuestWithGeneratedData(generatedQuest);
-		}
+		//	FillQuestWithGeneratedData(generatedQuest);
+		//}
     } catch (const std::exception&) {
     }
 }
@@ -1093,6 +1094,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 		{
 			if (auto* dataHandler = RE::TESDataHandler::GetSingleton(); message->type == SKSE::MessagingInterface::kDataLoaded)
 			{
+
 				selectedQuest = referenceQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{0x003371}, "SQGLib.esp"));
 				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
@@ -1108,6 +1110,30 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new TopicInfoEventSink());
 
 				SQG::ReadFirstFormIdFromESP();
+	            //LoadCache();
+
+				//if(SQG::deserializedQuest)
+				//{
+				//	FillQuestWithGeneratedData(SQG::deserializedQuest);
+				//}
+			}
+			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
+			{
+				std::string name = static_cast<char*>(message->data);
+				name = name.substr(0, name.size() - 3).append("sqg");
+				LoadCache(name);
+				if(SQG::deserializedQuest)
+				{
+					FillQuestWithGeneratedData(SQG::deserializedQuest);
+				}
+				int z = 42;
+			}
+			else if(message->type == SKSE::MessagingInterface::kSaveGame)
+			{
+				std::string name = static_cast<char*>(message->data);
+				name = name.append(".sqg");
+				SaveCache(name);
+				int z = 42;
 			}
 			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
 			{
@@ -1140,15 +1166,15 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	const auto fillLogEntryHooked = trampoline.allocate(fleh);
     trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
 
-	const auto loadGameHook = REL::Offset(0x37190b).address();
-	LoadGameHookedPatch lgh{ reinterpret_cast<uintptr_t>(LoadGameHook), REL::Offset(0x194140).address(), loadGameHook + 0x5, REL::Offset(0x372426).address()};
-	const auto loadGameHooked = trampoline.allocate(lgh);
-    trampoline.write_branch<5>(loadGameHook, loadGameHooked);
+	//const auto loadGameHook = REL::Offset(0x37190b).address();
+	//LoadGameHookedPatch lgh{ reinterpret_cast<uintptr_t>(LoadGameHook), REL::Offset(0x194140).address(), loadGameHook + 0x5, REL::Offset(0x372426).address()};
+	//const auto loadGameHooked = trampoline.allocate(lgh);
+ //   trampoline.write_branch<5>(loadGameHook, loadGameHooked);
 
-	auto serialization = SKSE::GetSerializationInterface();
-    serialization->SetUniqueID('SQG');
-    serialization->SetSaveCallback(SaveCallback);
-    serialization->SetLoadCallback(LoadCallback);
+	//auto serialization = SKSE::GetSerializationInterface();
+ //   serialization->SetUniqueID('SQG');
+ //   serialization->SetSaveCallback(SaveCallback);
+    //serialization->SetLoadCallback(LoadCallback);
 
 	return true;
 }

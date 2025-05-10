@@ -43,7 +43,7 @@ set(HEADERS
 set(SOURCES
 	${SOURCE_DIR}/main.cpp
 	${SOURCE_DIR}/PackageUtils.cpp
-	#${SOURCE_DIR}/SerializationUtils.cpp
+	${SOURCE_DIR}/SerializationUtils.cpp
 )
 
 configure_file(
