@@ -5,6 +5,8 @@
 #include <REL/Relocation.h>
 #include <SKSE/SKSE.h>
 
+#include <ranges>
+
 #include <xbyak/xbyak.h>
 #undef PAGE_EXECUTE_READWRITE
 #undef GetModuleFileName

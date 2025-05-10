@@ -1,6 +1,6 @@
 #include "PCH.h"
 #include "PackageUtils.h"
-#include "SerializationUtils.h"
+#include "Serialization/API.h"
 
 void InitializeLog()
 {
@@ -443,15 +443,8 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	{
 		return "Quest yet generated.";
 	}
-	auto* questFormFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESQuest>();
-	selectedQuest = generatedQuest = questFormFactory->Create();
 
-	generatedQuest->SetFormID(SQG::lastFormId, false);
-	 auto slot = FormRecord::CreateNew(generatedQuest, selectedQuest->GetFormType(), SQG::lastFormId);
-	incrementLastFormID();
-	slot->baseForm = referenceQuest;
-	applyPattern(slot);
-	AddFormData(slot);
+	selectedQuest = generatedQuest = reinterpret_cast<RE::TESQuest*>(CreateForm(referenceQuest));
 
 	FillQuestWithGeneratedData(generatedQuest);
 	AttachScriptsToQuest(generatedQuest);
@@ -952,130 +945,6 @@ struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
     }
 };
 
-bool LoadGameHook(RE::TESQuest* inQuest)
-{
-	//If we're trying to load a quest generated in a previous session
-	if((inQuest->formID & 0xFF000000) >> 3*8 == RE::TESDataHandler::GetSingleton()->GetModIndex("Dynamic Persistent Forms.esp"))
-	{
-		if(!generatedQuest)
-		{
-			ptrAtGameLoad = inQuest;
-		}
-		else
-		{
-			ptrAtGameLoad = nullptr;
-		}
-	}
-
-	return false;
-}
-
-struct LoadGameHookedPatch final : Xbyak::CodeGenerator
-{
-    explicit LoadGameHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeStandardExecutionAddress, const uintptr_t inBypassAddress)
-    {
-	    // ReSharper disable once CppInconsistentNaming
-	    Xbyak::Label BYPASS_QUEST_LOAD;
-		push(rax);
-    	mov(rax, inHookAddress);	//Calling hook
-		call(rax);
-		test(al, al); //If the quest for which we're trying to fill the log entry is in one of ours
-		jnz(BYPASS_QUEST_LOAD); //Then bypass the classic log entry loading process
-		//Else
-		pop(rax);
-    	mov(r14, inHijackedMethodAddress); //Calling the method we hijacked (that is setting in RCX TESQuestStageItem*)
-		call(r14);
-		mov(r14, inResumeStandardExecutionAddress); //Resume standard execution
-		jmp(r14);
-
-		L(BYPASS_QUEST_LOAD);
-		pop(rax);	//Removing unecessary data from the stack
-    	mov(r14, inBypassAddress); //Resume execution after the normal string loading process we bypassed
-    	jmp(r14);
-
-    }
-};
-
-class MenuOpenCloseEventSink* sink;
-class MenuOpenCloseEventSink final : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
-{
-public:
-	RE::BSEventNotifyControl ProcessEvent(const RE::MenuOpenCloseEvent* a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>* a_eventSource) override
-	{
-		auto menu = RE::UI::GetSingleton()->GetMenu(RE::LoadingMenu::MENU_NAME);
-		if(a_event->menuName == RE::LoadingMenu::MENU_NAME && !a_event->opening)
-		{
-			
-			if(menu->menuFlags.all(RE::UI_MENU_FLAGS::kPausesGame))
-			{
-				menu->menuFlags.reset(RE::UI_MENU_FLAGS::kPausesGame);
-				auto messageQueue = RE::UIMessageQueue::GetSingleton();
-				messageQueue->AddMessage(RE::LoadingMenu::MENU_NAME, RE::UI_MESSAGE_TYPE::kShow, messageQueue->CreateUIMessageData(RE::LoadingMenu::MENU_NAME));
-			}
-			else
-			{
-				menu->menuFlags.set(RE::UI_MENU_FLAGS::kPausesGame);
-				RE::UI::GetSingleton()->RemoveEventSink(sink);
-				delete sink;
-			}
-		}
-		return RE::BSEventNotifyControl::kContinue;
-	}
-};
-
-static void SaveCallback(SKSE::SerializationInterface* a_intfc) {
-    std::lock_guard<std::mutex> lock(callbackMutext);
-    try {
-        if (!a_intfc->OpenRecord('ARR_', 1)) {
-        } else {
-            auto serializer = new SaveDataSerializer(a_intfc);
-            StoreAllFormRecords(serializer);
-        }
-        //SaveCache();
-    } catch (const std::exception&) {
-    }
-}
-
-static void LoadCallback(SKSE::SerializationInterface* a_intfc) {
-    std::lock_guard<std::mutex> lock(callbackMutext);
-    try {
-
-        uint32_t type;
-        uint32_t version;
-        uint32_t length;
-        bool refreshGame = false;
-
-        while (a_intfc->GetNextRecordInfo(type, version, length)) {
-            switch (type) {
-                case 'ARR_': {
-                    auto serializer = new SaveDataSerializer(a_intfc);
-                    //refreshGame = RestoreAllFormRecords(serializer);
-                    delete serializer;
-                } break;
-                default:
-                    break;
-            }
-        }
-        if (refreshGame) {
-            //SaveCache();
-            UpdateId();
-            RE::PlayerCharacter::GetSingleton()->KillDying();
-        }
-
-	 //   if(ptrAtGameLoad)
-		//{
-		//	generatedQuest = ptrAtGameLoad;
-
-		//	sink = new MenuOpenCloseEventSink();
-		//	RE::PlayerCharacter::GetSingleton()->KillImmediate();
-		//	RE::UI::GetSingleton()->AddEventSink(sink);
-
-		//	FillQuestWithGeneratedData(generatedQuest);
-		//}
-    } catch (const std::exception&) {
-    }
-}
-
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
 {
@@ -1109,31 +978,25 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new PackageEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new TopicInfoEventSink());
 
-				SQG::ReadFirstFormIdFromESP();
-	            //LoadCache();
-
-				//if(SQG::deserializedQuest)
-				//{
-				//	FillQuestWithGeneratedData(SQG::deserializedQuest);
-				//}
+				Init();
 			}
 			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
 			{
 				std::string name = static_cast<char*>(message->data);
 				name = name.substr(0, name.size() - 3).append("sqg");
 				LoadCache(name);
-				if(SQG::deserializedQuest)
+
+				if(deserializedQuest)
 				{
-					FillQuestWithGeneratedData(SQG::deserializedQuest);
+					generatedQuest = deserializedQuest;
+					FillQuestWithGeneratedData(deserializedQuest); //TODO properly deserialize
 				}
-				int z = 42;
 			}
 			else if(message->type == SKSE::MessagingInterface::kSaveGame)
 			{
 				std::string name = static_cast<char*>(message->data);
 				name = name.append(".sqg");
 				SaveCache(name);
-				int z = 42;
 			}
 			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
 			{
@@ -1165,16 +1028,4 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry)};
 	const auto fillLogEntryHooked = trampoline.allocate(fleh);
     trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
-
-	//const auto loadGameHook = REL::Offset(0x37190b).address();
-	//LoadGameHookedPatch lgh{ reinterpret_cast<uintptr_t>(LoadGameHook), REL::Offset(0x194140).address(), loadGameHook + 0x5, REL::Offset(0x372426).address()};
-	//const auto loadGameHooked = trampoline.allocate(lgh);
- //   trampoline.write_branch<5>(loadGameHook, loadGameHooked);
-
-	//auto serialization = SKSE::GetSerializationInterface();
- //   serialization->SetUniqueID('SQG');
- //   serialization->SetSaveCallback(SaveCallback);
-    //serialization->SetLoadCallback(LoadCallback);
-
-	return true;
 }

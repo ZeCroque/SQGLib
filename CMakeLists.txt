@@ -36,14 +36,22 @@ configure_file(
 
 set(HEADERS
 	${HEADER_DIR}/PCH.h
+	${HEADER_DIR}/FormCreator.h
 	${HEADER_DIR}/PackageUtils.h
-	${HEADER_DIR}/SerializationUtils.h
+	${HEADER_DIR}/Serialization/API.h
+	${HEADER_DIR}/Serialization/Model.h
+	${HEADER_DIR}/Serialization/FileSystem.h
+	${HEADER_DIR}/Serialization/FormRecord.h
+	${HEADER_DIR}/Serialization/FormRecordSerializer.h
+	${HEADER_DIR}/Serialization/FormSerializers.h
+	${HEADER_DIR}/Serialization/SKSETmp.h
 )
 
 set(SOURCES
 	${SOURCE_DIR}/main.cpp
+	${SOURCE_DIR}/FormCreator.cpp
 	${SOURCE_DIR}/PackageUtils.cpp
-	${SOURCE_DIR}/SerializationUtils.cpp
+	${SOURCE_DIR}/Serialization/Model.cpp
 )
 
 configure_file(
