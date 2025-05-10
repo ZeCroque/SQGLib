@@ -52,6 +52,9 @@ configure_file(
 
 file(COPY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Template.ChildProcessDbgSettings ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.ChildProcessDbgSettings)
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/includes PREFIX "Header Files" FILES ${HEADERS})
+
 add_library(
 	"${PROJECT_NAME}"
 	SHARED
