@@ -10,28 +10,22 @@ void Init()
 
 void SaveCache(std::string name) {
 
-    auto fileWriter = new FileWriter(name, std::ios::out | std::ios::binary | std::ios::trunc);
+    FileWriter fileWriter(name, std::ios::out | std::ios::binary | std::ios::trunc);
 
-    if (!fileWriter->IsOpen()) {
+    if (!fileWriter.IsOpen()) {
         return;
     }
 
-    StoreAllFormRecords(fileWriter);
-
-    delete fileWriter;
-
+    StoreAllFormRecords(&fileWriter);
 }
 
 void LoadCache(std::string name) {
-    auto fileReader = new FileReader(name, std::ios::in | std::ios::binary);
+    FileReader fileReader(name, std::ios::in | std::ios::binary);
 
-    if (!fileReader->IsOpen()) {
+    if (!fileReader.IsOpen()) {
         return;
     }
-    RestoreAllFormRecords(fileReader);
+    RestoreAllFormRecords(&fileReader);
 
     UpdateId();
-
-    delete fileReader;
-
 }

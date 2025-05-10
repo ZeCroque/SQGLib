@@ -1,15 +1,15 @@
 #pragma once
 
-static uint32_t lastFormId = 0;  // last mod
-static uint32_t firstFormId = 0;  // last mod
-
 class FormRecord;
 
-static std::map<RE::FormID, FormRecord*> formData;
+extern uint32_t lastFormId;  // last mod
+extern uint32_t firstFormId;  // last mod
 
-static RE::TESQuest* deserializedQuest = nullptr;
+extern std::map<RE::FormID, FormRecord> formData;
+
+extern RE::TESQuest* deserializedQuest;
 
 // Iterate over every registered forms
-void EachFormData(std::function<bool(FormRecord*)> const& iteration);
+void EachFormData(std::function<bool(FormRecord&)> const& iteration);
 
 void UpdateId();

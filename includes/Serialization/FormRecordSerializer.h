@@ -7,30 +7,30 @@
 
 
 template <typename T>
-static void StoreFormRecordData(Serializer<T>* serializer, FormRecord* instance) {
+static void StoreFormRecordData(Serializer<T>* serializer, FormRecord& instance) {
     serializer->StartWritingSection();
-    serializer->Write<char>(instance->deleted ? 1 : 0);
-    if (!instance->deleted) {
+    serializer->Write<char>(instance.deleted ? 1 : 0);
+    if (!instance.deleted) {
         StoreEachFormData(serializer, instance);
     }
     serializer->finishWritingSection();
 }
 
 template <typename T>
-static void StoreFormRecord(Serializer<T>* serializer, FormRecord* instance) {
+static void StoreFormRecord(Serializer<T>* serializer, FormRecord& instance) {
 
     serializer->StartWritingSection();
 
-    serializer->Write<char>(instance->deleted ? 1 : 0);
+    serializer->Write<char>(instance.deleted ? 1 : 0);
 
-    if (!instance->deleted) {
+    if (!instance.deleted) {
 
-        serializer->WriteFormRef(instance->baseForm);
-        serializer->WriteFormRef(instance->modelForm);
-        serializer->WriteFormId(instance->formId);
+        serializer->WriteFormRef(instance.baseForm);
+        serializer->WriteFormRef(instance.modelForm);
+        serializer->WriteFormId(instance.formId);
         
     } else {
-        serializer->WriteFormId(instance->formId);
+        serializer->WriteFormId(instance.formId);
     }
 
     serializer->finishWritingSection();
@@ -43,19 +43,19 @@ void StoreAllFormRecords(Serializer<T>* serializer) {
 
     serializer->Write<uint32_t>(static_cast<uint32_t>(sizeData));
 
-    EachFormData([&](FormRecord* instance) {
+    EachFormData([&](FormRecord& instance) {
         StoreFormRecord(serializer, instance);
         return true;
     });
 
-    EachFormData([&](FormRecord* elem) {
+    EachFormData([&](FormRecord& elem) {
         StoreFormRecordData(serializer, elem);
         return true;
     });
 }
 
 template <typename T>
-static void RestoreFormRecordData(Serializer<T>* serializer, FormRecord* instance) {
+static void RestoreFormRecordData(Serializer<T>* serializer, FormRecord& instance) {
 
     serializer->startReadingSection();
 
@@ -66,7 +66,7 @@ static void RestoreFormRecordData(Serializer<T>* serializer, FormRecord* instanc
         return;
     }
 
-    if (!instance->actualForm) {
+    if (!instance.actualForm) {
         serializer->finishReadingSection();
         return; 
     }
@@ -86,14 +86,13 @@ static bool RestoreFormRecord(Serializer<T>* serializer, uint32_t i) {
         serializer->finishReadingSection();
 
         if (formData.contains(formId)) {
-            formData[formId]->deleted = true;
+            formData[formId].deleted = true;
         } else {
             formData[formId] = FormRecord::CreateDeleted(formId);
         }
         
         return false;
     }
-
 
     auto baseForm = serializer->ReadFormRef();
     auto modelForm = serializer->ReadFormRef();
@@ -103,14 +102,13 @@ static bool RestoreFormRecord(Serializer<T>* serializer, uint32_t i) {
     {
         CreateForm(baseForm, id);
     }
-    else if(auto& instance = formData[id]; instance->formType != baseForm->GetFormType() || instance->deleted)
+    else if(auto& instance = formData[id]; instance.formType != baseForm->GetFormType() || instance.deleted)
     {
 	    auto factory = RE::IFormFactory::GetFormFactoryByType(baseForm->GetFormType());
         RE::TESForm* current = factory->Create();
         current->SetFormID(id, false);
-        instance->Undelete(current, baseForm->GetFormType());
+        instance.Undelete(current, baseForm->GetFormType());
     }
-
 
     return true;
 }
@@ -122,7 +120,6 @@ bool RestoreAllFormRecords(Serializer<T>* serializer) {
 
     uint32_t sizeData = serializer->Read<uint32_t>();
 
-    //TODO merge into one
     for (uint32_t i = 0; i < sizeData; i++) {
         if (RestoreFormRecord(serializer, i)) {
             formRecordCreated = true;
@@ -130,10 +127,8 @@ bool RestoreAllFormRecords(Serializer<T>* serializer) {
     }
 
     for (auto instance : formData | std::views::values) {
-
-        deserializedQuest = reinterpret_cast<RE::TESQuest*>(instance->actualForm);
         RestoreFormRecordData(serializer, instance);
-        int z = 42;
+        deserializedQuest = reinterpret_cast<RE::TESQuest*>(instance.actualForm);
     }
 
     return formRecordCreated;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FileSystem.h"
+#include "FormRecord.h"
 
 template <typename T> class FormSerializer {
 public:
@@ -18,9 +19,9 @@ public:
         serializer->WriteString(name);
     }
     void Deserialize(Serializer<T>* serializer, RE::TESForm* form) override {
-        auto* name = serializer->ReadString();
+        auto name = serializer->ReadString();
         auto named = form->As<RE::TESFullName>();
-        if (named && name) {
+        if (named) {
             named->fullName = name;
         }
     }
@@ -41,7 +42,7 @@ public:
         auto target = form->As<RE::TESQuest>();
         if (target) 
         {
-            target->SetFormEditorID(serializer->ReadString());
+            target->SetFormEditorID(serializer->ReadString().c_str());
         }
     }
     bool Condition(RE::TESForm* form) override { return form->As<RE::TESQuest>(); }
@@ -52,9 +53,9 @@ public:
     filters.push_back(std::make_unique <QuestSerializer<T>>());
 
 template <typename T>
-void StoreEachFormData(Serializer<T>* serializer, FormRecord* elem) {
+void StoreEachFormData(Serializer<T>* serializer, FormRecord& elem) {
 
-    if (!elem || !serializer) {
+    if (!serializer) {
         return;
     }
 
@@ -66,9 +67,9 @@ void StoreEachFormData(Serializer<T>* serializer, FormRecord* elem) {
 
     for (auto& filter : filters) {
         serializer->StartWritingSection();
-        if (elem->actualForm && filter->Condition(elem->actualForm)) {
+        if (elem.actualForm && filter->Condition(elem.actualForm)) {
             serializer->Write<char>(1);
-            filter->Serialize(serializer, elem->actualForm);
+            filter->Serialize(serializer, elem.actualForm);
         } else {
             serializer->Write<char>(0);
         }
@@ -77,9 +78,9 @@ void StoreEachFormData(Serializer<T>* serializer, FormRecord* elem) {
 }
 
 template <typename T>
-void RestoreEachFormData(Serializer<T>* serializer, FormRecord* elem) {
+void RestoreEachFormData(Serializer<T>* serializer, FormRecord& elem) {
 
-     if (!elem || !serializer) {
+     if (!serializer) {
          return;
      }
 
@@ -96,8 +97,8 @@ void RestoreEachFormData(Serializer<T>* serializer, FormRecord* elem) {
          }
          serializer->startReadingSection();
          auto kind = serializer->Read<char>();
-         if (kind == 1 && elem->actualForm) {
-            filter->Deserialize(serializer, elem->actualForm);
+         if (kind == 1 && elem.actualForm) {
+            filter->Deserialize(serializer, elem.actualForm);
          }
          serializer->finishReadingSection();
          ++i;

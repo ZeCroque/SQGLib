@@ -24,13 +24,13 @@ void ApplyPattern(RE::TESForm* baseForm, RE::TESForm* newForm)
 RE::TESForm* CreateForm(RE::TESForm* baseItem, RE::FormID formId)
 {
     RE::TESForm* result = nullptr;
-    EachFormData([&](FormRecord* item) {
-        if (item->deleted) {
+    EachFormData([&](FormRecord& item) {
+        if (item.deleted) {
             auto factory = RE::IFormFactory::GetFormFactoryByType(baseItem->GetFormType());
             result = factory->Create();
-            result->SetFormID(item->formId, false);
-            item->Undelete(result, baseItem->GetFormType());
-            item->baseForm = baseItem;
+            result->SetFormID(item.formId, false);
+            item.Undelete(result, baseItem->GetFormType());
+            item.baseForm = baseItem;
             ApplyPattern(baseItem, result);
             return false;
         }
@@ -56,7 +56,7 @@ RE::TESForm* CreateForm(RE::TESForm* baseItem, RE::FormID formId)
     }
 	result->SetFormID(newFormId, false);
     auto slot = FormRecord::CreateNew(result, baseItem->GetFormType(), newFormId);
-    slot->baseForm = baseItem;
+    slot.baseForm = baseItem;
     ApplyPattern(baseItem, result);
     formData[newFormId] = slot;
     return result;

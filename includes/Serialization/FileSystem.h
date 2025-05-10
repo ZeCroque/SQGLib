@@ -1,6 +1,5 @@
 #pragma once
 
-#include "FormRecord.h"
 #include "SKSETmp.h"
 
 bool espFound = false;
@@ -261,13 +260,15 @@ public:
 
     }
 
-    char* ReadString() {
+    std::string ReadString() {
         size_t arrayLength = Read<uint32_t>();
-        char* result = new char[arrayLength+1];
+        char* buf = new char[arrayLength+1];
         for (size_t i = 0; i < arrayLength; i++) {
-            result[i] = Read<char>();
+            buf[i] = Read<char>();
         }
-        result[arrayLength] = '\0';
+        buf[arrayLength] = '\0';
+        std::string result = buf;
+        delete buf;
         return result;
     }
 
