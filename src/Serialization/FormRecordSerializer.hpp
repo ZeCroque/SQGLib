@@ -127,7 +127,6 @@ bool RestoreAllFormRecords(Serializer<T>* serializer) {
 
     for (auto instance : formData | std::views::values) {
         RestoreFormRecordData(serializer, instance);
-        deserializedQuest = reinterpret_cast<RE::TESQuest*>(instance.actualForm); //TODO remove
     }
 
     return formRecordCreated;

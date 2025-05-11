@@ -1,15 +1,12 @@
 #include "PackageUtils.h"
 
-#include "PCH.h"
 
 namespace SQG
 {
 	// Base
 	// =======================
-	RE::TESPackage* CreatePackageFromTemplate(RE::TESPackage* inPackageTemplate, RE::TESQuest* inOwnerQuest)
+	RE::TESPackage* CreatePackageFromTemplate(RE::TESPackage* package, RE::TESPackage* inPackageTemplate, RE::TESQuest* inOwnerQuest)
 	{
-		auto* packageFormFactory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESPackage>();
-		auto* package = packageFormFactory->Create();
 
 		package->ownerQuest = inOwnerQuest;
 		package->procedureType = inPackageTemplate->procedureType;

@@ -1,7 +1,7 @@
-#include "PCH.h"
 #include "PackageUtils.h"
 #include "Serialization/API.h"
 #include "FormCreator.h"
+#include "Serialization/FormRecord.h"
 #include "Serialization/Model.h" //TODO remove
 
 void InitializeLog()
@@ -549,7 +549,7 @@ public:
 							//ACQUIRE PACKAGE
 							//=============================
 
-							customAcquirePackage = SQG::CreatePackageFromTemplate(acquirePackage, generatedQuest);
+							customAcquirePackage = SQG::CreatePackageFromTemplate(CreateForm(acquirePackage)->As<RE::TESPackage>(),acquirePackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
@@ -582,7 +582,7 @@ public:
 							//ACTIVATE PACKAGE
 							//=============================
 
-							customActivatePackage = SQG::CreatePackageFromTemplate(activatePackage, generatedQuest);
+							customActivatePackage = SQG::CreatePackageFromTemplate(CreateForm(activatePackage)->As<RE::TESPackage>(), activatePackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
@@ -609,7 +609,7 @@ public:
 							//TRAVEL PACKAGE
 							//=============================
 
-							customTravelPackage = SQG::CreatePackageFromTemplate(travelPackage, generatedQuest);
+							customTravelPackage = SQG::CreatePackageFromTemplate(CreateForm(travelPackage)->As<RE::TESPackage>(), travelPackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageLocation::Data locationData{};
@@ -970,6 +970,11 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
 				targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
+				helloTopicInfo = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00C503}, "SQGLib.esp"));
+				subTopicsInfos[0] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF96}, "SQGLib.esp"));
+				subTopicsInfos[1] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF99}, "SQGLib.esp"));
+				subTopicsInfos[2] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9C}, "SQGLib.esp"));
+				subTopicsInfos[3] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9F}, "SQGLib.esp"));
 				activatePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019B2D});
 				acquirePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019713});
 				travelPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0016FAA});  //TODO parse a package template descriptor map
@@ -986,10 +991,107 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				name = name.substr(0, name.size() - 3).append("sqg");
 				LoadCache(name);
 
-				if(deserializedQuest)
+				int i = 0;
+				for(auto& form : formData | std::views::values)
 				{
-					generatedQuest = deserializedQuest;
-					FillQuestWithGeneratedData(deserializedQuest); //TODO properly deserialize
+					if(form.formType == RE::FormType::Quest)
+					{
+						generatedQuest = form.actualForm->As<RE::TESQuest>();
+						FillQuestWithGeneratedData(generatedQuest);
+						ProcessDialogEntry(targetForm, *dialogRoot, helloTopicInfo);
+					}
+					else if(form.formType == RE::FormType::Package)
+					{
+						auto* package = form.actualForm->As<RE::TESPackage>();
+						if(i == 0)
+						{
+							//ACQUIRE PACKAGE
+							//=============================
+
+							customAcquirePackage = SQG::CreatePackageFromTemplate(package, acquirePackage, generatedQuest);
+
+							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
+							RE::PackageTarget::Target targetData{};
+							targetData.objType = RE::PACKAGE_OBJECT_TYPE::kWEAP;
+							packageDataMap["Target Criteria"] = SQG::PackageData(RE::PackageTarget::Type::kObjectType, targetData);
+							RE::BGSNamedPackageData<RE::IPackageData>::Data numData{};
+							numData.i = 2;
+							packageDataMap["Num to acquire"] = SQG::PackageData(numData); 
+							RE::BGSNamedPackageData<RE::IPackageData>::Data allowStealingData{};
+							allowStealingData.b = true;
+							packageDataMap["AllowStealing"] = SQG::PackageData(allowStealingData);
+							FillPackageData(customAcquirePackage, packageDataMap);
+
+							std::list<SQG::PackageConditionDescriptor> packageConditionList;
+							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+							conditionItemData.f = 15.f;
+							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+							FillPackageCondition(customAcquirePackage, packageConditionList);
+
+
+						}
+
+						if(i == 1)
+						{
+							//ACTIVATE PACKAGE
+							//=============================
+
+							customActivatePackage = SQG::CreatePackageFromTemplate(package, activatePackage, generatedQuest);
+
+							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
+							RE::PackageTarget::Target targetData{};
+							targetData.handle = targetActivator->CreateRefHandle();
+							packageDataMap["Target"] = SQG::PackageData(RE::PackageTarget::Type::kNearReference, targetData);
+							FillPackageData(customActivatePackage, packageDataMap);
+
+							std::list<SQG::PackageConditionDescriptor> packageConditionList;
+							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+							conditionItemData.f = 20.f;
+							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+							FillPackageCondition(customActivatePackage, packageConditionList);
+						}
+
+						if(i == 2)
+						{
+							//TRAVEL PACKAGE
+							//=============================
+
+							customTravelPackage = SQG::CreatePackageFromTemplate(package, travelPackage, generatedQuest);
+
+							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
+							RE::PackageLocation::Data locationData{};
+							locationData.refHandle = activator->CreateRefHandle();
+							packageDataMap["Place to Travel"] = SQG::PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
+							FillPackageData(customTravelPackage, packageDataMap);
+
+							std::list<SQG::PackageConditionDescriptor> packageConditionList;
+							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+							conditionItemData.f = 30.f;
+							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+							FillPackageCondition(customTravelPackage, packageConditionList);
+						}
+						++i;
+					}
+				}
+			}
+			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
+			{
+				if(auto* aliasInstancesList = reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray)))
+				{
+					aliasInstancesList->lock.LockForRead();
+					for(auto* aliasInstanceData : aliasInstancesList->aliases)
+					{
+						if(aliasInstanceData->quest == generatedQuest)
+						{
+							auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
+							aliasInstanceData->instancedPackages = instancedPackages;
+							aliasInstanceData->instancedPackages = instancedPackages;
+							instancedPackages->push_back(customAcquirePackage);
+							instancedPackages->push_back(customActivatePackage);
+							instancedPackages->push_back(customTravelPackage);
+						}
+					}
+					aliasInstancesList->lock.UnlockForRead();
 				}
 			}
 			else if(message->type == SKSE::MessagingInterface::kSaveGame)
@@ -1003,14 +1105,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				std::string name = static_cast<char*>(message->data);
 				name = name.append(".sqg");
 				DeleteCache(name);
-			}
-			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
-			{
-				helloTopicInfo = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00C503}, "SQGLib.esp"));
-				subTopicsInfos[0] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF96}, "SQGLib.esp"));
-				subTopicsInfos[1] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF99}, "SQGLib.esp"));
-				subTopicsInfos[2] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9C}, "SQGLib.esp"));
-				subTopicsInfos[3] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9F}, "SQGLib.esp"));
 			}
 		})
 	)

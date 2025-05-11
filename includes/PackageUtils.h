@@ -4,7 +4,7 @@ namespace SQG
 {
 	// Base
 	// =======================
-	RE::TESPackage* CreatePackageFromTemplate(RE::TESPackage* inPackageTemplate, RE::TESQuest* inOwnerQuest);
+	RE::TESPackage* CreatePackageFromTemplate(RE::TESPackage* package, RE::TESPackage* inPackageTemplate, RE::TESQuest* inOwnerQuest);
 
 	// PackageData
 	// =======================
