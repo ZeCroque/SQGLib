@@ -43,20 +43,14 @@ RE::TESForm* CreateForm(RE::TESForm* baseItem, RE::FormID formId)
     auto factory = RE::IFormFactory::GetFormFactoryByType(baseItem->GetFormType());
 	result = factory->Create();
 
-    RE::FormID newFormId;
     if(formId > 0)
     {
-		newFormId = formId;   
+			result->SetFormID(formId, false);  
     }
-    else
-    {
-        newFormId = lastFormId;
-	    ++lastFormId;
-    }
-	result->SetFormID(newFormId, false);
-    auto slot = FormRecord::CreateNew(result, baseItem->GetFormType(), newFormId);
+
+    auto slot = FormRecord::CreateNew(result, baseItem->GetFormType(), result->formID);
     slot.baseForm = baseItem;
     ApplyPattern(baseItem, result);
-    formData[newFormId] = slot;
+    formData[result->formID] = slot;
     return result;
 }

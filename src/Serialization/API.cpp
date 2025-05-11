@@ -3,11 +3,6 @@
 #include "Serialization/FileSystem.h"
 #include "Serialization/FormRecordSerializer.h"
 
-void Init()
-{
-    firstFormId = lastFormId = ReadFirstFormIdFromESP();
-}
-
 void SaveCache(std::string name) {
 
     FileWriter fileWriter(name, std::ios::out | std::ios::binary | std::ios::trunc);
@@ -15,7 +10,6 @@ void SaveCache(std::string name) {
     if (!fileWriter.IsOpen()) {
         return;
     }
-
     StoreAllFormRecords(&fileWriter);
 }
 
@@ -26,6 +20,4 @@ void LoadCache(std::string name) {
         return;
     }
     RestoreAllFormRecords(&fileReader);
-
-    UpdateId();
 }

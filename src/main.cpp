@@ -979,8 +979,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestInitEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new PackageEventSink());
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new TopicInfoEventSink());
-
-				Init();
 			}
 			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
 			{

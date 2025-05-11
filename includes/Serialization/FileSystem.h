@@ -1,11 +1,5 @@
 #pragma once
 
-extern bool espFound;
-
-extern uint32_t dynamicModId;
-
-int ReadFirstFormIdFromESP();
-
 class StreamWrapper {
     private:
     std::stringstream stream;
