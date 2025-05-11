@@ -43,14 +43,20 @@ template<class T> T* CreateForm(T* baseItem, RE::FormID formId)
     auto factory = RE::IFormFactory::GetFormFactoryByType(baseItem->GetFormType());
 	result = factory->Create();
 
+    RE::FormID newFormId;
     if(formId > 0)
     {
-		result->SetFormID(formId, false);  
+		newFormId = formId;   
     }
-
-    auto slot = FormRecord::CreateNew(result, baseItem->GetFormType(), result->formID);
+    else
+    {
+        newFormId = lastFormId;
+	    ++lastFormId;
+    }
+	result->SetFormID(newFormId, false);
+    auto slot = FormRecord::CreateNew(result, baseItem->GetFormType(), newFormId);
     slot.baseForm = baseItem;
     ApplyPattern(baseItem, result);
-    formData[result->formID] = slot;
+    formData[newFormId] = slot;
     return result->As<T>();
 }

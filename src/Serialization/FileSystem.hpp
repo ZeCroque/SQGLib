@@ -137,7 +137,8 @@ template <class Derived> template<class T>
         }
 
         if (fileRef == 1) {
-            return Read<uint32_t>();
+            uint32_t dynamicId = Read<uint32_t>();
+            return dynamicId + (dynamicModId << 24);
         }
         else if(fileRef == 2){
             std::string fileName = ReadString();
@@ -161,9 +162,10 @@ template <class Derived> template<class T>
 
         auto modId = (formId >> 24) & 0xff;
 
-        if (modId == 0xff) {
+        if (modId == dynamicModId) {
+            auto localId = formId & 0xFFFFFF;
             Write<char>(1);
-            Write<uint32_t>(formId);
+            Write<uint32_t>(localId);
         }
         else if (modId == 0xfe) {
             auto lightId = (formId >> 12) & 0xFFF;

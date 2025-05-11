@@ -2,6 +2,24 @@
 
 #include "Serialization/SKSETmp.h"
 
+bool espFound = false;
+
+uint32_t dynamicModId = 0;
+
+int ReadFirstFormIdFromESP()
+{
+    const auto dataHandler = RE::TESDataHandler::GetSingleton();
+
+    auto id = dataHandler->LookupForm(0x800, "Dynamic Persistent Forms.esp");
+
+    if (id != 0) {
+        espFound = true;
+    }
+
+    dynamicModId = (id->formID >> 24) & 0xff;
+    return id->formID + 1;
+}
+
 void StreamWrapper::Clear() {
     stream.str("");
     stream.clear();
