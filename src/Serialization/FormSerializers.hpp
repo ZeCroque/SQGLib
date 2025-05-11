@@ -395,14 +395,20 @@ template <typename T> void StoreEachFormData(Serializer<T>* serializer, FormReco
 
     serializer->Write<uint32_t>(static_cast<uint32_t>(filters.size()));
 
-    for (auto& filter : filters) {
-        serializer->StartWritingSection();
+    if(std::none_of(filters.begin(), filters.end(), [&](std::unique_ptr<FormSerializer<T>>& filter)
+    {
         if (elem.actualForm && filter->Condition(elem.actualForm)) {
+            serializer->StartWritingSection();
             serializer->Write<char>(1);
             filter->Serialize(serializer, elem.actualForm);
-        } else {
-            serializer->Write<char>(0);
+            serializer->finishWritingSection();
+            return true;
         }
+	    return false;
+    }))
+    {
+        serializer->StartWritingSection();
+        serializer->Write<char>(0);
         serializer->finishWritingSection();
     }
 }
