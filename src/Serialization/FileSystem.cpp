@@ -64,3 +64,8 @@ FileReader::~FileReader() {
 }
 
 bool FileReader::IsOpen() { return fileStream.is_open(); }
+
+void Delete(std::string name)
+{
+    std::remove(MakeSavePath(name).c_str());
+}

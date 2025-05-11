@@ -21,3 +21,7 @@ void LoadCache(std::string name) {
     }
     RestoreAllFormRecords(&fileReader);
 }
+
+void DeleteCache(std::string name) {
+    Delete(name);
+}

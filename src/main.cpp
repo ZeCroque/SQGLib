@@ -998,6 +998,12 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				name = name.append(".sqg");
 				SaveCache(name);
 			}
+			else if(message->type == SKSE::MessagingInterface::kDeleteGame)
+			{
+				std::string name = static_cast<char*>(message->data);
+				name = name.append(".sqg");
+				DeleteCache(name);
+			}
 			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
 			{
 				helloTopicInfo = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00C503}, "SQGLib.esp"));

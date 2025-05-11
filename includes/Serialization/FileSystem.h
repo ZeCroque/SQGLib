@@ -93,4 +93,6 @@ public:
     T ReadImplementation();
 };
 
+void Delete(std::string name);
+
 #include "Serialization/FileSystem.hpp"
