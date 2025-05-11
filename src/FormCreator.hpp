@@ -1,7 +1,5 @@
 #pragma once
 
-#include "FormCreator.h"
-
 #include "Serialization/FormRecord.h"
 #include "Serialization/Model.h"
 
@@ -15,15 +13,17 @@ template <class T> void CopyComponent(RE::TESForm* from, RE::TESForm* to)
 }
 
 //Copies component based on form type
-void ApplyPattern(RE::TESForm* baseForm, RE::TESForm* newForm)
+inline void ApplyPattern(RE::TESForm* baseForm, RE::TESForm* newForm)
 {
     newForm->Copy(baseForm);
     CopyComponent<RE::TESFullName>(baseForm, newForm);
 }
 
-RE::TESForm* CreateForm(RE::TESForm* baseItem, RE::FormID formId)
+template<class T> T* CreateForm(T* baseItem, RE::FormID formId)
 {
-    RE::TESForm* result = nullptr;
+    static_assert(std::is_base_of_v<RE::TESForm, T>);
+
+	RE::TESForm* result = nullptr;
     if(std::ranges::any_of(formData | std::views::values, [&](FormRecord& item) {
         if (item.deleted) {
             auto factory = RE::IFormFactory::GetFormFactoryByType(baseItem->GetFormType());
@@ -37,7 +37,7 @@ RE::TESForm* CreateForm(RE::TESForm* baseItem, RE::FormID formId)
         return false;
     }))
 	{
-        return result;
+        return result->As<T>();
     }
 
     auto factory = RE::IFormFactory::GetFormFactoryByType(baseItem->GetFormType());
@@ -45,12 +45,12 @@ RE::TESForm* CreateForm(RE::TESForm* baseItem, RE::FormID formId)
 
     if(formId > 0)
     {
-			result->SetFormID(formId, false);  
+		result->SetFormID(formId, false);  
     }
 
     auto slot = FormRecord::CreateNew(result, baseItem->GetFormType(), result->formID);
     slot.baseForm = baseItem;
     ApplyPattern(baseItem, result);
     formData[result->formID] = slot;
-    return result;
+    return result->As<T>();
 }
