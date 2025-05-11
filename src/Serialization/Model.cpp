@@ -7,23 +7,14 @@ uint32_t firstFormId = 0;  // last mod
 
 std::map<RE::FormID, FormRecord> formData;
 
-RE::TESQuest* deserializedQuest = nullptr;
-
-// Iterate over every registered forms
-void EachFormData(std::function<bool(FormRecord&)> const& iteration) {
-    for (auto& formRecord : formData | std::views::values) {
-        if (!iteration(formRecord)) {
-            return;
-        }
-    }
-}
+RE::TESQuest* deserializedQuest = nullptr; //TODO remove
 
 void UpdateId() {
-    EachFormData([&](FormRecord& item) {
-        if (item.formId > lastFormId) {
-	        lastFormId = item.formId;
-        }
-        return true;
-    });
-    ++lastFormId;
+	std::ranges::for_each((formData | std::views::values), [&](const FormRecord& item) {
+		if (item.formId > lastFormId) {
+
+			lastFormId = item.formId;
+		}
+	});
+	++lastFormId; 
 }

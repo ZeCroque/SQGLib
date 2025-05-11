@@ -24,7 +24,7 @@ void ApplyPattern(RE::TESForm* baseForm, RE::TESForm* newForm)
 RE::TESForm* CreateForm(RE::TESForm* baseItem, RE::FormID formId)
 {
     RE::TESForm* result = nullptr;
-    EachFormData([&](FormRecord& item) {
+    if(std::ranges::any_of(formData | std::views::values, [&](FormRecord& item) {
         if (item.deleted) {
             auto factory = RE::IFormFactory::GetFormFactoryByType(baseItem->GetFormType());
             result = factory->Create();
@@ -32,12 +32,11 @@ RE::TESForm* CreateForm(RE::TESForm* baseItem, RE::FormID formId)
             item.Undelete(result, baseItem->GetFormType());
             item.baseForm = baseItem;
             ApplyPattern(baseItem, result);
-            return false;
+            return true;
         }
-        return true;
-    });
-
-    if (result) {
+        return false;
+    }))
+	{
         return result;
     }
 

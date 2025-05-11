@@ -1,6 +1,8 @@
 #include "PCH.h"
 #include "PackageUtils.h"
 #include "Serialization/API.h"
+#include "FormCreator.h"
+#include "Serialization/Model.h" //TODO remove
 
 void InitializeLog()
 {

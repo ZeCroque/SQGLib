@@ -47,12 +47,23 @@ set(HEADERS
 	${HEADER_DIR}/Serialization/SKSETmp.h
 )
 
+set(HPP
+	${SOURCE_DIR}/Serialization/FileSystem.hpp
+	${SOURCE_DIR}/Serialization/FormRecordSerializer.hpp
+)
+
 set(SOURCES
 	${SOURCE_DIR}/main.cpp
 	${SOURCE_DIR}/FormCreator.cpp
 	${SOURCE_DIR}/PackageUtils.cpp
+	${SOURCE_DIR}/Serialization/API.cpp
+	${SOURCE_DIR}/Serialization/FileSystem.cpp
+	${SOURCE_DIR}/Serialization/FormRecord.cpp
 	${SOURCE_DIR}/Serialization/Model.cpp
+	${HPP}
 )
+
+set_source_files_properties(${HPP} PROPERTIES HEADER_FILE_ONLY TRUE)
 
 configure_file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.rc.in"
