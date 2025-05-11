@@ -50,6 +50,7 @@ set(HEADERS
 set(HPP
 	${SOURCE_DIR}/Serialization/FileSystem.hpp
 	${SOURCE_DIR}/Serialization/FormRecordSerializer.hpp
+	${SOURCE_DIR}/Serialization/FormSerializers.hpp
 )
 
 set(SOURCES
