@@ -475,43 +475,43 @@ public:
 		RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
 		scriptMachine->FindBoundObject(updatedQuestHandle, "SQGDebug", questCustomScriptObject);
 
-		if(a_event->targetStage == 10)
+		if(a_event->stage == 10)
 		{
 			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter();
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
-		else if(a_event->targetStage == 12)
+		else if(a_event->stage == 12)
 		{
 			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 1;
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
-		else if(a_event->targetStage == 15)
+		else if(a_event->stage == 15)
 		{
 			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 2;
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
-		else if(a_event->targetStage == 32)
+		else if(a_event->stage == 32)
 		{
 			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 3;
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
-		else if(a_event->targetStage == 35)
+		else if(a_event->stage == 35)
 		{
 			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 4;
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
-		else if(a_event->targetStage == 40)
+		else if(a_event->stage == 40)
 		{
 			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 5;
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
 			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 		}
-		else if(a_event->targetStage == 45)
+		else if(a_event->stage == 45)
 		{
 			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 6;
 			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
@@ -749,43 +749,27 @@ extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryIn
 	return true;
 }
 
-namespace RE
-{
-	struct TESTopicInfoEvent
-	{
-		enum class TopicInfoEventType
-		{
-			kBegin = 0,
-			kEnd = 1,
-		};
-		std::uint64_t		unk00;			// 00
-		RE::TESObjectREFR*	speaker;		// 08
-		RE::FormID			topicInfoId;	// 10
-		TopicInfoEventType	eventType;		// 14
-	};
-}
-
 class TopicInfoEventSink final : public RE::BSTEventSink<RE::TESTopicInfoEvent>
 {
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESTopicInfoEvent* a_event, RE::BSTEventSource<RE::TESTopicInfoEvent>* a_eventSource) override
 	{
-		if(generatedQuest && generatedQuest->currentStage && a_event->speaker == targetForm)
+		if(generatedQuest && generatedQuest->currentStage && a_event->speakerRef.get() == targetForm)
 		{
 			AnswerData* answer = nullptr;
-			if(const auto topicInfoBinding = topicsInfosBindings.find(a_event->topicInfoId); a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kEnd &&  topicInfoBinding != topicsInfosBindings.end())
+			if(const auto topicInfoBinding = topicsInfosBindings.find(a_event->topicInfoFormID); a_event->type == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicEnd &&  topicInfoBinding != topicsInfosBindings.end())
 			{
 				answer = topicInfoBinding->second;
 			}
-			else if(a_event->eventType == RE::TESTopicInfoEvent::TopicInfoEventType::kBegin)
+			else if(a_event->type == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicBegin)
 			{
-				if(a_event->topicInfoId == helloTopicInfo->formID)
+				if(a_event->topicInfoFormID == helloTopicInfo->formID)
 				{
 					answer = dialogRoot->answers[0];
 				}
 				else
 				{
-					if(const auto* topicInfo = reinterpret_cast<RE::TESTopicInfo*>(RE::TESForm::LookupByID(a_event->topicInfoId)); topicInfo->parentTopic == genericHelloTopic)
+					if(const auto* topicInfo = reinterpret_cast<RE::TESTopicInfo*>(RE::TESForm::LookupByID(a_event->topicInfoFormID)); topicInfo->parentTopic == genericHelloTopic)
 					{
 						answer = !lastSelectedAnswer || lastSelectedAnswer->parentEntry.childEntries.empty() ? dialogRoot->answers[0] : lastSelectedAnswer;
 					}
@@ -820,7 +804,7 @@ public:
 				{
 					if(i < entries.size())
 					{
-						ProcessDialogEntry(a_event->speaker, *entries[i], subTopicsInfos[i]);
+						ProcessDialogEntry(a_event->speakerRef.get(), *entries[i], subTopicsInfos[i]);
 					}
 					else
 					{
