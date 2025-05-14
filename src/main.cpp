@@ -1,8 +1,6 @@
 #include "PackageUtils.h"
 #include "Serialization/API.h"
 #include "FormCreator.h"
-#include "Serialization/FormRecord.h"
-#include "Serialization/Model.h" //TODO remove
 
 void InitializeLog()
 {
@@ -152,7 +150,6 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	std::memset(logEntries, 0, 7 * sizeof(RE::TESQuestStageItem));  // NOLINT(bugprone-undefined-memory-manipulation)
 
 	inQuest->initialStage = new RE::TESQuestStage();
-	std::memset(inQuest->initialStage, 0, sizeof(RE::TESQuestStage));
 	inQuest->initialStage->data.index = 10;
 	inQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
 	inQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
@@ -254,9 +251,8 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 
 	//Add aliases
 	//=======================
-	auto* rawCreatedAlias = new char[sizeof(RE::BGSRefAlias)];
-	std::memcpy(rawCreatedAlias, referenceQuest->aliases[0], sizeof(RE::BGSRefAlias));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess) //TODO relocate vtable and copy it from here instead of using reference quest
-	auto* createdAlias = reinterpret_cast<RE::BGSRefAlias*>(rawCreatedAlias); 
+
+	auto* createdAlias = RE::BGSBaseAlias::Create<RE::BGSRefAlias>(); 
 	createdAlias->aliasID = 0;
 	createdAlias->aliasName = "SQGTestAliasTarget";
 	createdAlias->fillType = RE::BGSBaseAlias::FILL_TYPE::kForced;
@@ -341,7 +337,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	dialogRoot->AddAnswer("So you came here to kill me, right ?", "", {checkSpeakerCondition});
 	
 	auto* wonderEntry = dialogRoot->AddChildEntry("I've not decided yet. I'd like to hear your side of the story.");
-;	wonderEntry->AddAnswer
+	wonderEntry->AddAnswer
 	(
 		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
 		"",
@@ -416,15 +412,13 @@ void AttachScriptsToQuest(const RE::TESQuest* inQuest)
 	const auto selectedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, inQuest);
 	//TODO!! try to call script compiler from c++ before loading custom script
 	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
-	scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject); //TODO defensive pattern against return value;
+	scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject);
 	scriptMachine->BindObject(questCustomScriptObject, selectedQuestHandle, false);
-	policy->PersistHandle(selectedQuestHandle); //TODO check if useful
 
 	RE::BSTSmartPointer<RE::BSScript::Object> referenceAliasBaseScriptObject;
 	scriptMachine->CreateObject("SQGQuestTargetScript", referenceAliasBaseScriptObject);
 	const auto questAliasHandle = selectedQuestHandle & 0x0000FFFFFFFF;
 	scriptMachine->BindObject(referenceAliasBaseScriptObject, questAliasHandle, false);
-	policy->PersistHandle(questAliasHandle); //TODO check if useful
 
 	RE::BSScript::Variable propertyValue;
 	propertyValue.SetObject(referenceAliasBaseScriptObject);
@@ -432,9 +426,8 @@ void AttachScriptsToQuest(const RE::TESQuest* inQuest)
 	questCustomScriptObject->initialized = true; //Required when creating object with properties
 
 	RE::BSTSmartPointer<RE::BSScript::Object> dialogFragmentsCustomScriptObject;
-	scriptMachine->CreateObject("SQGTopicFragments", dialogFragmentsCustomScriptObject); //TODO defensive pattern against return value;
+	scriptMachine->CreateObject("SQGTopicFragments", dialogFragmentsCustomScriptObject);
 	scriptMachine->BindObject(dialogFragmentsCustomScriptObject, selectedQuestHandle, false);
-	policy->PersistHandle(selectedQuestHandle); //TODO check if useful
 }
 
 std::string GenerateQuest(RE::StaticFunctionTag*)
@@ -571,9 +564,8 @@ public:
 
 							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customAcquirePackage);
 							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
-							scriptMachine->CreateObject("PF_SQGAcquirePackage", packageCustomScriptObject); //TODO defensive pattern against return value;
+							scriptMachine->CreateObject("PF_SQGAcquirePackage", packageCustomScriptObject);
 							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
-							policy->PersistHandle(packageHandle); //TODO check if useful
 
 							instancedPackages->push_back(customAcquirePackage);
 						}
@@ -598,9 +590,8 @@ public:
 
 							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customActivatePackage);
 							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
-							scriptMachine->CreateObject("PF_SQGActivatePackage", packageCustomScriptObject); //TODO defensive pattern against return value;
+							scriptMachine->CreateObject("PF_SQGActivatePackage", packageCustomScriptObject);
 							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
-							policy->PersistHandle(packageHandle); //TODO check if useful
 
 							instancedPackages->push_back(customActivatePackage);
 						}
@@ -625,9 +616,8 @@ public:
 
 							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
 							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
-							scriptMachine->CreateObject("PF_SQGTravelPackage", packageCustomScriptObject); //TODO defensive pattern against return value;
+							scriptMachine->CreateObject("PF_SQGTravelPackage", packageCustomScriptObject);
 							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
-							policy->PersistHandle(packageHandle); //TODO check if useful
 
 							instancedPackages->push_back(customTravelPackage);
 						}
@@ -716,7 +706,6 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
-	//TODO!! debug nvidia exception on close
 	int z = 42;
 }	
 
@@ -961,7 +950,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				subTopicsInfos[3] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9F}, "SQGLib.esp"));
 				activatePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019B2D});
 				acquirePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019713});
-				travelPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0016FAA});  //TODO parse a package template descriptor map
+				travelPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0016FAA});
 				genericHelloTopic = RE::TESForm::LookupByID<RE::TESTopic>(RE::FormID{0x00142B5});
 
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
@@ -1114,4 +1103,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry)};
 	const auto fillLogEntryHooked = trampoline.allocate(fleh);
     trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
+
+	return true;
 }
