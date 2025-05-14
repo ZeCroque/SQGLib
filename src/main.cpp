@@ -569,16 +569,11 @@ std::string SwapSelectedQuest(RE::StaticFunctionTag*)
 	return "Selected " + std::string(selectedQuest ? selectedQuest->GetFullName() : "nullptr");
 }
 
-void StartQuest(RE::TESQuest* inQuest)
-{
-	inQuest->Start();
-}
-
 void StartSelectedQuest(RE::StaticFunctionTag*)
 {
 	if(selectedQuest)
 	{
-		StartQuest(selectedQuest);
+		selectedQuest->Start();
 	}
 }
 
