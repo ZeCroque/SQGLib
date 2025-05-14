@@ -1,4 +1,5 @@
 #include "PackageUtils.h"
+#include "QuestUtils.h"
 #include <DPF/API.h>
 
 void InitializeLog()
@@ -35,12 +36,11 @@ constexpr int SUB_TOPIC_COUNT = 4;
 RE::TESQuest* referenceQuest = nullptr;
 RE::TESQuest* generatedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
-RE::TESQuest* ptrAtGameLoad = nullptr;
 RE::TESObjectREFR* targetForm = nullptr;
 RE::TESObjectREFR* activator = nullptr;
-RE::TESObjectREFR* targetActivator;
-RE::TESPackage* acquirePackage;
-RE::TESPackage* activatePackage;
+RE::TESObjectREFR* targetActivator = nullptr;
+RE::TESPackage* acquirePackage = nullptr;
+RE::TESPackage* activatePackage = nullptr;
 RE::TESPackage* travelPackage = nullptr;
 RE::TESPackage* customAcquirePackage = nullptr;
 RE::TESPackage* customActivatePackage = nullptr;
@@ -55,8 +55,7 @@ RE::TESConditionItem* underStage12Condition = nullptr;
 RE::TESConditionItem* aboveStage12Condition = nullptr;
 RE::TESConditionItem* underStage15Condition = nullptr;
 
-std::unordered_map<int, std::string> logEntriesBindings;
-int lastValidLogEntryIndex = 0;
+std::map<RE::FormID, std::uint16_t> lastValidLogEntryIndexes;
 char* targetLogEntry = nullptr;
 
 struct AnswerData
@@ -145,137 +144,25 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 
 	//Add stages
 	//=======================
-	auto* logEntries = new RE::TESQuestStageItem[7];
-	std::memset(logEntries, 0, 7 * sizeof(RE::TESQuestStageItem));  // NOLINT(bugprone-undefined-memory-manipulation)
-
-	inQuest->initialStage = new RE::TESQuestStage();
-	inQuest->initialStage->data.index = 10;
-	inQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
-	inQuest->initialStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
-	inQuest->initialStage->questStageItem = logEntries + 6;
-	inQuest->initialStage->questStageItem->hasLogEntry = true;
-	inQuest->initialStage->questStageItem->owner = inQuest;
-	inQuest->initialStage->questStageItem->owningStage = inQuest->initialStage;
-	logEntriesBindings[10] = "My boss told me to kill a man named \"Gibier\"";
-
-	inQuest->otherStages = new RE::BSSimpleList<RE::TESQuestStage*>();
-
-	auto* questStage = new RE::TESQuestStage();
-	questStage->data.index = 45;
-	questStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
-	questStage->questStageItem = logEntries + 5;
-	questStage->questStageItem->owner = inQuest;
-	questStage->questStageItem->owningStage = questStage;
-	questStage->questStageItem->data = 1; //Means "Last stage"
-	inQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[45] = "I decided to spare Gibier.";
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 40;
-	questStage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
-	questStage->questStageItem = logEntries + 4;
-	questStage->questStageItem->hasLogEntry = true;
-	questStage->questStageItem->owner = inQuest;
-	questStage->questStageItem->owningStage = questStage;
-	questStage->questStageItem->data = 1; //Means "Last stage"
-	inQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[40] = "Gibier is dead.";
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 35;
-	questStage->questStageItem = logEntries + 3;
-	questStage->questStageItem->hasLogEntry = true;
-	questStage->questStageItem->owner = inQuest;
-	questStage->questStageItem->owningStage = questStage;
-	inQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[35] = "When I told Gibier I was going to kill him he asked for a last will. I refused.";
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 32;
-	questStage->questStageItem = logEntries + 2;
-	questStage->questStageItem->hasLogEntry = true;
-	questStage->questStageItem->owner = inQuest;
-	questStage->questStageItem->owningStage = questStage;
-	inQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[32] = "Gibier has done his last will. The time has came for him to die.";
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 30;
-	inQuest->otherStages->emplace_front(questStage);
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 20;
-	inQuest->otherStages->emplace_front(questStage);
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 15;
-	questStage->questStageItem = logEntries + 1;
-	questStage->questStageItem->hasLogEntry = true;
-	questStage->questStageItem->owner = inQuest;
-	questStage->questStageItem->owningStage = questStage;
-	inQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[15] = "When I told Gibier I was going to kill him he asked for a last will. I let him do what he wanted but advised him to not do anything inconsiderate.";
-
-	questStage = new RE::TESQuestStage();
-	questStage->data.index = 12;
-	questStage->questStageItem = logEntries;
-	questStage->questStageItem->hasLogEntry = true;
-	questStage->questStageItem->owner = inQuest;
-	questStage->questStageItem->owningStage = questStage;
-	inQuest->otherStages->emplace_front(questStage);
-	logEntriesBindings[12] = "I spoke with Gibier, whom told me my boss was a liar and begged me to spare him. I need to decide what to do.";
+	AddQuestStage(inQuest, 10, QuestStageType::Startup, "My boss told me to kill a man named \"Gibier\"");
+	AddQuestStage(inQuest, 45, QuestStageType::Shutdown, "I decided to spare Gibier.");
+	AddQuestStage(inQuest, 40, QuestStageType::Shutdown, "Gibier is dead.");
+	AddQuestStage(inQuest, 35, QuestStageType::Default, "When I told Gibier I was going to kill him he asked for a last will. I refused.");
+	AddQuestStage(inQuest, 32, QuestStageType::Default, "Gibier has done his last will. The time has came for him to die.");
+	AddQuestStage(inQuest, 30);
+	AddQuestStage(inQuest, 20);
+	AddQuestStage(inQuest, 15, QuestStageType::Default, "When I told Gibier I was going to kill him he asked for a last will. I let him do what he wanted but advised him to not do anything inconsiderate.");
+	AddQuestStage(inQuest, 12, QuestStageType::Default, "I spoke with Gibier, whom told me my boss was a liar and begged me to spare him. I need to decide what to do.");
 
 	//Add objectives
 	//=======================
-	auto* questObjective = new RE::BGSQuestObjective();
-	questObjective->index = 10;
-	questObjective->displayText = "Kill Gibier";
-	questObjective->ownerQuest = inQuest;
-	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
-	inQuest->objectives.push_front(questObjective);
-
-	questObjective = new RE::BGSQuestObjective();
-	questObjective->index = 12;
-	questObjective->displayText = "(Optional) Spare Gibier";
-	questObjective->ownerQuest = inQuest;
-	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
-	inQuest->objectives.push_front(questObjective);
-
-	questObjective = new RE::BGSQuestObjective();
-	questObjective->index = 15;
-	questObjective->displayText = "(Optional) Let Gibier do his last will";
-	questObjective->ownerQuest = inQuest;
-	questObjective->initialized = true; //Seems to be unused and never set by the game. Setting it in case because it is on data from CK.
-	inQuest->objectives.push_front(questObjective);
+	AddObjective(inQuest, 10, "Kill Gibier", {0});
+	AddObjective(inQuest, 12, "(Optional) Spare Gibier");
+	AddObjective(inQuest, 15, "(Optional) Let Gibier do his last will");
 
 	//Add aliases
 	//=======================
-
-	auto* createdAlias = RE::BGSBaseAlias::Create<RE::BGSRefAlias>(); 
-	createdAlias->aliasID = 0;
-	createdAlias->aliasName = "SQGTestAliasTarget";
-	createdAlias->fillType = RE::BGSBaseAlias::FILL_TYPE::kForced;
-	createdAlias->owningQuest = inQuest;
-	createdAlias->fillData.forced = RE::BGSRefAlias::ForcedFillData{targetForm->CreateRefHandle()};
-	inQuest->aliasAccessLock.LockForWrite();
-	inQuest->aliases.push_back(createdAlias);
-	inQuest->aliasAccessLock.UnlockForWrite();
-
-	//Add target
-	//=======================
-	auto objectiveIt = inQuest->objectives.begin();
-	auto nextObjectiveIt = objectiveIt;
-	do
-	{
-		objectiveIt = nextObjectiveIt;
-		++nextObjectiveIt;
-	} while(nextObjectiveIt != inQuest->objectives.end());
-
-	auto* firstObjective = *objectiveIt;
-	firstObjective->targets = new RE::TESQuestTarget*();
-	*firstObjective->targets = new RE::TESQuestTarget();
-	firstObjective->targets[0]->alias = 0;
-	firstObjective->numTargets = 1;
+	AddRefAlias(inQuest, 0, "SQGTestAliasTarget", targetForm);
 
 	//Sets some additional variables (pad24, pad22c and questObjective's pad04 among others)
 	//=======================
@@ -878,14 +765,17 @@ struct OnResponseSaidHookedPatch final : Xbyak::CodeGenerator
 bool FillLogEntryHook(const RE::TESQuestStageItem* inQuestStageItem)
 {
 	const auto isGeneratedQuest = inQuestStageItem->owner == generatedQuest;
-	if(const auto logEntryBinding = logEntriesBindings.find(inQuestStageItem->owner->currentStage); logEntryBinding != logEntriesBindings.end())
+	if(const auto questData = questsData.find(inQuestStageItem->owner->formID); questData != questsData.end())
 	{
-		targetLogEntry = logEntryBinding->second.data();
-		lastValidLogEntryIndex = inQuestStageItem->owner->currentStage;
+		if(const auto logEntry = questData->second.logEntries.find(inQuestStageItem->owner->currentStage); logEntry != questData->second.logEntries.end())
+		{
+			targetLogEntry = logEntry->second.data();
+			lastValidLogEntryIndexes[inQuestStageItem->owner->formID] = inQuestStageItem->owner->currentStage;
+		}
 	}
 	else
 	{
-		targetLogEntry = logEntriesBindings[lastValidLogEntryIndex].data();
+		targetLogEntry = questsData[inQuestStageItem->owner->formID].logEntries[lastValidLogEntryIndexes[inQuestStageItem->owner->formID]].data();
 	}
 
 	return isGeneratedQuest;
@@ -918,6 +808,11 @@ struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
     	jmp(r15);
     }
 };
+
+std::unique_ptr<QuestStageEventSink> questStageEventSink;
+std::unique_ptr<QuestInitEventSink> questInitEventSink;
+std::unique_ptr<PackageEventSink> packageEventSink;
+std::unique_ptr<TopicInfoEventSink> topicInfoEventSink;
 
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
@@ -952,10 +847,17 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				travelPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0016FAA});
 				genericHelloTopic = RE::TESForm::LookupByID<RE::TESTopic>(RE::FormID{0x00142B5});
 
-				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestStageEventSink());
-				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new QuestInitEventSink());
-				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new PackageEventSink());
-				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(new TopicInfoEventSink());
+				questStageEventSink = std::make_unique<QuestStageEventSink>();
+				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(questStageEventSink.get());
+
+				questInitEventSink = std::make_unique<QuestInitEventSink>();
+				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(questInitEventSink.get());
+
+				packageEventSink = std::make_unique<PackageEventSink>();
+				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(packageEventSink.get());
+
+				topicInfoEventSink = std::make_unique<TopicInfoEventSink>();
+				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(topicInfoEventSink.get());
 
 				Init();
 			}
