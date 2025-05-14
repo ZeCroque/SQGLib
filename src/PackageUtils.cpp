@@ -10,7 +10,7 @@ namespace SQG
 
 		package->ownerQuest = inOwnerQuest;
 		package->procedureType = inPackageTemplate->procedureType;
-		package->packData.packType = RE::PACKAGE_PROCEDURE_TYPE::kPackage;
+		package->packData.packType = RE::PACKAGE_TYPE::kPackage;
 		package->packData.interruptOverrideType = RE::PACK_INTERRUPT_TARGET::kSpectator;
 		package->packData.maxSpeed = RE::PACKAGE_DATA::PreferredSpeed::kRun;
 		package->packData.foBehaviorFlags.set(RE::PACKAGE_DATA::InterruptFlag::kHellosToPlayer, RE::PACKAGE_DATA::InterruptFlag::kRandomConversations, RE::PACKAGE_DATA::InterruptFlag::kObserveCombatBehaviour, RE::PACKAGE_DATA::InterruptFlag::kGreetCorpseBehaviour, RE::PACKAGE_DATA::InterruptFlag::kReactionToPlayerActions, RE::PACKAGE_DATA::InterruptFlag::kFriendlyFireComments, RE::PACKAGE_DATA::InterruptFlag::kAggroRadiusBehavior, RE::PACKAGE_DATA::InterruptFlag::kAllowIdleChatter, RE::PACKAGE_DATA::InterruptFlag::kWorldInteractions); 
