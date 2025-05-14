@@ -137,10 +137,6 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//=======================
 	inQuest->SetFormEditorID("SQGTestQuest");
 	inQuest->fullName = "00_SQG_POC";
-	inQuest->InitItem(); //Initializes formFlags
-	inQuest->formFlags |= RE::TESForm::RecordFlags::kFormRetainsID | RE::TESForm::RecordFlags::kPersistent;
-	inQuest->AddChange(RE::TESForm::ChangeFlags::kCreated); //Seems to save the whole quest data and hence supersede the others (except for stages and objective for some reason)
-	inQuest->data.flags.set(RE::QuestFlag::kRunOnce);
 
 	//Add stages
 	//=======================
@@ -163,10 +159,6 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//Add aliases
 	//=======================
 	AddRefAlias(inQuest, 0, "SQGTestAliasTarget", targetForm);
-
-	//Sets some additional variables (pad24, pad22c and questObjective's pad04 among others)
-	//=======================
-	inQuest->InitializeData();
 
 	//Add dialogs
 	//===========================
