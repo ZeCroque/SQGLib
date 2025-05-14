@@ -37,6 +37,7 @@ configure_file(
 set(HEADERS
 	${HEADER_DIR}/PCH.h
 	${HEADER_DIR}/FormCreator.h
+	${HEADER_DIR}/QuestUtils.h
 	${HEADER_DIR}/PackageUtils.h
 	${HEADER_DIR}/Serialization/API.h
 	${HEADER_DIR}/Serialization/Model.h
@@ -57,6 +58,7 @@ set(HPP
 set(SOURCES
 	${SOURCE_DIR}/main.cpp
 	${SOURCE_DIR}/PackageUtils.cpp
+	${SOURCE_DIR}/QuestUtils.cpp
 	${SOURCE_DIR}/Serialization/API.cpp
 	${SOURCE_DIR}/Serialization/FileSystem.cpp
 	${SOURCE_DIR}/Serialization/FormRecord.cpp
