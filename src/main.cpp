@@ -1,4 +1,5 @@
 #include "PackageUtils.h"
+#include "DialogUtils.h"
 #include "QuestUtils.h"
 #include <DPF/API.h>
 
@@ -31,8 +32,6 @@ void InitializeLog()
 	spdlog::set_pattern("%g(%#): [%^%l%$] %v"s);
 }
 
-constexpr int SUB_TOPIC_COUNT = 4;
-
 RE::TESQuest* referenceQuest = nullptr;
 RE::TESQuest* generatedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
@@ -45,67 +44,29 @@ RE::TESPackage* travelPackage = nullptr;
 RE::TESPackage* customAcquirePackage = nullptr;
 RE::TESPackage* customActivatePackage = nullptr;
 RE::TESPackage* customTravelPackage = nullptr;
-RE::TESTopic* genericHelloTopic = nullptr;
-RE::TESTopicInfo* helloTopicInfo = nullptr;
 RE::TESTopicInfo* subTopicsInfos[SUB_TOPIC_COUNT] { nullptr };
 
 RE::TESConditionItem* impossibleCondition = nullptr;
-RE::TESConditionItem* checkSpeakerCondition = nullptr;
-RE::TESConditionItem* underStage12Condition = nullptr;
-RE::TESConditionItem* aboveStage12Condition = nullptr;
-RE::TESConditionItem* underStage15Condition = nullptr;
 
 std::map<RE::FormID, std::uint16_t> lastValidLogEntryIndexes;
 char* targetLogEntry = nullptr;
 
-struct AnswerData
+struct SpeakerData
 {
-	class DialogEntry& parentEntry; 
-	RE::BSFixedString topicInfoText;
-	RE::BSFixedString topicOverrideText;
-	std::vector<RE::TESConditionItem*> conditions;
-	int targetStage;
-	int fragmentId;
-	bool alreadySaid { false };
-};
-
-class DialogEntry
-{
-public:
-	explicit DialogEntry(const RE::BSString& inTopicText = "") : topicText(inTopicText)
-	{
-	}
-
-	void AddAnswer(const RE::BSString& inTopicInfoText, const RE::BSString& inTopicOverrideText, const std::vector<RE::TESConditionItem*>& inConditions, const int inTargetStage = -1, const int inFragmentId = -1)
-	{
-		answers.push_back(new AnswerData(*this, inTopicInfoText, inTopicOverrideText, inConditions, inTargetStage ,inFragmentId, false));
-	}
-
-	DialogEntry* AddChildEntry(const RE::BSString& inTopicText)
-	{
-		auto* result = new DialogEntry(inTopicText);
-		childEntries.push_back(result);
-		return result;
-	}
-
-//private: TODO encapsulation
-	RE::BSFixedString topicText;	// in CK : Topic text max 80/TopicInfo text max 150 -> TODO test if hardcap
-	std::vector<AnswerData*> answers;
-	std::vector<DialogEntry*> childEntries;
-};
-
-DialogEntry* dialogRoot = nullptr;	//TODO serialize on save
-std::unordered_map<RE::FormID, AnswerData*> topicsInfosBindings;
-AnswerData* lastSelectedAnswer = nullptr;
-
-void ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, const DialogEntry& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
-{
+	std::map<RE::FormID, DialogTopicData::AnswerData*> topicsInfosBindings;
+	DialogTopicData::AnswerData* lastSelectedAnswer = nullptr;
 	bool hasAnyValidEntry = false;
+};
+std::map<RE::FormID, SpeakerData> speakersData;
+
+bool ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, DialogTopicData& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
+{
+	bool hasAnyValidAnswer = false;
 	for(auto& answerData : inDialogEntry.answers)
 	{
 		RE::TESCondition condition;
 		RE::TESConditionItem** conditionItemHolder = &condition.head;
-		for(const auto* conditionItem : answerData->conditions)
+		for(const auto* conditionItem : answerData.conditions)
 		{
 			*conditionItemHolder = new RE::TESConditionItem();
 			(*conditionItemHolder)->data = conditionItem->data;
@@ -117,18 +78,19 @@ void ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, const DialogEntry& inDialo
 		if(condition(inSpeaker, inSpeaker))
 		{
 			inOutTopicInfo->objConditions.head = nullptr;
-			topicsInfosBindings[inOutTopicInfo->formID] = answerData;
-			inOutTopicInfo->parentTopic->fullName = answerData->topicOverrideText.empty() ? inDialogEntry.topicText : answerData->topicOverrideText;
-			hasAnyValidEntry = true;
+			speakersData[inSpeaker->formID].topicsInfosBindings[inOutTopicInfo->formID] = &answerData;
+			inOutTopicInfo->parentTopic->fullName = answerData.promptOverride.empty() ? inDialogEntry.prompt : answerData.promptOverride;
+			hasAnyValidAnswer = true;
 			break;
 		}
 	}
 
-	if(!hasAnyValidEntry)
+	if(!hasAnyValidAnswer)
 	{
 		inOutTopicInfo->objConditions.head = new RE::TESConditionItem();
 		std::memcpy(inOutTopicInfo->objConditions.head, impossibleCondition, sizeof(RE::TESConditionItem));  // NOLINT(bugprone-undefined-memory-manipulation)
 	}
+	return hasAnyValidAnswer;
 }
 
 void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
@@ -162,72 +124,66 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 
 	//Add dialogs
 	//===========================
-	RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-	conditionItemData.f = 1.f;
 
-	impossibleCondition = new RE::TESConditionItem();
-	impossibleCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-	impossibleCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-	impossibleCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kIsXBox);
-	impossibleCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-	impossibleCondition->data.comparisonValue = conditionItemData;
-	impossibleCondition->next = nullptr;
-
-	checkSpeakerCondition = new RE::TESConditionItem();
+	auto* checkSpeakerCondition = new RE::TESConditionItem();
 	checkSpeakerCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
 	checkSpeakerCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
 	checkSpeakerCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetIsID);
 	checkSpeakerCondition->data.functionData.params[0] = targetForm->data.objectReference;
 	checkSpeakerCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-	checkSpeakerCondition->data.comparisonValue = conditionItemData;
+	checkSpeakerCondition->data.comparisonValue.f = 1.f;
 	checkSpeakerCondition->next = nullptr;
 
-	conditionItemData.f = 12.f;
-	underStage12Condition = new RE::TESConditionItem();
+	auto* aboveStage0Condition = new RE::TESConditionItem();
+	aboveStage0Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+	aboveStage0Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+	aboveStage0Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+	aboveStage0Condition->data.functionData.params[0] = inQuest;
+	aboveStage0Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kGreaterThan;
+	aboveStage0Condition->data.comparisonValue.f = 0.f;
+	aboveStage0Condition->next = nullptr;
+
+	auto* underStage12Condition = new RE::TESConditionItem();
 	underStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
 	underStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
 	underStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
 	underStage12Condition->data.functionData.params[0] = inQuest;
 	underStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
-	underStage12Condition->data.comparisonValue = conditionItemData;
+	underStage12Condition->data.comparisonValue.f = 12.f;
 	underStage12Condition->next = nullptr;
 
-	aboveStage12Condition = new RE::TESConditionItem();
+	auto* aboveStage12Condition = new RE::TESConditionItem();
 	aboveStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
 	aboveStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
 	aboveStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
 	aboveStage12Condition->data.functionData.params[0] = inQuest;
 	aboveStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kGreaterThanOrEqualTo;
-	aboveStage12Condition->data.comparisonValue = conditionItemData;
+	aboveStage12Condition->data.comparisonValue.f = 12.f;
 	aboveStage12Condition->next = nullptr;
 
-	conditionItemData.f = 15.f;
-	underStage15Condition = new RE::TESConditionItem();
+	auto* underStage15Condition = new RE::TESConditionItem();
 	underStage15Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
 	underStage15Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
 	underStage15Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
 	underStage15Condition->data.functionData.params[0] = inQuest;
 	underStage15Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
-	underStage15Condition->data.comparisonValue = conditionItemData;
+	underStage15Condition->data.comparisonValue.f = 15.f;
 	underStage15Condition->next = nullptr;
 	
-	dialogRoot = new DialogEntry();
-	dialogRoot->AddAnswer("So you came here to kill me, right ?", "", {checkSpeakerCondition});
-	
-	auto* wonderEntry = dialogRoot->AddChildEntry("I've not decided yet. I'd like to hear your side of the story.");
+	auto* wonderEntry = AddDialogTopic(inQuest, targetForm, "I've not decided yet. I'd like to hear your side of the story.");
 	wonderEntry->AddAnswer
 	(
 		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
 		"",
-		{checkSpeakerCondition, underStage12Condition}
+		{checkSpeakerCondition, aboveStage0Condition, underStage12Condition}
 	);
 	wonderEntry->AddAnswer
 	(
 		"Your boss is a liar.",
 		"Tell me again about the reasons of the contract",
-		{checkSpeakerCondition, underStage15Condition}
+		{checkSpeakerCondition, aboveStage0Condition, underStage15Condition}
 	);
-	auto* moreWonderEntry = wonderEntry->AddChildEntry("What did he do ?");
+	auto* moreWonderEntry = AddDialogTopic(inQuest, targetForm, "What did he do ?", wonderEntry);
 	moreWonderEntry->AddAnswer
 	(
 		"He lied, I'm the good one in the story.",
@@ -237,20 +193,20 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		0
 	);
 
-	auto* attackEntry = dialogRoot->AddChildEntry("As you guessed. Prepare to die !");
+	auto* attackEntry = AddDialogTopic(inQuest, targetForm, "As you guessed. Prepare to die !");
 	attackEntry->AddAnswer
 	(
 		"Wait a minute ! Could I have a last will please ?",
 		"",
-		{checkSpeakerCondition, underStage12Condition}
+		{checkSpeakerCondition, aboveStage0Condition, underStage12Condition}
 	);
 	attackEntry->AddAnswer
 	(
 		"Wait a minute ! Could I have a last will please ?",
 		"I can't believe my boss would lie. Prepare to die !",
-		{checkSpeakerCondition, underStage15Condition}
+		{checkSpeakerCondition, aboveStage0Condition, underStage15Condition}
 	);
-	auto* lastWillYesEntry = attackEntry->AddChildEntry("Yes, of course, proceed but don't do anything inconsiderate.");
+	auto* lastWillYesEntry = AddDialogTopic(inQuest, targetForm, "Yes, of course, proceed but don't do anything inconsiderate.", attackEntry);
 	lastWillYesEntry->AddAnswer
 	(						
 		"Thank you for your consideration",
@@ -259,7 +215,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		15,
 		1
 	);
-	auto lastWillNoEntry = attackEntry->AddChildEntry("No, I came here for business, not charity.");
+	auto* lastWillNoEntry = AddDialogTopic(inQuest, targetForm, "No, I came here for business, not charity.", attackEntry);
 	lastWillNoEntry->AddAnswer
 	(
 		"Your lack of dignity is a shame.",
@@ -269,7 +225,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		2
 	);
 
-	auto* spareEntry = dialogRoot->AddChildEntry("Actually, I decided to spare you.");
+	auto* spareEntry = AddDialogTopic(inQuest, targetForm, "Actually, I decided to spare you.");
 	spareEntry->AddAnswer
 	(
 		"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
@@ -503,8 +459,6 @@ public:
 				}
 				aliasInstancesList->lock.UnlockForRead();
 			}
-
-			ProcessDialogEntry(targetForm, *dialogRoot, helloTopicInfo);
 		}
 		return RE::BSEventNotifyControl::kContinue;
 	}
@@ -614,48 +568,60 @@ extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryIn
 	return true;
 }
 
+void ProcessDialogEntries(RE::TESObjectREFR* inSpeaker, const std::vector<std::unique_ptr<DialogTopicData>>& inEntries)
+{
+	speakersData[inSpeaker->formID].hasAnyValidEntry = false;
+	for(size_t i = 0; i < SUB_TOPIC_COUNT; ++i)
+	{
+		if(i < inEntries.size())
+		{
+			if(ProcessDialogEntry(inSpeaker, *inEntries[i], subTopicsInfos[i]))
+			{
+				speakersData[inSpeaker->formID].hasAnyValidEntry = true;
+			}
+		}
+		else
+		{
+			subTopicsInfos[i]->objConditions.head = new RE::TESConditionItem();
+			std::memcpy(subTopicsInfos[i]->objConditions.head, impossibleCondition, sizeof(RE::TESConditionItem));  // NOLINT(bugprone-undefined-memory-manipulation)
+		}
+	}
+}
+
 class TopicInfoEventSink final : public RE::BSTEventSink<RE::TESTopicInfoEvent>
 {
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESTopicInfoEvent* a_event, RE::BSTEventSource<RE::TESTopicInfoEvent>* a_eventSource) override
 	{
-		if(generatedQuest && generatedQuest->currentStage && a_event->speakerRef.get() == targetForm)
+		if(a_event->type == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicEnd && dialogTopicsData.contains(a_event->speakerRef->formID))
 		{
-			AnswerData* answer = nullptr;
-			if(const auto topicInfoBinding = topicsInfosBindings.find(a_event->topicInfoFormID); a_event->type == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicEnd &&  topicInfoBinding != topicsInfosBindings.end())
+			if(!speakersData.contains(a_event->speakerRef->formID) || !speakersData[a_event->speakerRef->formID].hasAnyValidEntry)
 			{
-				answer = topicInfoBinding->second;
-			}
-			else if(a_event->type == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicBegin)
-			{
-				if(a_event->topicInfoFormID == helloTopicInfo->formID)
+				ProcessDialogEntries(a_event->speakerRef.get(), dialogTopicsData[targetForm->formID].childEntries);
+
+				if(!speakersData[a_event->speakerRef->formID].hasAnyValidEntry)
 				{
-					answer = dialogRoot->answers[0];
-				}
-				else
-				{
-					if(const auto* topicInfo = reinterpret_cast<RE::TESTopicInfo*>(RE::TESForm::LookupByID(a_event->topicInfoFormID)); topicInfo->parentTopic == genericHelloTopic)
-					{
-						answer = !lastSelectedAnswer || lastSelectedAnswer->parentEntry.childEntries.empty() ? dialogRoot->answers[0] : lastSelectedAnswer;
-					}
+					return RE::BSEventNotifyControl::kContinue;
 				}
 			}
 
-			if(answer)
+			if(const auto topicInfoBinding = speakersData[a_event->speakerRef->formID].topicsInfosBindings.find(a_event->topicInfoFormID); topicInfoBinding != speakersData[a_event->speakerRef->formID].topicsInfosBindings.end())
 			{
+				DialogTopicData::AnswerData* answer = topicInfoBinding->second;
+				
 				answer->alreadySaid = true;
-				lastSelectedAnswer = answer;
+				speakersData[a_event->speakerRef->formID].lastSelectedAnswer = answer; //Data will be read by hook
 
-				if(answer->targetStage != -1) //Done specific code for target stage because asynchronous nature of script would prevent the topic list to be correctly updated. It is however strongly recommended to set the stage with fragment as well or QuestFragments won't be triggered otherwise.
+				if(answer->targetStage != -1) //Done specific logic for target stage because asynchronous nature of script would prevent the topic list to be correctly updated. It is however still required to set the stage with fragment as well or QuestFragments won't be triggered otherwise.
 				{
-					generatedQuest->currentStage = static_cast<std::uint16_t>(answer->targetStage); //TODO take quest from DialogEntry
+					answer->parentEntry->owningQuest->currentStage = static_cast<std::uint16_t>(answer->targetStage);
 				}
 
 				if(answer->fragmentId != -1)
 				{
 					auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 					auto* policy = scriptMachine->GetObjectHandlePolicy();
-					const auto updatedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, generatedQuest); //TODO take quest from DialogEntry
+					const auto updatedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, answer->parentEntry->owningQuest);
 					RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
 					scriptMachine->FindBoundObject(updatedQuestHandle, "SQGTopicFragments", questCustomScriptObject);
 
@@ -664,19 +630,8 @@ public:
 					scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
 				}	
 
-				const auto& entries = !answer->parentEntry.childEntries.empty() ? answer->parentEntry.childEntries : dialogRoot->childEntries;
-				for(size_t i = 0; i < SUB_TOPIC_COUNT; ++i)
-				{
-					if(i < entries.size())
-					{
-						ProcessDialogEntry(a_event->speakerRef.get(), *entries[i], subTopicsInfos[i]);
-					}
-					else
-					{
-						subTopicsInfos[i]->objConditions.head = new RE::TESConditionItem();
-						std::memcpy(subTopicsInfos[i]->objConditions.head, impossibleCondition, sizeof(RE::TESConditionItem));  // NOLINT(bugprone-undefined-memory-manipulation)
-					}
-				}
+				//Process following entries in tree  or root dialog entries if it was a leaf
+				ProcessDialogEntries(a_event->speakerRef.get(), !answer->parentEntry->childEntries.empty() ? answer->parentEntry->childEntries : dialogTopicsData[a_event->speakerRef->formID].childEntries);
 			}
 		}
 		return RE::BSEventNotifyControl::kContinue;
@@ -685,9 +640,26 @@ public:
 
 void PopulateResponseTextHook(RE::TESTopicInfo::ResponseData* generatedResponse, const RE::TESTopicInfo* parentTopicInfo)
 {
-	if(const auto topicInfoBinding = topicsInfosBindings.find(parentTopicInfo->formID); topicInfoBinding != topicsInfosBindings.end())
+	const auto* topicManager = RE::MenuTopicManager::GetSingleton();
+	if(topicManager && topicManager->dialogueList)
 	{
-		generatedResponse->responseText = topicInfoBinding->second->topicInfoText;
+		RE::TESObjectREFR* speaker = nullptr;
+		if(auto* currentSpeaker = topicManager->speaker.get().get())
+		{
+			speaker = currentSpeaker;
+		}
+		else if(auto* lastSpeaker = topicManager->lastSpeaker.get().get())
+		{
+			speaker = lastSpeaker;	
+		}
+
+		if(speaker)
+		{
+			if(const auto topicInfoBinding = speakersData[speaker->formID].topicsInfosBindings.find(parentTopicInfo->formID); topicInfoBinding != speakersData[speaker->formID].topicsInfosBindings.end())
+			{
+				generatedResponse->responseText = speakersData[speaker->formID].topicsInfosBindings.find(parentTopicInfo->formID)->second->answer;
+			}
+		}
 	}
 }
 
@@ -721,17 +693,32 @@ struct PopulateResponseTextHookedPatch final : Xbyak::CodeGenerator
 
 void OnResponseSaidHook()
 {
-	if(const auto* topicManager = RE::MenuTopicManager::GetSingleton(); topicManager->dialogueList)
+	const auto* topicManager = RE::MenuTopicManager::GetSingleton();
+	if(topicManager && topicManager->dialogueList)
 	{
-		for(auto* dialog : *topicManager->dialogueList)
+		RE::TESObjectREFR* speaker = nullptr;
+		if(auto* currentSpeaker = topicManager->speaker.get().get())
 		{
-			if(const auto topicInfoBinding = topicsInfosBindings.find(dialog->parentTopicInfo->formID); topicInfoBinding != topicsInfosBindings.end())
+			speaker = currentSpeaker;
+		}
+		else if(auto* lastSpeaker = topicManager->lastSpeaker.get().get())
+		{
+			speaker = lastSpeaker;	
+		}
+
+		if(speaker)
+		{
+			for(auto* dialog : *topicManager->dialogueList)
 			{
-				dialog->neverSaid = !topicInfoBinding->second->alreadySaid;
-				dialog->parentTopicInfo->saidOnce = topicInfoBinding->second->alreadySaid;
+				if(const auto topicInfoBinding = speakersData[speaker->formID].topicsInfosBindings.find(dialog->parentTopicInfo->formID); topicInfoBinding != speakersData[speaker->formID].topicsInfosBindings.end())
+				{
+					dialog->neverSaid = !topicInfoBinding->second->alreadySaid;
+					dialog->parentTopicInfo->saidOnce = topicInfoBinding->second->alreadySaid;
+				}
 			}
 		}
 	}
+	
 }
 
 struct OnResponseSaidHookedPatch final : Xbyak::CodeGenerator
@@ -828,7 +815,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
 				targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
-				helloTopicInfo = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00C503}, "SQGLib.esp"));
 				subTopicsInfos[0] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF96}, "SQGLib.esp"));
 				subTopicsInfos[1] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF99}, "SQGLib.esp"));
 				subTopicsInfos[2] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9C}, "SQGLib.esp"));
@@ -836,7 +822,14 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				activatePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019B2D});
 				acquirePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019713});
 				travelPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0016FAA});
-				genericHelloTopic = RE::TESForm::LookupByID<RE::TESTopic>(RE::FormID{0x00142B5});
+
+				impossibleCondition = new RE::TESConditionItem();
+				impossibleCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+				impossibleCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+				impossibleCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kIsXBox);
+				impossibleCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+				impossibleCondition->data.comparisonValue.f = 1.f;
+				impossibleCondition->next = nullptr;
 
 				questStageEventSink = std::make_unique<QuestStageEventSink>();
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(questStageEventSink.get());
