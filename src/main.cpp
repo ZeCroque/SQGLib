@@ -804,6 +804,10 @@ std::unique_ptr<TopicInfoEventSink> topicInfoEventSink;
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
 {
+#ifndef NDEBUG
+	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+#endif
+
 	InitializeLog();
 	SKSE::log::info("{} v{}"sv, Plugin::NAME, Plugin::VERSION.string());
 
