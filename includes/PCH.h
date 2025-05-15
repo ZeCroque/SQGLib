@@ -24,6 +24,7 @@
 #	include <spdlog/sinks/basic_file_sink.h>
 #else
 #	include <spdlog/sinks/msvc_sink.h>
+#	include <crtdbg.h>
 #endif
 #pragma warning(pop)
 
