@@ -13,7 +13,7 @@ namespace SQG
 		delete[] objective.targets;
 	}
 
-	void AddQuestStage(RE::TESQuest* inQuest, const std::uint16_t inIndex, const QuestStageType inQuestStageType, const std::string& inLogEntry)
+	void AddQuestStage(RE::TESQuest* inQuest, const std::uint16_t inIndex, const QuestStageType inQuestStageType, const std::string& inLogEntry, const int inScriptFragmentIndex)
 	{
 		const auto& stage = questsData[inQuest->formID].stages.emplace_back(std::make_unique<RE::TESQuestStage>());
 		switch(inQuestStageType)
@@ -57,6 +57,11 @@ namespace SQG
 			{
 				SKSE::log::error("Cannot add more than 50 log entries to a quest"sv);
 			}
+		}
+
+		if (inScriptFragmentIndex > -1)
+		{
+			questsData[inQuest->formID].stagesToFragmentIndex[inIndex] = inScriptFragmentIndex;
 		}
 	}
 

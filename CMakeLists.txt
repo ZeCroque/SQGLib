@@ -41,8 +41,9 @@ set(PUBLIC_HEADERS
 	${PUBLIC_HEADER_DIR}/API/PackageUtils.h
 )
 
-set(HEADERS
+set(PRIVATE_HEADERS
 	${SOURCE_DIR}/PCH.h
+	${SOURCE_DIR}/Engine/Quest.h
 )
 
 set(HPP
@@ -53,6 +54,7 @@ set(CPP
 	${SOURCE_DIR}/API/DialogUtils.cpp
 	${SOURCE_DIR}/API/PackageUtils.cpp
 	${SOURCE_DIR}/API/QuestUtils.cpp
+	${SOURCE_DIR}/Engine/Quest.cpp
 )
 
 set(SOURCES
