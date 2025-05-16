@@ -1,7 +1,7 @@
 [submodule "extern/CommonLibSSE"]
 	path = external/CommonLibSSE
 	url = https://github.com/ZeCroque/CommonLibSSE.git
-	branch = SQGLibPatch
+	branch = SQGLibPatchRebased
 [submodule "DPF"]
 	path = external/DPF
 	url = https://github.com/ZeCroque/DPF-Dynamic-Persistent-Forms.git
