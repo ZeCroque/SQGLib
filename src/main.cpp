@@ -44,7 +44,7 @@ RE::TESPackage* travelPackage = nullptr;
 RE::TESPackage* customAcquirePackage = nullptr;
 RE::TESPackage* customActivatePackage = nullptr;
 RE::TESPackage* customTravelPackage = nullptr;
-RE::TESTopicInfo* subTopicsInfos[SUB_TOPIC_COUNT] { nullptr };
+RE::TESTopicInfo* subTopicsInfos[SQG::SUB_TOPIC_COUNT] { nullptr };
 
 RE::TESConditionItem* impossibleCondition = nullptr;
 
@@ -53,13 +53,13 @@ char* targetLogEntry = nullptr;
 
 struct SpeakerData
 {
-	std::map<RE::FormID, DialogTopicData::AnswerData*> topicsInfosBindings;
-	DialogTopicData::AnswerData* lastSelectedAnswer = nullptr;
+	std::map<RE::FormID, SQG::DialogTopicData::AnswerData*> topicsInfosBindings;
+	SQG::DialogTopicData::AnswerData* lastSelectedAnswer = nullptr;
 	bool hasAnyValidEntry = false;
 };
 std::map<RE::FormID, SpeakerData> speakersData;
 
-bool ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, DialogTopicData& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
+bool ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, SQG::DialogTopicData& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
 {
 	bool hasAnyValidAnswer = false;
 	for(auto& answerData : inDialogEntry.answers)
@@ -102,25 +102,25 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 
 	//Add stages
 	//=======================
-	AddQuestStage(inQuest, 10, QuestStageType::Startup, "My boss told me to kill a man named \"Gibier\"");
-	AddQuestStage(inQuest, 45, QuestStageType::Shutdown, "I decided to spare Gibier.");
-	AddQuestStage(inQuest, 40, QuestStageType::Shutdown, "Gibier is dead.");
-	AddQuestStage(inQuest, 35, QuestStageType::Default, "When I told Gibier I was going to kill him he asked for a last will. I refused.");
-	AddQuestStage(inQuest, 32, QuestStageType::Default, "Gibier has done his last will. The time has came for him to die.");
-	AddQuestStage(inQuest, 30);
-	AddQuestStage(inQuest, 20);
-	AddQuestStage(inQuest, 15, QuestStageType::Default, "When I told Gibier I was going to kill him he asked for a last will. I let him do what he wanted but advised him to not do anything inconsiderate.");
-	AddQuestStage(inQuest, 12, QuestStageType::Default, "I spoke with Gibier, whom told me my boss was a liar and begged me to spare him. I need to decide what to do.");
+	SQG::AddQuestStage(inQuest, 10, SQG::QuestStageType::Startup, "My boss told me to kill a man named \"Gibier\"");
+	SQG::AddQuestStage(inQuest, 45, SQG::QuestStageType::Shutdown, "I decided to spare Gibier.");
+	SQG::AddQuestStage(inQuest, 40, SQG::QuestStageType::Shutdown, "Gibier is dead.");
+	SQG::AddQuestStage(inQuest, 35, SQG::QuestStageType::Default, "When I told Gibier I was going to kill him he asked for a last will. I refused.");
+	SQG::AddQuestStage(inQuest, 32, SQG::QuestStageType::Default, "Gibier has done his last will. The time has came for him to die.");
+	SQG::AddQuestStage(inQuest, 30);
+	SQG::AddQuestStage(inQuest, 20);
+	SQG::AddQuestStage(inQuest, 15, SQG::QuestStageType::Default, "When I told Gibier I was going to kill him he asked for a last will. I let him do what he wanted but advised him to not do anything inconsiderate.");
+	SQG::AddQuestStage(inQuest, 12, SQG::QuestStageType::Default, "I spoke with Gibier, whom told me my boss was a liar and begged me to spare him. I need to decide what to do.");
 
 	//Add objectives
 	//=======================
-	AddObjective(inQuest, 10, "Kill Gibier", {0});
-	AddObjective(inQuest, 12, "(Optional) Spare Gibier");
-	AddObjective(inQuest, 15, "(Optional) Let Gibier do his last will");
+	SQG::AddObjective(inQuest, 10, "Kill Gibier", {0});
+	SQG::AddObjective(inQuest, 12, "(Optional) Spare Gibier");
+	SQG::AddObjective(inQuest, 15, "(Optional) Let Gibier do his last will");
 
 	//Add aliases
 	//=======================
-	AddRefAlias(inQuest, 0, "SQGTestAliasTarget", targetForm);
+	SQG::AddRefAlias(inQuest, 0, "SQGTestAliasTarget", targetForm);
 
 	//Add dialogs
 	//===========================
@@ -170,7 +170,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	underStage15Condition->data.comparisonValue.f = 15.f;
 	underStage15Condition->next = nullptr;
 	
-	auto* wonderEntry = AddDialogTopic(inQuest, targetForm, "I've not decided yet. I'd like to hear your side of the story.");
+	auto* wonderEntry = SQG::AddDialogTopic(inQuest, targetForm, "I've not decided yet. I'd like to hear your side of the story.");
 	wonderEntry->AddAnswer
 	(
 		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
@@ -183,7 +183,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		"Tell me again about the reasons of the contract",
 		{checkSpeakerCondition, aboveStage0Condition, underStage15Condition}
 	);
-	auto* moreWonderEntry = AddDialogTopic(inQuest, targetForm, "What did he do ?", wonderEntry);
+	auto* moreWonderEntry = SQG::AddDialogTopic(inQuest, targetForm, "What did he do ?", wonderEntry);
 	moreWonderEntry->AddAnswer
 	(
 		"He lied, I'm the good one in the story.",
@@ -193,7 +193,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		0
 	);
 
-	auto* attackEntry = AddDialogTopic(inQuest, targetForm, "As you guessed. Prepare to die !");
+	auto* attackEntry = SQG::AddDialogTopic(inQuest, targetForm, "As you guessed. Prepare to die !");
 	attackEntry->AddAnswer
 	(
 		"Wait a minute ! Could I have a last will please ?",
@@ -206,7 +206,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		"I can't believe my boss would lie. Prepare to die !",
 		{checkSpeakerCondition, aboveStage0Condition, underStage15Condition}
 	);
-	auto* lastWillYesEntry = AddDialogTopic(inQuest, targetForm, "Yes, of course, proceed but don't do anything inconsiderate.", attackEntry);
+	auto* lastWillYesEntry = SQG::AddDialogTopic(inQuest, targetForm, "Yes, of course, proceed but don't do anything inconsiderate.", attackEntry);
 	lastWillYesEntry->AddAnswer
 	(						
 		"Thank you for your consideration",
@@ -215,7 +215,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		15,
 		1
 	);
-	auto* lastWillNoEntry = AddDialogTopic(inQuest, targetForm, "No, I came here for business, not charity.", attackEntry);
+	auto* lastWillNoEntry = SQG::AddDialogTopic(inQuest, targetForm, "No, I came here for business, not charity.", attackEntry);
 	lastWillNoEntry->AddAnswer
 	(
 		"Your lack of dignity is a shame.",
@@ -225,7 +225,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		2
 	);
 
-	auto* spareEntry = AddDialogTopic(inQuest, targetForm, "Actually, I decided to spare you.");
+	auto* spareEntry = SQG::AddDialogTopic(inQuest, targetForm, "Actually, I decided to spare you.");
 	spareEntry->AddAnswer
 	(
 		"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
@@ -568,10 +568,10 @@ extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryIn
 	return true;
 }
 
-void ProcessDialogEntries(RE::TESObjectREFR* inSpeaker, const std::vector<std::unique_ptr<DialogTopicData>>& inEntries)
+void ProcessDialogEntries(RE::TESObjectREFR* inSpeaker, const std::vector<std::unique_ptr<SQG::DialogTopicData>>& inEntries)
 {
 	speakersData[inSpeaker->formID].hasAnyValidEntry = false;
-	for(size_t i = 0; i < SUB_TOPIC_COUNT; ++i)
+	for(size_t i = 0; i < SQG::SUB_TOPIC_COUNT; ++i)
 	{
 		if(i < inEntries.size())
 		{
@@ -593,11 +593,11 @@ class TopicInfoEventSink final : public RE::BSTEventSink<RE::TESTopicInfoEvent>
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESTopicInfoEvent* a_event, RE::BSTEventSource<RE::TESTopicInfoEvent>* a_eventSource) override
 	{
-		if(a_event->type == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicEnd && dialogTopicsData.contains(a_event->speakerRef->formID))
+		if(a_event->type == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicEnd && SQG::dialogTopicsData.contains(a_event->speakerRef->formID))
 		{
 			if(!speakersData.contains(a_event->speakerRef->formID) || !speakersData[a_event->speakerRef->formID].hasAnyValidEntry)
 			{
-				ProcessDialogEntries(a_event->speakerRef.get(), dialogTopicsData[targetForm->formID].childEntries);
+				ProcessDialogEntries(a_event->speakerRef.get(), SQG::dialogTopicsData[targetForm->formID].childEntries);
 
 				if(!speakersData[a_event->speakerRef->formID].hasAnyValidEntry)
 				{
@@ -607,7 +607,7 @@ public:
 
 			if(const auto topicInfoBinding = speakersData[a_event->speakerRef->formID].topicsInfosBindings.find(a_event->topicInfoFormID); topicInfoBinding != speakersData[a_event->speakerRef->formID].topicsInfosBindings.end())
 			{
-				DialogTopicData::AnswerData* answer = topicInfoBinding->second;
+				SQG::DialogTopicData::AnswerData* answer = topicInfoBinding->second;
 				
 				answer->alreadySaid = true;
 				speakersData[a_event->speakerRef->formID].lastSelectedAnswer = answer; //Data will be read by hook
@@ -631,7 +631,7 @@ public:
 				}	
 
 				//Process following entries in tree  or root dialog entries if it was a leaf
-				ProcessDialogEntries(a_event->speakerRef.get(), !answer->parentEntry->childEntries.empty() ? answer->parentEntry->childEntries : dialogTopicsData[a_event->speakerRef->formID].childEntries);
+				ProcessDialogEntries(a_event->speakerRef.get(), !answer->parentEntry->childEntries.empty() ? answer->parentEntry->childEntries : SQG::dialogTopicsData[a_event->speakerRef->formID].childEntries);
 			}
 		}
 		return RE::BSEventNotifyControl::kContinue;
@@ -739,7 +739,7 @@ struct OnResponseSaidHookedPatch final : Xbyak::CodeGenerator
 bool FillLogEntryHook(const RE::TESQuestStageItem* inQuestStageItem)
 {
 	const auto isGeneratedQuest = inQuestStageItem->owner == generatedQuest;
-	if(const auto questData = questsData.find(inQuestStageItem->owner->formID); questData != questsData.end())
+	if(const auto questData = SQG::questsData.find(inQuestStageItem->owner->formID); questData != SQG::questsData.end())
 	{
 		if(const auto logEntry = questData->second.logEntries.find(inQuestStageItem->owner->currentStage); logEntry != questData->second.logEntries.end())
 		{
@@ -749,7 +749,7 @@ bool FillLogEntryHook(const RE::TESQuestStageItem* inQuestStageItem)
 	}
 	else
 	{
-		targetLogEntry = questsData[inQuestStageItem->owner->formID].logEntries[lastValidLogEntryIndexes[inQuestStageItem->owner->formID]].data();
+		targetLogEntry = SQG::questsData[inQuestStageItem->owner->formID].logEntries[lastValidLogEntryIndexes[inQuestStageItem->owner->formID]].data();
 	}
 
 	return isGeneratedQuest;
