@@ -100,4 +100,9 @@ namespace SQG
 		inQuest->aliases.push_back(createdAlias);
 		inQuest->aliasAccessLock.UnlockForWrite();
 	}
+
+	void AddAliasPackage(const RE::TESQuest* inQuest, const RE::TESObjectREFR* inRef, RE::TESPackage* inPackage, const std::string& inFragmentScriptName)
+	{
+		questsData[inQuest->formID].aliasesPackagesData[inRef->formID].push_back({inPackage, inFragmentScriptName});
+	}
 }
