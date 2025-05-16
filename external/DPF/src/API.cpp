@@ -1,8 +1,8 @@
-#include "Serialization/API.h"
+#include "DPF/API.h"
 
-#include "Serialization/FormCreator.h"
-#include "Serialization/FileSystem.h"
-#include "Serialization/FormRecordSerializer.h"
+#include "FormCreator.h"
+#include "FileSystem.h"
+#include "FormRecordSerializer.h"
 
 void Init()
 {

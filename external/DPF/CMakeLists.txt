@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(
-	SQGLib
+	DPFLib
 	VERSION 1.0.0
 	LANGUAGES CXX
 )
@@ -25,7 +25,7 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/includes)
+set(HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/includes/)
 
 set(VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/includes/Plugin.h")
 configure_file(
@@ -35,20 +35,29 @@ configure_file(
 )
 
 set(HEADERS
-	${HEADER_DIR}/PCH.h
-	${HEADER_DIR}/DialogUtils.h
-	${HEADER_DIR}/QuestUtils.h
-	${HEADER_DIR}/PackageUtils.h
+	${HEADER_DIR}/DPF/API.h
 )
 
 set(HPP
+	${SOURCE_DIR}/FileSystem.hpp
+	${SOURCE_DIR}/FormRecordSerializer.hpp
+	${SOURCE_DIR}/FormSerializers.hpp
 )
 
 set(SOURCES
-	${SOURCE_DIR}/main.cpp
-	${SOURCE_DIR}/DialogUtils.cpp
-	${SOURCE_DIR}/PackageUtils.cpp
-	${SOURCE_DIR}/QuestUtils.cpp
+	${SOURCE_DIR}/PCH.h
+	${SOURCE_DIR}/API.cpp
+	${SOURCE_DIR}/FileSystem.h
+	${SOURCE_DIR}/FileSystem.cpp
+	${SOURCE_DIR}/FormCreator.h
+	${SOURCE_DIR}/FormCreator.cpp
+	${SOURCE_DIR}/FormRecord.h
+	${SOURCE_DIR}/FormRecord.cpp
+	${SOURCE_DIR}/FormRecordSerializer.h
+	${SOURCE_DIR}/FormSerializers.h
+	${SOURCE_DIR}/Model.h
+	${SOURCE_DIR}/Model.cpp
+	${SOURCE_DIR}/SKSETmp.h
 	${HPP}
 )
 
@@ -65,9 +74,9 @@ file(COPY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Template.ChildProcessDbgSetting
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/includes PREFIX "Header Files" FILES ${HEADERS})
 
-add_library(
+add_library( #TODO Standalone version
 	"${PROJECT_NAME}"
-	SHARED
+	STATIC
 	${HEADERS}
 	${SOURCES}
 	"${VERSION_HEADER}"
@@ -120,47 +129,47 @@ target_include_directories(
 	PRIVATE
 		${CMAKE_CURRENT_BINARY_DIR}/includes
 		${SOURCE_DIR}
+	PUBLIC
 		${HEADER_DIR}
 )	
 
 if(NOT TARGET CommonLibSSE::CommonLibSSE)
 	add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/CommonLibSSE" CommonLibSSE EXCLUDE_FROM_ALL)
 endif()
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/DPF" DPFLib EXCLUDE_FROM_ALL)
 
 target_link_libraries(
 	"${PROJECT_NAME}"
 	PRIVATE
 		CommonLibSSE::CommonLibSSE
-		DPFLib
 )
 
 target_precompile_headers(
 	"${PROJECT_NAME}"
 	PRIVATE
-		${HEADER_DIR}/PCH.h
+		${SOURCE_DIR}/PCH.h
 )	
 
-install(
-	FILES
-		"$<TARGET_FILE:${PROJECT_NAME}>"
-	DESTINATION "SKSE/Plugins"
-	COMPONENT "main"
-)
+# TODO standalone version
+# install(
+# 	FILES
+# 		"$<TARGET_FILE:${PROJECT_NAME}>"
+# 	DESTINATION "SKSE/Plugins"
+# 	COMPONENT "main"
+# )
 
-install(
-	FILES
-		"$<TARGET_PDB_FILE:${PROJECT_NAME}>"
-	DESTINATION "/"
-	COMPONENT "pdbs"
-)
+# install(
+# 	FILES
+# 		"$<TARGET_PDB_FILE:${PROJECT_NAME}>"
+# 	DESTINATION "/"
+# 	COMPONENT "pdbs"
+# )
 
-add_custom_command(
-	TARGET "${PROJECT_NAME}"
-	POST_BUILD
-	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/Data/SKSE/Plugins/"
-	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/Data/SKSE/Plugins/"
-	VERBATIM
-)
+# add_custom_command(
+# 	TARGET "${PROJECT_NAME}"
+# 	POST_BUILD
+# 	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/Data/SKSE/Plugins/"
+# 	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/Data/SKSE/Plugins/"
+# 	VERBATIM
+# )
 
 include(cmake/packaging.cmake)

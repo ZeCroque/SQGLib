@@ -1,4 +1,4 @@
-#include "Serialization/FormRecord.h"
+#include "FormRecord.h"
 
 FormRecord FormRecord::CreateNew(RE::TESForm *_actualForm, RE::FormType formType, RE::FormID formId) {
     FormRecord result;

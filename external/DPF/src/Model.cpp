@@ -1,6 +1,6 @@
-#include "Serialization/Model.h"
+#include "Model.h"
 
-#include "Serialization/FormRecord.h"
+#include "FormRecord.h"
 
 uint32_t lastFormId = 0;  // last mod
 uint32_t firstFormId = 0;  // last mod

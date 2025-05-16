@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Serialization/FormRecord.h"
+#include "FormRecord.h"
 
 REGISTER_SERIALIZERS(Name, Quest, Spell, Ammo, SoulGem, Enchantment, Value, Weight, MagicItem, Enchantable, Armor, Weapon, SpellTome, LeveledItem, ProduceForm)
 

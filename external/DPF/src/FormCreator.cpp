@@ -1,7 +1,7 @@
-#include "Serialization/FormCreator.h"
+#include "FormCreator.h"
 
-#include "Serialization/FormRecord.h"
-#include "Serialization/Model.h"
+#include "FormRecord.h"
+#include "Model.h"
 
 template <class T> static void CopyComponent(RE::TESForm* from, RE::TESForm* to)
 {

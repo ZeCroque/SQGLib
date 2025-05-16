@@ -1,6 +1,6 @@
-#include "Serialization/FileSystem.h"
+#include "FileSystem.h"
 
-#include "Serialization/SKSETmp.h"
+#include "SKSETmp.h"
 
 bool espFound = false;
 

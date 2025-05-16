@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Serialization/FormSerializers.h>
-#include "Serialization/FormRecord.h"
-#include "Serialization/Model.h"
+#include <FormSerializers.h>
+#include "FormRecord.h"
+#include "Model.h"
 #include "FormCreator.h"
 
 template <typename T>

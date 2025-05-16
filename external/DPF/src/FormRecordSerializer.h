@@ -15,4 +15,4 @@ template <typename T> static bool RestoreFormRecord(Serializer<T>* serializer, u
 
 template <typename T> bool RestoreAllFormRecords(Serializer<T>* serializer);
 
-#include "Serialization/FormRecordSerializer.hpp"
+#include "FormRecordSerializer.hpp"
