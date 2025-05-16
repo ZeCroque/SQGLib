@@ -4,38 +4,41 @@
 #include "FileSystem.h"
 #include "FormRecordSerializer.h"
 
-void Init(RE::FormID inFormId, const std::string& inPluginName)
+namespace DPF
 {
-    firstFormId = lastFormId = ReadFirstFormIdFromESP(inFormId, inPluginName);
-}
+	void Init(RE::FormID inFormId, const std::string& inPluginName)
+	{
+	    firstFormId = lastFormId = ReadFirstFormIdFromESP(inFormId, inPluginName);
+	}
 
-void SaveCache(std::string name) {
+	void SaveCache(std::string name) {
 
-    FileWriter fileWriter(name, std::ios::out | std::ios::binary | std::ios::trunc);
+	    FileWriter fileWriter(name, std::ios::out | std::ios::binary | std::ios::trunc);
 
-    if (!fileWriter.IsOpen()) {
-        return;
-    }
+	    if (!fileWriter.IsOpen()) {
+	        return;
+	    }
 
-    StoreAllFormRecords(&fileWriter);
-}
+	    StoreAllFormRecords(&fileWriter);
+	}
 
-void LoadCache(std::string name) {
-    FileReader fileReader(name, std::ios::in | std::ios::binary);
+	void LoadCache(std::string name) {
+	    FileReader fileReader(name, std::ios::in | std::ios::binary);
 
-    if (!fileReader.IsOpen()) {
-        return;
-    }
-    RestoreAllFormRecords(&fileReader);
+	    if (!fileReader.IsOpen()) {
+	        return;
+	    }
+	    RestoreAllFormRecords(&fileReader);
 
-    UpdateId();
-}
+	    UpdateId();
+	}
 
-void DeleteCache(std::string name) {
-    Delete(name);
-}
+	void DeleteCache(std::string name) {
+	    Delete(name);
+	}
 
-RE::TESForm* CreateForm(RE::TESForm* inModelForm)
-{
-	return AddForm(inModelForm);
+	RE::TESForm* CreateForm(RE::TESForm* inModelForm)
+	{
+		return AddForm(inModelForm);
+	}
 }

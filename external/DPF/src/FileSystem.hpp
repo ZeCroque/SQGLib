@@ -1,55 +1,57 @@
 #pragma once
 
-template <class T>
-void StreamWrapper::Write(T value) {
-    stream.write(reinterpret_cast<const char*>(&value), sizeof(T));
-}
+namespace DPF
+{
+	template <class T>
+	void StreamWrapper::Write(T value) {
+	    stream.write(reinterpret_cast<const char*>(&value), sizeof(T));
+	}
 
-template <class T>
-T StreamWrapper::Read() {
-    T result;
-    if (stream.read(reinterpret_cast<char*>(&result), sizeof(T))) {
-        return result;
-    }
-    return T();
-}
+	template <class T>
+	T StreamWrapper::Read() {
+	    T result;
+	    if (stream.read(reinterpret_cast<char*>(&result), sizeof(T))) {
+	        return result;
+	    }
+	    return T();
+	}
 
-template <class Derived> template<class T>
-void Serializer<Derived>::WriteTarget(T value) {
-    static_cast<Derived*>(this)->template WriteImplementation<T>(value);
-}
+	template <class Derived> template<class T>
+	void Serializer<Derived>::WriteTarget(T value) {
+	    static_cast<Derived*>(this)->template WriteImplementation<T>(value);
+	}
 
-template <class Derived> template<class T>
-T Serializer<Derived>::ReadSource() {
-    return static_cast<Derived*>(this)->template ReadImplementation<T>();
-}
+	template <class Derived> template<class T>
+	T Serializer<Derived>::ReadSource() {
+	    return static_cast<Derived*>(this)->template ReadImplementation<T>();
+	}
 
-template<class T> Serializer<T>::~Serializer() {
-        while (!ctx.empty()) {
-            delete ctx.top();
-            ctx.pop();    
-        }
-    }
+	template<class T> Serializer<T>::~Serializer() {
+	        while (!ctx.empty()) {
+	            delete ctx.top();
+	            ctx.pop();    
+	        }
+	    }
 
-template <class Derived> template<class T>
-    void Serializer<Derived>::Write(T value) {
-        if (!ctx.empty()) {
-            ctx.top()->Write<T>(value);
-        } else {
-            WriteTarget<T>(value);
-        }
-    }
+	template <class Derived> template<class T>
+	    void Serializer<Derived>::Write(T value) {
+	        if (!ctx.empty()) {
+	            ctx.top()->Write<T>(value);
+	        } else {
+	            WriteTarget<T>(value);
+	        }
+	    }
 
-template <class Derived> template<class T>
-    T Serializer<Derived>::Read() {
-        if (!ctx.empty()) {
-            return ctx.top()->Read<T>();
-        } else {
-            return ReadSource<T>();
-        }
-    }
+	template <class Derived> template<class T>
+	    T Serializer<Derived>::Read() {
+	        if (!ctx.empty()) {
+	            return ctx.top()->Read<T>();
+	        } else {
+	            return ReadSource<T>();
+	        }
+	    }
 
-     template<class T> void Serializer<T>::StartWritingSection() {
+	template<class T> void Serializer<T>::StartWritingSection() {
         ctx.push(new StreamWrapper());
     }
 
@@ -242,3 +244,4 @@ template <class Derived> template<class T>
         }
         return T();
     }
+}
