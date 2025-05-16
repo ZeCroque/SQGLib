@@ -1,6 +1,6 @@
 #pragma once
 
-void Init();
+void Init(RE::FormID inFormId, const std::string& inPluginName);
 
 void SaveCache(std::string name);
 

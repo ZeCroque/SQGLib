@@ -2,18 +2,18 @@
 
 #include "SKSETmp.h"
 
-bool espFound = false;
-
 uint32_t dynamicModId = 0;
 
-int ReadFirstFormIdFromESP()
+int ReadFirstFormIdFromESP(const RE::FormID inFormId, const std::string& inPluginName)
 {
     const auto dataHandler = RE::TESDataHandler::GetSingleton();
 
-    auto id = dataHandler->LookupForm(0x800, "Dynamic Persistent Forms.esp");
+    auto id = dataHandler->LookupForm(inFormId, inPluginName);
 
-    if (id != 0) {
-        espFound = true;
+    if (!id){
+        //To make sure data stay intact when reloading without quitting, a valid mod index must be provided. Here we fallback to FF which is regular dynamic forms: it will cause issues.
+        assert(true);
+        return 0xFF >> 24;
     }
 
     dynamicModId = (id->formID >> 24) & 0xff;

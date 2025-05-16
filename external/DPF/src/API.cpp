@@ -4,9 +4,9 @@
 #include "FileSystem.h"
 #include "FormRecordSerializer.h"
 
-void Init()
+void Init(RE::FormID inFormId, const std::string& inPluginName)
 {
-    firstFormId = lastFormId = ReadFirstFormIdFromESP();
+    firstFormId = lastFormId = ReadFirstFormIdFromESP(inFormId, inPluginName);
 }
 
 void SaveCache(std::string name) {
