@@ -3,6 +3,8 @@
 #include <SQG/API/QuestUtils.h>
 #include <DPF/API.h>
 
+#include "Engine/Quest.h"
+
 void InitializeLog()
 {
 #ifndef NDEBUG
@@ -47,9 +49,6 @@ RE::TESPackage* customTravelPackage = nullptr;
 RE::TESTopicInfo* subTopicsInfos[SQG::SUB_TOPIC_COUNT] { nullptr };
 
 RE::TESConditionItem* impossibleCondition = nullptr;
-
-std::map<RE::FormID, std::uint16_t> lastValidLogEntryIndexes;
-char* targetLogEntry = nullptr;
 
 struct SpeakerData
 {
@@ -102,15 +101,15 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 
 	//Add stages
 	//=======================
-	SQG::AddQuestStage(inQuest, 10, SQG::QuestStageType::Startup, "My boss told me to kill a man named \"Gibier\"");
-	SQG::AddQuestStage(inQuest, 45, SQG::QuestStageType::Shutdown, "I decided to spare Gibier.");
-	SQG::AddQuestStage(inQuest, 40, SQG::QuestStageType::Shutdown, "Gibier is dead.");
-	SQG::AddQuestStage(inQuest, 35, SQG::QuestStageType::Default, "When I told Gibier I was going to kill him he asked for a last will. I refused.");
-	SQG::AddQuestStage(inQuest, 32, SQG::QuestStageType::Default, "Gibier has done his last will. The time has came for him to die.");
+	SQG::AddQuestStage(inQuest, 10, SQG::QuestStageType::Startup, "My boss told me to kill a man named \"Gibier\"", 0);
+	SQG::AddQuestStage(inQuest, 45, SQG::QuestStageType::Shutdown, "I decided to spare Gibier.", 6);
+	SQG::AddQuestStage(inQuest, 40, SQG::QuestStageType::Shutdown, "Gibier is dead.", 5);
+	SQG::AddQuestStage(inQuest, 35, SQG::QuestStageType::Default, "When I told Gibier I was going to kill him he asked for a last will. I refused.", 4);
+	SQG::AddQuestStage(inQuest, 32, SQG::QuestStageType::Default, "Gibier has done his last will. The time has came for him to die.", 3);
 	SQG::AddQuestStage(inQuest, 30);
 	SQG::AddQuestStage(inQuest, 20);
-	SQG::AddQuestStage(inQuest, 15, SQG::QuestStageType::Default, "When I told Gibier I was going to kill him he asked for a last will. I let him do what he wanted but advised him to not do anything inconsiderate.");
-	SQG::AddQuestStage(inQuest, 12, SQG::QuestStageType::Default, "I spoke with Gibier, whom told me my boss was a liar and begged me to spare him. I need to decide what to do.");
+	SQG::AddQuestStage(inQuest, 15, SQG::QuestStageType::Default, "When I told Gibier I was going to kill him he asked for a last will. I let him do what he wanted but advised him to not do anything inconsiderate.", 2);
+	SQG::AddQuestStage(inQuest, 12, SQG::QuestStageType::Default, "I spoke with Gibier, whom told me my boss was a liar and begged me to spare him. I need to decide what to do.", 1);
 
 	//Add objectives
 	//=======================
@@ -248,6 +247,7 @@ void AttachScriptsToQuest(const RE::TESQuest* inQuest)
 	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
 	scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject);
 	scriptMachine->BindObject(questCustomScriptObject, selectedQuestHandle, false);
+	SQG::questsData[inQuest->formID].script = questCustomScriptObject.get();
 
 	RE::BSTSmartPointer<RE::BSScript::Object> referenceAliasBaseScriptObject;
 	scriptMachine->CreateObject("SQGQuestTargetScript", referenceAliasBaseScriptObject);
@@ -287,70 +287,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	return "Generated quest with formID: " + formId;
 }
 
-class QuestStageEventSink final : public RE::BSTEventSink<RE::TESQuestStageEvent>
-{
-public:
-	RE::BSEventNotifyControl ProcessEvent(const RE::TESQuestStageEvent* a_event, RE::BSTEventSource<RE::TESQuestStageEvent>* a_eventSource) override
-	{
-		auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-		auto* policy = scriptMachine->GetObjectHandlePolicy();
 
-		const auto* updatedQuest = RE::TESForm::LookupByID<RE::TESQuest>(a_event->formID);
-		if(updatedQuest != generatedQuest) //TODO find a proper way to bypass unwanted events
-		{
-			return RE::BSEventNotifyControl::kContinue;
-		}
-
-		const auto updatedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, updatedQuest);
-		RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
-		scriptMachine->FindBoundObject(updatedQuestHandle, "SQGDebug", questCustomScriptObject);
-
-		if(a_event->stage == 10)
-		{
-			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter();
-			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-		}
-		else if(a_event->stage == 12)
-		{
-			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 1;
-			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-		}
-		else if(a_event->stage == 15)
-		{
-			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 2;
-			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-		}
-		else if(a_event->stage == 32)
-		{
-			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 3;
-			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-		}
-		else if(a_event->stage == 35)
-		{
-			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 4;
-			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-		}
-		else if(a_event->stage == 40)
-		{
-			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 5;
-			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-		}
-		else if(a_event->stage == 45)
-		{
-			const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + 6;
-			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-			scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-		}
-
-		return RE::BSEventNotifyControl::kStop;
-	}
-};
 
 class QuestInitEventSink : public RE::BSTEventSink<RE::TESQuestInitEvent>
 {
@@ -741,54 +678,6 @@ struct OnResponseSaidHookedPatch final : Xbyak::CodeGenerator
     }
 };
 
-bool FillLogEntryHook(const RE::TESQuestStageItem* inQuestStageItem)
-{
-	const auto isGeneratedQuest = inQuestStageItem->owner == generatedQuest;
-	if(const auto questData = SQG::questsData.find(inQuestStageItem->owner->formID); questData != SQG::questsData.end())
-	{
-		if(const auto logEntry = questData->second.logEntries.find(inQuestStageItem->owner->currentStage); logEntry != questData->second.logEntries.end())
-		{
-			targetLogEntry = logEntry->second.data();
-			lastValidLogEntryIndexes[inQuestStageItem->owner->formID] = inQuestStageItem->owner->currentStage;
-		}
-	}
-	else
-	{
-		targetLogEntry = SQG::questsData[inQuestStageItem->owner->formID].logEntries[lastValidLogEntryIndexes[inQuestStageItem->owner->formID]].data();
-	}
-
-	return isGeneratedQuest;
-}
-
-struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
-{
-    explicit FillLogEntryHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeStandardExecutionAddress, const uintptr_t inBypassAddress, const uintptr_t inStringAdr)
-    {
-	    // ReSharper disable once CppInconsistentNaming
-	    Xbyak::Label BYPASS_STRING_LOAD;
-
-		mov(rax, inHijackedMethodAddress); //Calling the method we hijacked (that is setting in RCX TESQuestStageItem*)
-		call(rax);
-
-		push(rax);
-		mov(rax, inHookAddress);	//Calling hook
-		call(rax);
-		test(al, al); //If the quest for which we're trying to fill the log entry is in one of ours
-		jnz(BYPASS_STRING_LOAD); //Then bypass the classic log entry loading process
-		//Else
-		pop(rax);
-		mov(r15, inResumeStandardExecutionAddress); //Resume standard execution
-		jmp(r15);
-
-		L(BYPASS_STRING_LOAD);
-		pop(rax);	//Removing unecessary data from the stack
-    	mov(rax, ptr[inStringAdr]); //Manually move our string
-    	mov(r15, inBypassAddress); //Resume execution after the normal string loading process we bypassed
-    	jmp(r15);
-    }
-};
-
-std::unique_ptr<QuestStageEventSink> questStageEventSink;
 std::unique_ptr<QuestInitEventSink> questInitEventSink;
 std::unique_ptr<PackageEventSink> packageEventSink;
 std::unique_ptr<TopicInfoEventSink> topicInfoEventSink;
@@ -836,9 +725,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				impossibleCondition->data.comparisonValue.f = 1.f;
 				impossibleCondition->next = nullptr;
 
-				questStageEventSink = std::make_unique<QuestStageEventSink>();
-				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(questStageEventSink.get());
-
 				questInitEventSink = std::make_unique<QuestInitEventSink>();
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(questInitEventSink.get());
 
@@ -847,6 +733,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 				topicInfoEventSink = std::make_unique<TopicInfoEventSink>();
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(topicInfoEventSink.get());
+
+				SQG::QuestEngine::RegisterSinks();
 
 				DPF::Init(0x800, "SQGLib.esp");
 			}
@@ -886,10 +774,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	const auto onDialogueSayHooked = trampoline.allocate(dsh);
     trampoline.write_branch<5>(onResponseSaidHook, onDialogueSayHooked);
 
-	const auto fillLogEntryHook = REL::Offset(0x378F6C).address();
-	FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry)};
-	const auto fillLogEntryHooked = trampoline.allocate(fleh);
-    trampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
+	SQG::QuestEngine::RegisterHooks(trampoline);
 
 	return true;
 }

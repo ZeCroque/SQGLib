@@ -27,12 +27,15 @@ namespace SQG
 			RE::BGSQuestObjective objective;
 		};
 		std::vector<std::unique_ptr<Objective>> objectives;
+
+		RE::BSScript::Object* script = nullptr;
+		std::map<uint16_t, int> stagesToFragmentIndex;
 	};
 
 	//The first elem of the pair is the index of last added item
 	extern std::map<RE::FormID, QuestData> questsData;
 
-	void AddQuestStage(RE::TESQuest* inQuest, std::uint16_t inIndex, QuestStageType inQuestStageType = QuestStageType::Default, const std::string& inLogEntry = "");
+	void AddQuestStage(RE::TESQuest* inQuest, std::uint16_t inIndex, QuestStageType inQuestStageType = QuestStageType::Default, const std::string& inLogEntry = "", int inScriptFragmentIndex = -1);
 	void AddObjective(RE::TESQuest* inQuest, std::uint16_t inIndex, const std::string& inText, const std::vector<uint8_t>& inQuestTargetsAliasIndexes = std::vector<uint8_t>());
 	void AddRefAlias(RE::TESQuest* inQuest, std::uint16_t inIndex, const std::string& inName, RE::TESObjectREFR* inRef); //TODO do other aliases (not forced, location...)
 }
