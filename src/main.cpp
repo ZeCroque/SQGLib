@@ -593,45 +593,50 @@ class TopicInfoEventSink final : public RE::BSTEventSink<RE::TESTopicInfoEvent>
 public:
 	RE::BSEventNotifyControl ProcessEvent(const RE::TESTopicInfoEvent* a_event, RE::BSTEventSource<RE::TESTopicInfoEvent>* a_eventSource) override
 	{
-		if(a_event->type == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicEnd && SQG::dialogTopicsData.contains(a_event->speakerRef->formID))
+		if(SQG::dialogTopicsData.contains(a_event->speakerRef->formID))
 		{
-			if(!speakersData.contains(a_event->speakerRef->formID) || !speakersData[a_event->speakerRef->formID].hasAnyValidEntry)
+			if(a_event->type == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicBegin)
 			{
-				ProcessDialogEntries(a_event->speakerRef.get(), SQG::dialogTopicsData[targetForm->formID].childEntries);
-
-				if(!speakersData[a_event->speakerRef->formID].hasAnyValidEntry)
+				if(!speakersData.contains(a_event->speakerRef->formID) || !speakersData[a_event->speakerRef->formID].hasAnyValidEntry)
 				{
-					return RE::BSEventNotifyControl::kContinue;
+					ProcessDialogEntries(a_event->speakerRef.get(), SQG::dialogTopicsData[targetForm->formID].childEntries);
+
+					if(!speakersData[a_event->speakerRef->formID].hasAnyValidEntry)
+					{
+						return RE::BSEventNotifyControl::kContinue;
+					}
 				}
 			}
-
-			if(const auto topicInfoBinding = speakersData[a_event->speakerRef->formID].topicsInfosBindings.find(a_event->topicInfoFormID); topicInfoBinding != speakersData[a_event->speakerRef->formID].topicsInfosBindings.end())
+			else
 			{
-				SQG::DialogTopicData::AnswerData* answer = topicInfoBinding->second;
-				
-				answer->alreadySaid = true;
-				speakersData[a_event->speakerRef->formID].lastSelectedAnswer = answer; //Data will be read by hook
-
-				if(answer->targetStage != -1) //Done specific logic for target stage because asynchronous nature of script would prevent the topic list to be correctly updated. It is however still required to set the stage with fragment as well or QuestFragments won't be triggered otherwise.
+				if(const auto topicInfoBinding = speakersData[a_event->speakerRef->formID].topicsInfosBindings.find(a_event->topicInfoFormID); topicInfoBinding != speakersData[a_event->speakerRef->formID].topicsInfosBindings.end())
 				{
-					answer->parentEntry->owningQuest->currentStage = static_cast<std::uint16_t>(answer->targetStage);
+					SQG::DialogTopicData::AnswerData* answer = topicInfoBinding->second;
+					
+					answer->alreadySaid = true;
+					speakersData[a_event->speakerRef->formID].lastSelectedAnswer = answer; //Data will be read by hook
+
+					if(answer->targetStage != -1) //Done specific logic for target stage because asynchronous nature of script would prevent the topic list to be correctly updated. It is however still required to set the stage with fragment as well or QuestFragments won't be triggered otherwise.
+					{
+						answer->parentEntry->owningQuest->currentStage = static_cast<std::uint16_t>(answer->targetStage);
+					}
+
+					if(answer->fragmentId != -1)
+					{
+						auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+						auto* policy = scriptMachine->GetObjectHandlePolicy();
+						const auto updatedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, answer->parentEntry->owningQuest);
+						RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
+						scriptMachine->FindBoundObject(updatedQuestHandle, "SQGTopicFragments", questCustomScriptObject);
+
+						const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + answer->fragmentId;
+						RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+						scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+					}	
+
+					//Process following entries in tree  or root dialog entries if it was a leaf
+					ProcessDialogEntries(a_event->speakerRef.get(), !answer->parentEntry->childEntries.empty() ? answer->parentEntry->childEntries : SQG::dialogTopicsData[a_event->speakerRef->formID].childEntries);
 				}
-
-				if(answer->fragmentId != -1)
-				{
-					auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-					auto* policy = scriptMachine->GetObjectHandlePolicy();
-					const auto updatedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, answer->parentEntry->owningQuest);
-					RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
-					scriptMachine->FindBoundObject(updatedQuestHandle, "SQGTopicFragments", questCustomScriptObject);
-
-					const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + answer->fragmentId;
-					RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-					scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-				}	
-
-				//Process following entries in tree  or root dialog entries if it was a leaf
-				ProcessDialogEntries(a_event->speakerRef.get(), !answer->parentEntry->childEntries.empty() ? answer->parentEntry->childEntries : SQG::dialogTopicsData[a_event->speakerRef->formID].childEntries);
 			}
 		}
 		return RE::BSEventNotifyControl::kContinue;
