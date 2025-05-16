@@ -1,10 +1,9 @@
 build/
 *.ignore.*
 *.ignore
-.vscode/
 *.pex
-SF1Edit Backups
-SF1Edit Cache
+SSEEdit Backups
+SSEEdit Cache
 meta.ini
 Release
 SKSE
