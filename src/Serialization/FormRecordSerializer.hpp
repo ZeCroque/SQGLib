@@ -99,7 +99,7 @@ bool RestoreFormRecord(Serializer<T>* serializer, uint32_t i) {
     serializer->finishReadingSection();
     if(!formData.contains(id))
     {
-        CreateForm(baseForm, id);
+        AddForm(baseForm, id);
     }
     else if(auto& instance = formData[id]; instance.formType != baseForm->GetFormType() || instance.deleted)
     {

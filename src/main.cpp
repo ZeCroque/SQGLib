@@ -3,6 +3,8 @@
 #include "QuestUtils.h"
 #include "Serialization/API.h"
 #include "FormCreator.h"
+#include "Serialization/FormRecord.h"
+#include "Serialization/Model.h"
 
 void InitializeLog()
 {
@@ -274,7 +276,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 		return "Quest yet generated.";
 	}
 
-	selectedQuest = generatedQuest = reinterpret_cast<RE::TESQuest*>(CreateForm(referenceQuest));
+	selectedQuest = generatedQuest = AddForm(referenceQuest)->As<RE::TESQuest>();
 
 	FillQuestWithGeneratedData(generatedQuest);
 	AttachScriptsToQuest(generatedQuest);
@@ -377,7 +379,7 @@ public:
 							//ACQUIRE PACKAGE
 							//=============================
 
-							customAcquirePackage = SQG::CreatePackageFromTemplate(CreateForm(acquirePackage)->As<RE::TESPackage>(),acquirePackage, generatedQuest);
+							customAcquirePackage = SQG::CreatePackageFromTemplate(AddForm(acquirePackage)->As<RE::TESPackage>(),acquirePackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
@@ -409,7 +411,7 @@ public:
 							//ACTIVATE PACKAGE
 							//=============================
 
-							customActivatePackage = SQG::CreatePackageFromTemplate(CreateForm(activatePackage)->As<RE::TESPackage>(), activatePackage, generatedQuest);
+							customActivatePackage = SQG::CreatePackageFromTemplate(AddForm(activatePackage)->As<RE::TESPackage>(), activatePackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
@@ -435,7 +437,7 @@ public:
 							//TRAVEL PACKAGE
 							//=============================
 
-							customTravelPackage = SQG::CreatePackageFromTemplate(CreateForm(travelPackage)->As<RE::TESPackage>(), travelPackage, generatedQuest);
+							customTravelPackage = SQG::CreatePackageFromTemplate(AddForm(travelPackage)->As<RE::TESPackage>(), travelPackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageLocation::Data locationData{};

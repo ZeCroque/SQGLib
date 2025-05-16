@@ -51,7 +51,6 @@ set(HEADERS
 
 set(HPP
 	${SOURCE_DIR}/Serialization/FileSystem.hpp
-	${SOURCE_DIR}/FormCreator.hpp
 	${SOURCE_DIR}/Serialization/FormRecordSerializer.hpp
 	${SOURCE_DIR}/Serialization/FormSerializers.hpp
 )
@@ -59,6 +58,7 @@ set(HPP
 set(SOURCES
 	${SOURCE_DIR}/main.cpp
 	${SOURCE_DIR}/DialogUtils.cpp
+	${SOURCE_DIR}/FormCreator.cpp
 	${SOURCE_DIR}/PackageUtils.cpp
 	${SOURCE_DIR}/QuestUtils.cpp
 	${SOURCE_DIR}/Serialization/API.cpp
