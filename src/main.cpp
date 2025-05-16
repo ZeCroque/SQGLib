@@ -4,6 +4,7 @@
 #include <DPF/API.h>
 
 #include "Engine/Dialog.h"
+#include "Engine/Package.h"
 #include "Engine/Quest.h"
 
 void InitializeLog()
@@ -41,13 +42,6 @@ RE::TESQuest* selectedQuest = nullptr;
 RE::TESObjectREFR* targetForm = nullptr;
 RE::TESObjectREFR* activator = nullptr;
 RE::TESObjectREFR* targetActivator = nullptr;
-RE::TESPackage* acquirePackage = nullptr;
-RE::TESPackage* activatePackage = nullptr;
-RE::TESPackage* travelPackage = nullptr;
-RE::TESPackage* customAcquirePackage = nullptr;
-RE::TESPackage* customActivatePackage = nullptr;
-RE::TESPackage* customTravelPackage = nullptr;
-
 
 void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 {
@@ -77,6 +71,93 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//Add aliases
 	//=======================
 	SQG::AddRefAlias(inQuest, 0, "SQGTestAliasTarget", targetForm);
+
+	//Add packages
+	//=======================
+
+	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+	auto* policy = scriptMachine->GetObjectHandlePolicy();
+
+	//ACQUIRE PACKAGE
+	//=============================
+	{
+		auto* customAcquirePackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(SQG::PackageEngine::acquirePackage), SQG::PackageEngine::acquirePackage, generatedQuest);
+
+		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
+		RE::PackageTarget::Target targetData{};
+		targetData.objType = RE::PACKAGE_OBJECT_TYPE::kWEAP;
+		packageDataMap["Target Criteria"] = SQG::PackageData(RE::PackageTarget::Type::kObjectType, targetData);
+		RE::BGSNamedPackageData<RE::IPackageData>::Data numData{};
+		numData.i = 2;
+		packageDataMap["Num to acquire"] = SQG::PackageData(numData); 
+		RE::BGSNamedPackageData<RE::IPackageData>::Data allowStealingData{};
+		allowStealingData.b = true;
+		packageDataMap["AllowStealing"] = SQG::PackageData(allowStealingData);
+		FillPackageData(customAcquirePackage, packageDataMap);
+
+		std::list<SQG::PackageConditionDescriptor> packageConditionList;
+		RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+		conditionItemData.f = 15.f;
+		packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+		FillPackageCondition(customAcquirePackage, packageConditionList);
+
+		const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customAcquirePackage);
+		RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
+		scriptMachine->CreateObject("PF_SQGAcquirePackage", packageCustomScriptObject);
+		scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
+
+		SQG::AddAliasPackage(inQuest, targetForm, customAcquirePackage, "PF_SQGAcquirePackage");
+	}
+
+	//ACTIVATE PACKAGE
+	//=============================
+	{
+		auto* customActivatePackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(SQG::PackageEngine::activatePackage), SQG::PackageEngine::activatePackage, generatedQuest);
+
+		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
+		RE::PackageTarget::Target targetData{};
+		targetData.handle = targetActivator->CreateRefHandle();
+		packageDataMap["Target"] = SQG::PackageData(RE::PackageTarget::Type::kNearReference, targetData);
+		FillPackageData(customActivatePackage, packageDataMap);
+
+		std::list<SQG::PackageConditionDescriptor> packageConditionList;
+		RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+		conditionItemData.f = 20.f;
+		packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+		FillPackageCondition(customActivatePackage, packageConditionList);
+
+		const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customActivatePackage);
+		RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
+		scriptMachine->CreateObject("PF_SQGActivatePackage", packageCustomScriptObject);
+		scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
+
+		SQG::AddAliasPackage(inQuest, targetForm, customActivatePackage, "PF_SQGActivatePackage");
+	}
+
+	//TRAVEL PACKAGE
+	//=============================
+	{
+		auto* customTravelPackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(SQG::PackageEngine::travelPackage), SQG::PackageEngine::travelPackage, generatedQuest);
+
+		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
+		RE::PackageLocation::Data locationData{};
+		locationData.refHandle = activator->CreateRefHandle();
+		packageDataMap["Place to Travel"] = SQG::PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
+		FillPackageData(customTravelPackage, packageDataMap);
+
+		std::list<SQG::PackageConditionDescriptor> packageConditionList;
+		RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
+		conditionItemData.f = 30.f;
+		packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
+		FillPackageCondition(customTravelPackage, packageConditionList);
+
+		const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
+		RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
+		scriptMachine->CreateObject("PF_SQGTravelPackage", packageCustomScriptObject);
+		scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
+
+		SQG::AddAliasPackage(inQuest, targetForm, customTravelPackage, "PF_SQGTravelPackage");
+	}
 
 	//Add dialogs
 	//===========================
@@ -244,168 +325,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	return "Generated quest with formID: " + formId;
 }
 
-
-
-class QuestInitEventSink : public RE::BSTEventSink<RE::TESQuestInitEvent>
-{
-public:
-	RE::BSEventNotifyControl ProcessEvent(const RE::TESQuestInitEvent* a_event, RE::BSTEventSource<RE::TESQuestInitEvent>* a_eventSource) override
-	{
-		if(auto* updatedQuest = RE::TESForm::LookupByID<RE::TESQuest>(a_event->formID); updatedQuest == generatedQuest) //TODO find a proper way to bypass unwanted events
-		{
-			if(const auto* aliasInstancesList = reinterpret_cast<RE::ExtraAliasInstanceArray*>(targetForm->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray)))
-			{
-				aliasInstancesList->lock.LockForRead();
-				for(auto* aliasInstanceData : aliasInstancesList->aliases)
-				{
-					if(aliasInstanceData->quest == generatedQuest)
-					{
-						auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
-						aliasInstanceData->instancedPackages = instancedPackages;
-
-						auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-						auto* policy = scriptMachine->GetObjectHandlePolicy();
-
-						{
-							//ACQUIRE PACKAGE
-							//=============================
-
-							customAcquirePackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(acquirePackage), acquirePackage, generatedQuest);
-
-							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
-							RE::PackageTarget::Target targetData{};
-							targetData.objType = RE::PACKAGE_OBJECT_TYPE::kWEAP;
-							packageDataMap["Target Criteria"] = SQG::PackageData(RE::PackageTarget::Type::kObjectType, targetData);
-							RE::BGSNamedPackageData<RE::IPackageData>::Data numData{};
-							numData.i = 2;
-							packageDataMap["Num to acquire"] = SQG::PackageData(numData); 
-							RE::BGSNamedPackageData<RE::IPackageData>::Data allowStealingData{};
-							allowStealingData.b = true;
-							packageDataMap["AllowStealing"] = SQG::PackageData(allowStealingData);
-							FillPackageData(customAcquirePackage, packageDataMap);
-
-							std::list<SQG::PackageConditionDescriptor> packageConditionList;
-							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-							conditionItemData.f = 15.f;
-							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
-							FillPackageCondition(customAcquirePackage, packageConditionList);
-
-							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customAcquirePackage);
-							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
-							scriptMachine->CreateObject("PF_SQGAcquirePackage", packageCustomScriptObject);
-							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
-
-							instancedPackages->push_back(customAcquirePackage);
-						}
-
-						{
-							//ACTIVATE PACKAGE
-							//=============================
-
-							customActivatePackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(activatePackage), activatePackage, generatedQuest);
-
-							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
-							RE::PackageTarget::Target targetData{};
-							targetData.handle = targetActivator->CreateRefHandle();
-							packageDataMap["Target"] = SQG::PackageData(RE::PackageTarget::Type::kNearReference, targetData);
-							FillPackageData(customActivatePackage, packageDataMap);
-
-							std::list<SQG::PackageConditionDescriptor> packageConditionList;
-							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-							conditionItemData.f = 20.f;
-							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
-							FillPackageCondition(customActivatePackage, packageConditionList);
-
-							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customActivatePackage);
-							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
-							scriptMachine->CreateObject("PF_SQGActivatePackage", packageCustomScriptObject);
-							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
-
-							instancedPackages->push_back(customActivatePackage);
-						}
-
-						{
-							//TRAVEL PACKAGE
-							//=============================
-
-							customTravelPackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(travelPackage), travelPackage, generatedQuest);
-
-							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
-							RE::PackageLocation::Data locationData{};
-							locationData.refHandle = activator->CreateRefHandle();
-							packageDataMap["Place to Travel"] = SQG::PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
-							FillPackageData(customTravelPackage, packageDataMap);
-
-							std::list<SQG::PackageConditionDescriptor> packageConditionList;
-							RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-							conditionItemData.f = 30.f;
-							packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
-							FillPackageCondition(customTravelPackage, packageConditionList);
-
-							const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
-							RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
-							scriptMachine->CreateObject("PF_SQGTravelPackage", packageCustomScriptObject);
-							scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
-
-							instancedPackages->push_back(customTravelPackage);
-						}
-					}
-				}
-				aliasInstancesList->lock.UnlockForRead();
-			}
-		}
-		return RE::BSEventNotifyControl::kContinue;
-	}
-};
-
-class PackageEventSink : public RE::BSTEventSink<RE::TESPackageEvent>
-{
-public:
-	RE::BSEventNotifyControl ProcessEvent(const RE::TESPackageEvent* a_event, RE::BSTEventSource<RE::TESPackageEvent>* a_eventSource) override
-	{
-		if(customAcquirePackage && a_event->packageFormId == customAcquirePackage->formID)
-		{
-			if(a_event->packageEventType == RE::TESPackageEvent::PackageEventType::kEnd)
-			{
-				auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-				auto* policy = scriptMachine->GetObjectHandlePolicy();
-
-				const auto customAcquirePackageHandle = policy->GetHandleForObject(RE::FormType::Package, customAcquirePackage);
-				RE::BSTSmartPointer<RE::BSScript::Object> customAcquirePackageScriptObject;
-				scriptMachine->FindBoundObject(customAcquirePackageHandle, "PF_SQGAcquirePackage", customAcquirePackageScriptObject);
-				const auto* methodInfo = customAcquirePackageScriptObject->type->GetMemberFuncIter();
-				RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-				scriptMachine->DispatchMethodCall(customAcquirePackageHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-			}
-		}
-		else if(customActivatePackage && a_event->packageFormId == customActivatePackage->formID && a_event->packageEventType == RE::TESPackageEvent::PackageEventType::kEnd)
-		{
-			auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-			auto* policy = scriptMachine->GetObjectHandlePolicy();
-
-			const auto customActivatePackageHandle = policy->GetHandleForObject(RE::FormType::Package, customActivatePackage);
-			RE::BSTSmartPointer<RE::BSScript::Object> customActivatePackageScriptObject;
-			scriptMachine->FindBoundObject(customActivatePackageHandle, "PF_SQGActivatePackage", customActivatePackageScriptObject);
-			const auto* methodInfo = customActivatePackageScriptObject->type->GetMemberFuncIter();
-			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-			scriptMachine->DispatchMethodCall(customActivatePackageHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-		}
-		else if(customTravelPackage && a_event->packageFormId == customTravelPackage->formID)
-		{
-			auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-			auto* policy = scriptMachine->GetObjectHandlePolicy();
-
-			const auto customTravelPackageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
-			RE::BSTSmartPointer<RE::BSScript::Object> customTravelPackageScriptObject;
-			scriptMachine->FindBoundObject(customTravelPackageHandle, "PF_SQGTravelPackage", customTravelPackageScriptObject);
-			const auto* methodInfo = a_event->packageEventType == RE::TESPackageEvent::PackageEventType::kBegin ? customTravelPackageScriptObject->type->GetMemberFuncIter() + 1 : customTravelPackageScriptObject->type->GetMemberFuncIter();
-			RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-			scriptMachine->DispatchMethodCall(customTravelPackageHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-		}
-		return RE::BSEventNotifyControl::kContinue;
-	}
-};
-
 RE::TESQuest* GetSelectedQuest(RE::StaticFunctionTag*)
 {
 	return selectedQuest;
@@ -462,10 +381,6 @@ extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryIn
 	return true;
 }
 
-std::unique_ptr<QuestInitEventSink> questInitEventSink;
-std::unique_ptr<PackageEventSink> packageEventSink;
-
-
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
 {
@@ -490,25 +405,17 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 			{
 				DPF::Init(0x800, "SQGLib.esp");
 
+				SQG::DialogEngine::LoadData(dataHandler);
+				SQG::PackageEngine::LoadData();
+
+				SQG::QuestEngine::RegisterSinks();
+				SQG::DialogEngine::RegisterSinks();
+				SQG::PackageEngine::RegisterSinks();
+
 				selectedQuest = referenceQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{0x003371}, "SQGLib.esp"));
 				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
 				targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
-
-				activatePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019B2D});
-				acquirePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019713});
-				travelPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0016FAA});
-
-				SQG::DialogEngine::LoadData(dataHandler);
-
-				questInitEventSink = std::make_unique<QuestInitEventSink>();
-				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(questInitEventSink.get());
-
-				packageEventSink = std::make_unique<PackageEventSink>();
-				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(packageEventSink.get());
-
-				SQG::QuestEngine::RegisterSinks();
-				SQG::DialogEngine::RegisterSinks();
 			}
 			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
 			{
