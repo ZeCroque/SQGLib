@@ -37,12 +37,12 @@ configure_file(
 set(HEADERS
 	${HEADER_DIR}/PCH.h
 	${HEADER_DIR}/DialogUtils.h
-	${HEADER_DIR}/FormCreator.h
 	${HEADER_DIR}/QuestUtils.h
 	${HEADER_DIR}/PackageUtils.h
 	${HEADER_DIR}/Serialization/API.h
 	${HEADER_DIR}/Serialization/Model.h
 	${HEADER_DIR}/Serialization/FileSystem.h
+	${HEADER_DIR}/Serialization/FormCreator.h
 	${HEADER_DIR}/Serialization/FormRecord.h
 	${HEADER_DIR}/Serialization/FormRecordSerializer.h
 	${HEADER_DIR}/Serialization/FormSerializers.h
@@ -58,11 +58,11 @@ set(HPP
 set(SOURCES
 	${SOURCE_DIR}/main.cpp
 	${SOURCE_DIR}/DialogUtils.cpp
-	${SOURCE_DIR}/FormCreator.cpp
 	${SOURCE_DIR}/PackageUtils.cpp
 	${SOURCE_DIR}/QuestUtils.cpp
 	${SOURCE_DIR}/Serialization/API.cpp
 	${SOURCE_DIR}/Serialization/FileSystem.cpp
+	${SOURCE_DIR}/Serialization/FormCreator.cpp
 	${SOURCE_DIR}/Serialization/FormRecord.cpp
 	${SOURCE_DIR}/Serialization/Model.cpp
 	${HPP}

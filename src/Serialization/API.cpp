@@ -1,5 +1,6 @@
 #include "Serialization/API.h"
 
+#include "Serialization/FormCreator.h"
 #include "Serialization/FileSystem.h"
 #include "Serialization/FormRecordSerializer.h"
 
@@ -32,4 +33,9 @@ void LoadCache(std::string name) {
 
 void DeleteCache(std::string name) {
     Delete(name);
+}
+
+RE::TESForm* CreateForm(RE::TESForm* inModelForm)
+{
+	return AddForm(inModelForm);
 }

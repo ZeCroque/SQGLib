@@ -2,7 +2,6 @@
 #include "DialogUtils.h"
 #include "QuestUtils.h"
 #include "Serialization/API.h"
-#include "FormCreator.h"
 #include "Serialization/FormRecord.h"
 #include "Serialization/Model.h"
 
@@ -276,7 +275,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 		return "Quest yet generated.";
 	}
 
-	selectedQuest = generatedQuest = AddForm(referenceQuest)->As<RE::TESQuest>();
+	selectedQuest = generatedQuest = CreateForm(referenceQuest);
 
 	FillQuestWithGeneratedData(generatedQuest);
 	AttachScriptsToQuest(generatedQuest);
@@ -379,7 +378,7 @@ public:
 							//ACQUIRE PACKAGE
 							//=============================
 
-							customAcquirePackage = SQG::CreatePackageFromTemplate(AddForm(acquirePackage)->As<RE::TESPackage>(),acquirePackage, generatedQuest);
+							customAcquirePackage = SQG::CreatePackageFromTemplate(CreateForm(acquirePackage), acquirePackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
@@ -411,7 +410,7 @@ public:
 							//ACTIVATE PACKAGE
 							//=============================
 
-							customActivatePackage = SQG::CreatePackageFromTemplate(AddForm(activatePackage)->As<RE::TESPackage>(), activatePackage, generatedQuest);
+							customActivatePackage = SQG::CreatePackageFromTemplate(CreateForm(activatePackage), activatePackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
@@ -437,7 +436,7 @@ public:
 							//TRAVEL PACKAGE
 							//=============================
 
-							customTravelPackage = SQG::CreatePackageFromTemplate(AddForm(travelPackage)->As<RE::TESPackage>(), travelPackage, generatedQuest);
+							customTravelPackage = SQG::CreatePackageFromTemplate(CreateForm(travelPackage), travelPackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageLocation::Data locationData{};
