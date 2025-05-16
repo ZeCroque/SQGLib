@@ -1,4 +1,4 @@
-#include "QuestUtils.h"
+#include "SQG/QuestUtils.h"
 
 std::map<RE::FormID, QuestData> questsData;
 
