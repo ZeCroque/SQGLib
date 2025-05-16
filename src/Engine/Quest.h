@@ -4,12 +4,11 @@ namespace SQG
 {
 	namespace QuestEngine
 	{
+		// # Hooks
+		// =======================
 		void RegisterHooks(SKSE::Trampoline& inTrampoline);
 
 		// # Sinks
-		// =======================
-
-		// ## Quest stage end callbacks
 		// =======================
 		void RegisterSinks();
 	}
