@@ -61,6 +61,8 @@ namespace SQG
 		    }
 		};
 
+		// ## Base
+		// =======================
 		void RegisterHooks(SKSE::Trampoline& inTrampoline)
 		{
 			const auto fillLogEntryHook = REL::Offset(0x378F6C).address();
@@ -99,6 +101,8 @@ namespace SQG
 		};
 		std::unique_ptr<QuestStageEventSink> questStageEventSink;
 
+		// ## Common
+		// =======================
 		void RegisterSinks()
 		{
 			questStageEventSink = std::make_unique<QuestStageEventSink>();
