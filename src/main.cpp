@@ -1,6 +1,6 @@
-#include <SQG/PackageUtils.h>
-#include <SQG/DialogUtils.h>
-#include <SQG/QuestUtils.h>
+#include <SQG/API/PackageUtils.h>
+#include <SQG/API/DialogUtils.h>
+#include <SQG/API/QuestUtils.h>
 #include <DPF/API.h>
 
 void InitializeLog()

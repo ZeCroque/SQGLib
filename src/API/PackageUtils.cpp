@@ -1,5 +1,4 @@
-#include "SQG/PackageUtils.h"
-
+#include "SQG/API/PackageUtils.h"
 
 namespace SQG
 {

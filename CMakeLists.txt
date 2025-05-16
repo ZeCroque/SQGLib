@@ -36,9 +36,9 @@ configure_file(
 )
 
 set(PUBLIC_HEADERS
-	${PUBLIC_HEADER_DIR}/DialogUtils.h
-	${PUBLIC_HEADER_DIR}/QuestUtils.h
-	${PUBLIC_HEADER_DIR}/PackageUtils.h
+	${PUBLIC_HEADER_DIR}/API/DialogUtils.h
+	${PUBLIC_HEADER_DIR}/API/QuestUtils.h
+	${PUBLIC_HEADER_DIR}/API/PackageUtils.h
 )
 
 set(HEADERS
@@ -50,9 +50,9 @@ set(HPP
 
 set(CPP
 	${SOURCE_DIR}/main.cpp
-	${SOURCE_DIR}/DialogUtils.cpp
-	${SOURCE_DIR}/PackageUtils.cpp
-	${SOURCE_DIR}/QuestUtils.cpp
+	${SOURCE_DIR}/API/DialogUtils.cpp
+	${SOURCE_DIR}/API/PackageUtils.cpp
+	${SOURCE_DIR}/API/QuestUtils.cpp
 )
 
 set(SOURCES

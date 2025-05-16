@@ -1,4 +1,4 @@
-#include "SQG/DialogUtils.h"
+#include "SQG/API/DialogUtils.h"
 
 std::map<RE::FormID, DialogTopicData> dialogTopicsData;
 
