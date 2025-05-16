@@ -25,7 +25,8 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/includes/)
+set(PUBLIC_HEADER_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/includes/)
+set(PUBLIC_HEADER_DIR ${PUBLIC_HEADER_ROOT_DIR}/DPF/)
 
 set(VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/includes/Plugin.h")
 configure_file(
@@ -34,8 +35,19 @@ configure_file(
 	@ONLY
 )
 
-set(HEADERS
-	${HEADER_DIR}/DPF/API.h
+set(PUBLIC_HEADERS
+	${PUBLIC_HEADER_DIR}/API.h
+)
+
+set(PRIVATE_HEADERS
+	${SOURCE_DIR}/PCH.h
+	${SOURCE_DIR}/FileSystem.h
+	${SOURCE_DIR}/FormCreator.h
+	${SOURCE_DIR}/FormRecord.h
+	${SOURCE_DIR}/FormRecordSerializer.h
+	${SOURCE_DIR}/FormSerializers.h
+	${SOURCE_DIR}/Model.h
+	${SOURCE_DIR}/SKSETmp.h
 )
 
 set(HPP
@@ -44,20 +56,16 @@ set(HPP
 	${SOURCE_DIR}/FormSerializers.hpp
 )
 
-set(SOURCES
-	${SOURCE_DIR}/PCH.h
+set(CPP
 	${SOURCE_DIR}/API.cpp
-	${SOURCE_DIR}/FileSystem.h
 	${SOURCE_DIR}/FileSystem.cpp
-	${SOURCE_DIR}/FormCreator.h
 	${SOURCE_DIR}/FormCreator.cpp
-	${SOURCE_DIR}/FormRecord.h
 	${SOURCE_DIR}/FormRecord.cpp
-	${SOURCE_DIR}/FormRecordSerializer.h
-	${SOURCE_DIR}/FormSerializers.h
-	${SOURCE_DIR}/Model.h
 	${SOURCE_DIR}/Model.cpp
-	${SOURCE_DIR}/SKSETmp.h
+)
+
+set(SOURCES
+	${CPP}
 	${HPP}
 )
 
@@ -71,13 +79,16 @@ configure_file(
 
 file(COPY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Template.ChildProcessDbgSettings ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.ChildProcessDbgSettings)
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${SOURCES})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/includes PREFIX "Header Files" FILES ${HEADERS})
+source_group("Private/Includes" REGULAR_EXPRESSION  ${CMAKE_CURRENT_BINARY_DIR}/includes/*)
+source_group(TREE ${SOURCE_DIR} PREFIX "Private/Includes" FILES ${PRIVATE_HEADERS})
+source_group(TREE ${SOURCE_DIR} PREFIX "Private/Sources" FILES ${SOURCES})
+source_group(TREE ${PUBLIC_HEADER_DIR} PREFIX "Public" FILES  ${PUBLIC_HEADERS})
 
 add_library( #TODO Standalone version
 	"${PROJECT_NAME}"
 	STATIC
-	${HEADERS}
+	${PRIVATE_HEADERS}
+	${PUBLIC_HEADERS}
 	${SOURCES}
 	"${VERSION_HEADER}"
 	"${CMAKE_CURRENT_BINARY_DIR}/version.rc"
@@ -129,8 +140,9 @@ target_include_directories(
 	PRIVATE
 		${CMAKE_CURRENT_BINARY_DIR}/includes
 		${SOURCE_DIR}
+		${PRIVATE_HEADERS}
 	PUBLIC
-		${HEADER_DIR}
+		${PUBLIC_HEADER_ROOT_DIR}
 )	
 
 if(NOT TARGET CommonLibSSE::CommonLibSSE)
