@@ -1,5 +1,8 @@
 #include "SQG/API/QuestUtils.h"
 
+#include "DPF/API.h"
+#include "Engine/Quest.h"
+
 namespace SQG
 {
 	std::map<RE::FormID, QuestData> questsData;
@@ -11,6 +14,11 @@ namespace SQG
 			delete objective.targets[i];	
 		}
 		delete[] objective.targets;
+	}
+
+	RE::TESQuest* CreateQuest()
+	{
+		return DPF::CreateForm(QuestEngine::referenceQuest);
 	}
 
 	void AddQuestStage(RE::TESQuest* inQuest, const std::uint16_t inIndex, const QuestStageType inQuestStageType, const std::string& inLogEntry, const int inScriptFragmentIndex)
