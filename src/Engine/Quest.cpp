@@ -6,6 +6,10 @@ namespace SQG
 {
 	namespace QuestEngine
 	{
+		// # Common
+		// =======================
+		RE::TESQuest* referenceQuest = nullptr;
+
 		// # Hooks
 		// =======================
 
@@ -107,6 +111,13 @@ namespace SQG
 		{
 			questStageEventSink = std::make_unique<QuestStageEventSink>();
 			RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(questStageEventSink.get());
+		}
+
+		// # Data
+		// =======================
+		void LoadData(RE::TESDataHandler* inDataHandler)
+		{
+			referenceQuest = reinterpret_cast<RE::TESQuest*>(inDataHandler->LookupForm(RE::FormID{0x003371}, "SQGLib.esp"));
 		}
 	}
 }

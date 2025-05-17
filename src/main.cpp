@@ -7,8 +7,6 @@
 #include "Engine/Package.h"
 #include "Engine/Quest.h"
 
-RE::TESQuest* referenceQuest = nullptr;
-
 // # Papyrus
 // =======================
 RE::TESQuest* generatedQuest = nullptr;
@@ -285,7 +283,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 		return "Quest yet generated.";
 	}
 
-	selectedQuest = generatedQuest = DPF::CreateForm(referenceQuest);
+	selectedQuest = generatedQuest = SQG::CreateQuest();
 
 	FillQuestWithGeneratedData(generatedQuest);
 	AttachScriptsToQuest(generatedQuest);
@@ -306,7 +304,7 @@ RE::TESQuest* GetSelectedQuest(RE::StaticFunctionTag*)
 
 std::string SwapSelectedQuest(RE::StaticFunctionTag*)
 {
-	selectedQuest = selectedQuest == referenceQuest ? generatedQuest : referenceQuest;
+	selectedQuest = selectedQuest == SQG::QuestEngine::referenceQuest ? generatedQuest : SQG::QuestEngine::referenceQuest;
 	return "Selected " + std::string(selectedQuest ? selectedQuest->GetFullName() : "nullptr");
 }
 
@@ -411,6 +409,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 			{
 				DPF::Init(0x800, "SQGLib.esp");
 
+				SQG::QuestEngine::LoadData(dataHandler);
 				SQG::DialogEngine::LoadData(dataHandler);
 				SQG::PackageEngine::LoadData();
 
@@ -418,7 +417,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				SQG::DialogEngine::RegisterSinks();
 				SQG::PackageEngine::RegisterSinks();
 
-				selectedQuest = referenceQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{0x003371}, "SQGLib.esp"));
+				selectedQuest = SQG::QuestEngine::referenceQuest;
 				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
 				targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
