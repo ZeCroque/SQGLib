@@ -4,11 +4,11 @@ namespace DPF
 {
 	void Init(RE::FormID inFormId, const std::string& inPluginName);
 
-	void SaveCache(std::string name);
+	void SaveCache(const SKSE::MessagingInterface::Message* inMessage);
 
-	void LoadCache(std::string name);
+	void LoadCache(const SKSE::MessagingInterface::Message* inMessage);
 
-	void DeleteCache(std::string name);
+	void DeleteCache(const SKSE::MessagingInterface::Message* inMessage);
 
 	RE::TESForm* CreateForm(RE::TESForm* inModelForm);
 

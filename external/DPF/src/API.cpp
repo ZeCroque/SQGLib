@@ -11,8 +11,9 @@ namespace DPF
 	    firstFormId = lastFormId = ReadFirstFormIdFromESP(inFormId, inPluginName);
 	}
 
-	void SaveCache(std::string name) {
-
+	void SaveCache(const SKSE::MessagingInterface::Message* inMessage) {
+		std::string name = static_cast<char*>(inMessage->data);
+		name = name.append(".sqg");
 	    FileWriter fileWriter(name, std::ios::out | std::ios::binary | std::ios::trunc);
 
 	    if (!fileWriter.IsOpen()) {
@@ -22,8 +23,10 @@ namespace DPF
 	    StoreAllFormRecords(&fileWriter);
 	}
 
-	void LoadCache(std::string name) {
-	    FileReader fileReader(name, std::ios::in | std::ios::binary);
+	void LoadCache(const SKSE::MessagingInterface::Message* inMessage) {
+		std::string name = static_cast<char*>(inMessage->data);
+		name = name.substr(0, name.size() - 3).append("sqg");
+		FileReader fileReader(name, std::ios::in | std::ios::binary);
 
 	    if (!fileReader.IsOpen()) {
 	        return;
@@ -33,7 +36,9 @@ namespace DPF
 	    UpdateId();
 	}
 
-	void DeleteCache(std::string name) {
+	void DeleteCache(const SKSE::MessagingInterface::Message* inMessage) {
+		std::string name = static_cast<char*>(inMessage->data);
+		name = name.append(".sqg");
 	    Delete(name);
 	}
 
