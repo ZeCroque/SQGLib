@@ -37,9 +37,16 @@ namespace SQG
 
 				if(speaker)
 				{
-					if(const auto topicInfoBinding = speakersData[speaker->formID].topicsInfosBindings.find(parentTopicInfo->formID); topicInfoBinding != speakersData[speaker->formID].topicsInfosBindings.end())
+					if(parentTopicInfo->formID == forceGreetTopic->topicInfos[0]->formID)
 					{
-						generatedResponse->responseText = speakersData[speaker->formID].topicsInfosBindings.find(parentTopicInfo->formID)->second->answer;
+						if(const auto forceGreetAnswer = forceGreetAnswers.find(speaker->formID); forceGreetAnswer != forceGreetAnswers.end())
+						{
+							generatedResponse->responseText = forceGreetAnswer->second;
+						}
+					}
+					else if(const auto topicInfoBinding = speakersData[speaker->formID].topicsInfosBindings.find(parentTopicInfo->formID); topicInfoBinding != speakersData[speaker->formID].topicsInfosBindings.end())
+					{
+						generatedResponse->responseText = topicInfoBinding->second->answer;
 					}
 				}
 			}
@@ -139,6 +146,7 @@ namespace SQG
 		// ## TopicInfo sink
 		// =======================
 		RE::TESTopicInfo* subTopicsInfos[SQG::SUB_TOPIC_COUNT] { nullptr };
+		RE::TESTopic* forceGreetTopic = nullptr;
 		RE::TESConditionItem* impossibleCondition = nullptr;
 
 		bool ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, SQG::DialogTopicData& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
@@ -262,6 +270,7 @@ namespace SQG
 		void LoadData(RE::TESDataHandler* inDataHandler)
 		{
 			//TODO handle failure
+			forceGreetTopic = reinterpret_cast<RE::TESTopic*>(inDataHandler->LookupForm(RE::FormID{0x00EAB4}, "SQGLib.esp"));
 			subTopicsInfos[0] = reinterpret_cast<RE::TESTopicInfo*>(inDataHandler->LookupForm(RE::FormID{0x00BF96}, "SQGLib.esp"));
 			subTopicsInfos[1] = reinterpret_cast<RE::TESTopicInfo*>(inDataHandler->LookupForm(RE::FormID{0x00BF99}, "SQGLib.esp"));
 			subTopicsInfos[2] = reinterpret_cast<RE::TESTopicInfo*>(inDataHandler->LookupForm(RE::FormID{0x00BF9C}, "SQGLib.esp"));

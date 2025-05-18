@@ -46,6 +46,11 @@ namespace SQG
 		nativeData = inData;
 	}
 
+	PackageData::PackageData(RE::TESTopic* inTopic) : PackageData()
+	{
+		topicData = inTopic;
+	}
+
 	PackageData::~PackageData()  // NOLINT(modernize-use-equals-default)
 	{
 	}
@@ -81,6 +86,13 @@ namespace SQG
 								RE::BSString result;
 								bgsPackageDataLocation->GetDataAsString(&result);
 								SKSE::log::debug("package-data[{0}]-as-string:{1}"sv, packageDataTypeName.c_str(), result.c_str());
+							}
+							else if (packageDataTypeName == "Topic")
+							{
+								const auto bgsPackageTopicData = reinterpret_cast<RE::BGSPackageDataTopic*>(customPackageData->data.data[i]);
+								bgsPackageTopicData->unk00 = 0;
+								bgsPackageTopicData->unk08 = 0;
+								bgsPackageTopicData->topic = packageData.topicData;
 							}
 							else
 							{
@@ -118,7 +130,6 @@ namespace SQG
 							break;
 						}
 					}
-					break;
 				}
 			}
 		}
