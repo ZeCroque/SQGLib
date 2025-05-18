@@ -10,6 +10,8 @@ namespace SQG
 
 		// # Sinks
 		// =======================
+		extern RE::TESTopic* forceGreetTopic;
+
 		void RegisterSinks();
 
 		// # Data

@@ -11,6 +11,7 @@ namespace SQG
 		RE::TESPackage* acquirePackage = nullptr;
 		RE::TESPackage* activatePackage = nullptr;
 		RE::TESPackage* travelPackage = nullptr;
+		RE::TESPackage* forceGreetPackage = nullptr;
 
 		std::map<RE::FormID, std::string> packagesFragmentName;
 
@@ -102,6 +103,7 @@ namespace SQG
 			activatePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019B2D});
 			acquirePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0019713});
 			travelPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x0016FAA});
+			forceGreetPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{0x003C1C4});
 		}
 	}
 }

@@ -9,6 +9,7 @@ namespace SQG
 		extern RE::TESPackage* acquirePackage;	
 		extern RE::TESPackage* activatePackage;
 		extern RE::TESPackage* travelPackage;
+		extern RE::TESPackage* forceGreetPackage;
 
 		// # Sinks
 		// =======================

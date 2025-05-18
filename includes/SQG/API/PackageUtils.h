@@ -16,11 +16,13 @@ namespace SQG
 		PackageData(RE::PackageLocation::Type inType, const RE::PackageLocation::Data& inData, std::uint32_t inRadius);
 		PackageData(RE::PackageTarget::Type inType, const RE::PackageTarget::Target& inData);
 		explicit PackageData(const RE::BGSNamedPackageData<RE::IPackageData>::Data& inData);
+		explicit PackageData(RE::TESTopic* inTopic);
 		~PackageData();
 		PackageData& operator=(const PackageData& inOther);
 
 		RE::PackageTarget targetData;
 		RE::PackageLocation locationData;
+		RE::TESTopic* topicData;
 		PackageNativeData nativeData{};	
 	};
 

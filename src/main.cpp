@@ -25,6 +25,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//Add stages
 	//=======================
 	SQG::AddQuestStage(inQuest, 10, SQG::QuestStageType::Startup, "My boss told me to kill a man named \"Gibier\"", 0);
+	SQG::AddQuestStage(inQuest, 11);
 	SQG::AddQuestStage(inQuest, 45, SQG::QuestStageType::Shutdown, "I decided to spare Gibier.", 6);
 	SQG::AddQuestStage(inQuest, 40, SQG::QuestStageType::Shutdown, "Gibier is dead.", 5);
 	SQG::AddQuestStage(inQuest, 35, SQG::QuestStageType::Default, "When I told Gibier I was going to kill him he asked for a last will. I refused.", 4);
@@ -152,6 +153,24 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	aboveStage0Condition->data.comparisonValue.f = 0.f;
 	aboveStage0Condition->next = nullptr;
 
+	auto* aboveStage10Condition = new RE::TESConditionItem();
+	aboveStage10Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+	aboveStage10Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+	aboveStage10Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+	aboveStage10Condition->data.functionData.params[0] = inQuest;
+	aboveStage10Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kGreaterThan;
+	aboveStage10Condition->data.comparisonValue.f = 10.f;
+	aboveStage10Condition->next = nullptr;
+
+	auto* underStage11Condition = new RE::TESConditionItem();
+	underStage11Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+	underStage11Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+	underStage11Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+	underStage11Condition->data.functionData.params[0] = inQuest;
+	underStage11Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
+	underStage11Condition->data.comparisonValue.f = 11.f;
+	underStage11Condition->next = nullptr;
+
 	auto* underStage12Condition = new RE::TESConditionItem();
 	underStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
 	underStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
@@ -184,13 +203,15 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	(
 		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
 		"",
-		{checkSpeakerCondition, aboveStage0Condition, underStage12Condition}
+		{checkSpeakerCondition, aboveStage0Condition, underStage11Condition},
+		11,
+		4
 	);
-	wonderEntry->AddAnswer
+	wonderEntry->AddAnswer //TODO make blocking
 	(
 		"Your boss is a liar.",
 		"Tell me again about the reasons of the contract",
-		{checkSpeakerCondition, aboveStage0Condition, underStage15Condition}
+		{checkSpeakerCondition, aboveStage10Condition, underStage15Condition}
 	);
 	auto* moreWonderEntry = SQG::AddDialogTopic(inQuest, targetForm, "What did he do ?", wonderEntry);
 	moreWonderEntry->AddAnswer
@@ -205,9 +226,11 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	auto* attackEntry = SQG::AddDialogTopic(inQuest, targetForm, "As you guessed. Prepare to die !");
 	attackEntry->AddAnswer
 	(
-		"Wait a minute ! Could I have a last will please ?",
+		"Wait a minute ! Could I have a last will please ?", //TODO make blocking
 		"",
-		{checkSpeakerCondition, aboveStage0Condition, underStage12Condition}
+		{checkSpeakerCondition, aboveStage0Condition, underStage12Condition},
+		11,
+		4
 	);
 	attackEntry->AddAnswer
 	(
@@ -243,6 +266,10 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		45,
 		3
 	);
+
+	RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData;
+	conditionItemData.f = 11.f;
+	SQG::AddForceGreet(inQuest, targetForm, "So you came here to kill me, right ?", {SQG::PackageConditionDescriptor{.functionId = RE::FUNCTION_DATA::FunctionID::kGetStage, .functionCaller = inQuest, .opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan, .useGlobal = false, .data = conditionItemData, .isOr = false}});
 }
 
 void AttachScriptsToQuest(const RE::TESQuest* inQuest)

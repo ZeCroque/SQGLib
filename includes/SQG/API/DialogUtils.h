@@ -25,6 +25,9 @@ namespace SQG
 		std::vector<std::unique_ptr<DialogTopicData>> childEntries;
 	};
 	extern std::map<RE::FormID, DialogTopicData> dialogTopicsData;
+	extern std::map<RE::FormID, std::string> forceGreetAnswers;
 
 	DialogTopicData* AddDialogTopic(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inPrompt = "", DialogTopicData* inParentTopic = nullptr);
+
+	void AddForceGreet(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inForceGreet, const std::list<struct PackageConditionDescriptor>& inConditions);
 }
