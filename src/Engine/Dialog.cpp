@@ -215,11 +215,6 @@ namespace SQG
 						if(!speakersData.contains(a_event->speakerRef->formID) || !speakersData[a_event->speakerRef->formID].hasAnyValidEntry)
 						{
 							ProcessDialogEntries(a_event->speakerRef.get(), SQG::dialogTopicsData[a_event->speakerRef->formID].childEntries);
-
-							if(!speakersData[a_event->speakerRef->formID].hasAnyValidEntry)
-							{
-								return RE::BSEventNotifyControl::kContinue;
-							}
 						}
 					}
 					else
