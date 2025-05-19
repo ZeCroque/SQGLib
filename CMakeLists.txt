@@ -36,6 +36,7 @@ configure_file(
 )
 
 set(PUBLIC_HEADERS
+	${PUBLIC_HEADER_DIR}/API/ConditionUtils.h
 	${PUBLIC_HEADER_DIR}/API/DialogUtils.h
 	${PUBLIC_HEADER_DIR}/API/QuestUtils.h
 	${PUBLIC_HEADER_DIR}/API/PackageUtils.h
@@ -53,6 +54,7 @@ set(HPP
 
 set(CPP
 	${SOURCE_DIR}/main.cpp
+	${SOURCE_DIR}/API/ConditionUtils.cpp
 	${SOURCE_DIR}/API/DialogUtils.cpp
 	${SOURCE_DIR}/API/PackageUtils.cpp
 	${SOURCE_DIR}/API/QuestUtils.cpp
