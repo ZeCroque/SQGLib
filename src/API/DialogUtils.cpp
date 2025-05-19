@@ -9,7 +9,7 @@ namespace SQG
 {
 	std::map<RE::FormID, DialogTopicData> dialogTopicsData;
 	std::map<RE::FormID, DialogTopicData::AnswerData> forceGreetAnswers;
-	std::map<RE::FormID, std::string> helloTopics;
+	std::map<RE::FormID, std::list<DialogTopicData::AnswerData>> helloAnswers;
 
 	DialogTopicData* AddDialogTopic(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inPrompt, DialogTopicData* inParentTopic)
 	{
@@ -47,8 +47,8 @@ namespace SQG
 		SQG::forceGreetAnswers[inSpeaker->formID] = {nullptr, inForceGreet, "", {}, -1, -1, false};
 	}
 
-	void AddHelloTopic(const RE::TESObjectREFR* inSpeaker, const std::string& inHello)
+	void AddHelloTopic(const RE::TESObjectREFR* inSpeaker, const std::string& inHello, const std::list<RE::TESConditionItem*>& inConditions)
 	{
-		SQG::helloTopics[inSpeaker->formID] = inHello;
+		SQG::helloAnswers[inSpeaker->formID].emplace_back(nullptr, inHello, "", inConditions, -1, -1, false);
 	}
 }

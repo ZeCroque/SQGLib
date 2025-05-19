@@ -26,11 +26,11 @@ namespace SQG
 	};
 	extern std::map<RE::FormID, DialogTopicData> dialogTopicsData;
 	extern std::map<RE::FormID, DialogTopicData::AnswerData> forceGreetAnswers;
-	extern std::map<RE::FormID, std::string> helloTopics;
+	extern std::map<RE::FormID, std::list<DialogTopicData::AnswerData>> helloAnswers;
 
 	DialogTopicData* AddDialogTopic(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inPrompt = "", DialogTopicData* inParentTopic = nullptr);
 
 	void AddForceGreet(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inForceGreet, const std::list<RE::TESConditionItem*>& inConditions);
 
-	void AddHelloTopic(const RE::TESObjectREFR* inSpeaker, const std::string& inHello);
+	void AddHelloTopic(const RE::TESObjectREFR* inSpeaker, const std::string& inHello, const std::list<RE::TESConditionItem*>& inConditions = std::list<RE::TESConditionItem*>());
 }

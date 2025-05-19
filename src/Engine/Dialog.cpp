@@ -1,5 +1,6 @@
 #include "Dialog.h"
 
+#include "SQG/API/ConditionUtils.h"
 #include "SQG/API/DialogUtils.h"
 
 namespace SQG
@@ -50,9 +51,20 @@ namespace SQG
 					{
 						if(!lastSelectedAnswer || (lastSelectedAnswer->parentEntry && lastSelectedAnswer->parentEntry->childEntries.empty()))
 						{
-							if(auto helloTopic = helloTopics.find(speaker->formID); helloTopic != helloTopics.end())
+							if(const auto helloAnswer = helloAnswers.find(speaker->formID); helloAnswer != helloAnswers.end())
 							{
-								generatedResponse->responseText = helloTopic->second;
+								std::vector<DialogTopicData::AnswerData*> availableHello;
+								availableHello.reserve(helloAnswer->second.size());
+								for(auto& answer : helloAnswer->second)
+								{
+									if(CheckCondition(speaker, answer.conditions))
+									{
+										availableHello.push_back(&answer);
+									}
+								}
+								std::mt19937 mt(static_cast<int32_t>(std::time({})));  // NOLINT(cert-msc51-cpp)
+								std::uniform_int_distribution d(0, static_cast<int>(availableHello.size()) - 1);
+								generatedResponse->responseText = availableHello[d(mt)]->answer;
 							}
 						}
 						else
@@ -170,18 +182,7 @@ namespace SQG
 			bool hasAnyValidAnswer = false;
 			for(auto& answerData : inDialogEntry.answers)
 			{
-				RE::TESCondition condition;
-				RE::TESConditionItem** conditionItemHolder = &condition.head;
-				for(const auto* conditionItem : answerData.conditions)
-				{
-					*conditionItemHolder = new RE::TESConditionItem();
-					(*conditionItemHolder)->data = conditionItem->data;
-					conditionItemHolder = &((*conditionItemHolder)->next);
-				}
-				*conditionItemHolder = nullptr;
-
-
-				if(condition(inSpeaker, inSpeaker))
+				if(CheckCondition(inSpeaker, answerData.conditions))
 				{
 					inOutTopicInfo->objConditions.head = nullptr;
 					speakersData[inSpeaker->formID].topicsInfosBindings[inOutTopicInfo->formID] = &answerData;
