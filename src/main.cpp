@@ -54,25 +54,23 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//ACQUIRE PACKAGE
 	//=============================
 	{
-		auto* customAcquirePackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(SQG::PackageEngine::acquirePackage), SQG::PackageEngine::acquirePackage, generatedQuest);
+		auto* atStage15Condition = new RE::TESConditionItem();
+		atStage15Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		atStage15Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		atStage15Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+		atStage15Condition->data.functionData.params[0] = inQuest;
+		atStage15Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+		atStage15Condition->data.comparisonValue.f = 15.f;
+		atStage15Condition->next = nullptr;
 
 		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 		RE::PackageTarget::Target targetData{};
 		targetData.objType = RE::PACKAGE_OBJECT_TYPE::kWEAP;
 		packageDataMap["Target Criteria"] = SQG::PackageData(RE::PackageTarget::Type::kObjectType, targetData);
-		RE::BGSNamedPackageData<RE::IPackageData>::Data numData{};
-		numData.i = 2;
-		packageDataMap["Num to acquire"] = SQG::PackageData(numData); 
-		RE::BGSNamedPackageData<RE::IPackageData>::Data allowStealingData{};
-		allowStealingData.b = true;
-		packageDataMap["AllowStealing"] = SQG::PackageData(allowStealingData);
-		FillPackageData(customAcquirePackage, packageDataMap);
+		packageDataMap["Num to acquire"] = SQG::PackageData({.i=2}); 
+		packageDataMap["AllowStealing"] = SQG::PackageData({.b=true});
 
-		std::list<SQG::PackageConditionDescriptor> packageConditionList;
-		RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-		conditionItemData.f = 15.f;
-		packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
-		FillPackageCondition(customAcquirePackage, packageConditionList);
+		auto* customAcquirePackage = SQG::CreatePackageFromTemplate(SQG::PackageEngine::acquirePackage, generatedQuest, packageDataMap, {atStage15Condition});
 
 		const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customAcquirePackage);
 		RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
@@ -85,19 +83,20 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//ACTIVATE PACKAGE
 	//=============================
 	{
-		auto* customActivatePackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(SQG::PackageEngine::activatePackage), SQG::PackageEngine::activatePackage, generatedQuest);
+		auto* atStage20Condition = new RE::TESConditionItem();
+		atStage20Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		atStage20Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		atStage20Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+		atStage20Condition->data.functionData.params[0] = inQuest;
+		atStage20Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+		atStage20Condition->data.comparisonValue.f = 20.f;
+		atStage20Condition->next = nullptr;
 
 		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 		RE::PackageTarget::Target targetData{};
 		targetData.handle = targetActivator->CreateRefHandle();
 		packageDataMap["Target"] = SQG::PackageData(RE::PackageTarget::Type::kNearReference, targetData);
-		FillPackageData(customActivatePackage, packageDataMap);
-
-		std::list<SQG::PackageConditionDescriptor> packageConditionList;
-		RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-		conditionItemData.f = 20.f;
-		packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
-		FillPackageCondition(customActivatePackage, packageConditionList);
+		auto* customActivatePackage = SQG::CreatePackageFromTemplate(SQG::PackageEngine::activatePackage, generatedQuest, packageDataMap, {atStage20Condition});
 
 		const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customActivatePackage);
 		RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
@@ -110,19 +109,18 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//TRAVEL PACKAGE
 	//=============================
 	{
-		auto* customTravelPackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(SQG::PackageEngine::travelPackage), SQG::PackageEngine::travelPackage, generatedQuest);
+		auto* atStage30Condition = new RE::TESConditionItem();
+		atStage30Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
+		atStage30Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
+		atStage30Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
+		atStage30Condition->data.functionData.params[0] = inQuest;
+		atStage30Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+		atStage30Condition->data.comparisonValue.f = 30.f;
+		atStage30Condition->next = nullptr;
 
 		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
-		RE::PackageLocation::Data locationData{};
-		locationData.refHandle = activator->CreateRefHandle();
-		packageDataMap["Place to Travel"] = SQG::PackageData(RE::PackageLocation::Type::kNearReference, locationData, 0);
-		FillPackageData(customTravelPackage, packageDataMap);
-
-		std::list<SQG::PackageConditionDescriptor> packageConditionList;
-		RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData{};
-		conditionItemData.f = 30.f;
-		packageConditionList.emplace_back(RE::FUNCTION_DATA::FunctionID::kGetStage, generatedQuest, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, false, conditionItemData, false);
-		FillPackageCondition(customTravelPackage, packageConditionList);
+		packageDataMap["Place to Travel"] = SQG::PackageData(RE::PackageLocation::Type::kNearReference, {.refHandle = activator->CreateRefHandle()}, 0);
+		auto* customTravelPackage = SQG::CreatePackageFromTemplate(SQG::PackageEngine::travelPackage, generatedQuest, packageDataMap, {atStage30Condition});
 
 		const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
 		RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
@@ -267,10 +265,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		3
 	);
 
-	RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData;
-	conditionItemData.f = 11.f;
-	SQG::AddForceGreet(inQuest, targetForm, "So you came here to kill me, right ?", {SQG::PackageConditionDescriptor{.functionId = RE::FUNCTION_DATA::FunctionID::kGetStage, .functionCaller = inQuest, .opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan, .useGlobal = false, .data = conditionItemData, .isOr = false}});
-
+	SQG::AddForceGreet(inQuest, targetForm, "So you came here to kill me, right ?", {underStage11Condition});
 	SQG::AddHelloTopic(targetForm, "What did you decide then ?");
 }
 
