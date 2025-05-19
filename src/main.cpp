@@ -6,6 +6,7 @@
 #include "Engine/Dialog.h"
 #include "Engine/Package.h"
 #include "Engine/Quest.h"
+#include "SQG/API/ConditionUtils.h"
 
 // # Papyrus
 // =======================
@@ -54,23 +55,18 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//ACQUIRE PACKAGE
 	//=============================
 	{
-		auto* atStage15Condition = new RE::TESConditionItem();
-		atStage15Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-		atStage15Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-		atStage15Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-		atStage15Condition->data.functionData.params[0] = inQuest;
-		atStage15Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-		atStage15Condition->data.comparisonValue.f = 15.f;
-		atStage15Condition->next = nullptr;
-
 		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 		RE::PackageTarget::Target targetData{};
 		targetData.objType = RE::PACKAGE_OBJECT_TYPE::kWEAP;
 		packageDataMap["Target Criteria"] = SQG::PackageData(RE::PackageTarget::Type::kObjectType, targetData);
-		packageDataMap["Num to acquire"] = SQG::PackageData({.i=2}); 
-		packageDataMap["AllowStealing"] = SQG::PackageData({.b=true});
-
-		auto* customAcquirePackage = SQG::CreatePackageFromTemplate(SQG::PackageEngine::acquirePackage, generatedQuest, packageDataMap, {atStage15Condition});
+		packageDataMap["Num to acquire"] = SQG::PackageData({.i = 2}); 
+		packageDataMap["AllowStealing"] = SQG::PackageData({.b = true});
+		auto* customAcquirePackage = SQG::CreatePackageFromTemplate
+		(
+			SQG::PackageEngine::acquirePackage,
+			generatedQuest,
+			packageDataMap, 
+			{SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, {.f = 15.f})});
 
 		const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customAcquirePackage);
 		RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
@@ -83,20 +79,17 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//ACTIVATE PACKAGE
 	//=============================
 	{
-		auto* atStage20Condition = new RE::TESConditionItem();
-		atStage20Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-		atStage20Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-		atStage20Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-		atStage20Condition->data.functionData.params[0] = inQuest;
-		atStage20Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-		atStage20Condition->data.comparisonValue.f = 20.f;
-		atStage20Condition->next = nullptr;
-
 		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 		RE::PackageTarget::Target targetData{};
 		targetData.handle = targetActivator->CreateRefHandle();
 		packageDataMap["Target"] = SQG::PackageData(RE::PackageTarget::Type::kNearReference, targetData);
-		auto* customActivatePackage = SQG::CreatePackageFromTemplate(SQG::PackageEngine::activatePackage, generatedQuest, packageDataMap, {atStage20Condition});
+		auto* customActivatePackage = SQG::CreatePackageFromTemplate
+		(
+			SQG::PackageEngine::activatePackage, 
+			generatedQuest, 
+			packageDataMap, 
+			{SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, {.f = 20.f})}
+		);
 
 		const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customActivatePackage);
 		RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
@@ -109,18 +102,15 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//TRAVEL PACKAGE
 	//=============================
 	{
-		auto* atStage30Condition = new RE::TESConditionItem();
-		atStage30Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-		atStage30Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-		atStage30Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-		atStage30Condition->data.functionData.params[0] = inQuest;
-		atStage30Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-		atStage30Condition->data.comparisonValue.f = 30.f;
-		atStage30Condition->next = nullptr;
-
 		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 		packageDataMap["Place to Travel"] = SQG::PackageData(RE::PackageLocation::Type::kNearReference, {.refHandle = activator->CreateRefHandle()}, 0);
-		auto* customTravelPackage = SQG::CreatePackageFromTemplate(SQG::PackageEngine::travelPackage, generatedQuest, packageDataMap, {atStage30Condition});
+		auto* customTravelPackage = SQG::CreatePackageFromTemplate
+		(
+			SQG::PackageEngine::travelPackage, 
+			generatedQuest, 
+			packageDataMap,
+			{SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, {.f = 30.f})}
+		);
 
 		const auto packageHandle = policy->GetHandleForObject(RE::FormType::Package, customTravelPackage);
 		RE::BSTSmartPointer<RE::BSScript::Object> packageCustomScriptObject;
@@ -133,68 +123,13 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//Add dialogs
 	//===========================
 
-	auto* checkSpeakerCondition = new RE::TESConditionItem();
-	checkSpeakerCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-	checkSpeakerCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-	checkSpeakerCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetIsID);
-	checkSpeakerCondition->data.functionData.params[0] = targetForm->data.objectReference;
-	checkSpeakerCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-	checkSpeakerCondition->data.comparisonValue.f = 1.f;
-	checkSpeakerCondition->next = nullptr;
-
-	auto* aboveStage0Condition = new RE::TESConditionItem();
-	aboveStage0Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-	aboveStage0Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-	aboveStage0Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-	aboveStage0Condition->data.functionData.params[0] = inQuest;
-	aboveStage0Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kGreaterThan;
-	aboveStage0Condition->data.comparisonValue.f = 0.f;
-	aboveStage0Condition->next = nullptr;
-
-	auto* aboveStage10Condition = new RE::TESConditionItem();
-	aboveStage10Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-	aboveStage10Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-	aboveStage10Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-	aboveStage10Condition->data.functionData.params[0] = inQuest;
-	aboveStage10Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kGreaterThan;
-	aboveStage10Condition->data.comparisonValue.f = 10.f;
-	aboveStage10Condition->next = nullptr;
-
-	auto* underStage11Condition = new RE::TESConditionItem();
-	underStage11Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-	underStage11Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-	underStage11Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-	underStage11Condition->data.functionData.params[0] = inQuest;
-	underStage11Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
-	underStage11Condition->data.comparisonValue.f = 11.f;
-	underStage11Condition->next = nullptr;
-
-	auto* underStage12Condition = new RE::TESConditionItem();
-	underStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-	underStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-	underStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-	underStage12Condition->data.functionData.params[0] = inQuest;
-	underStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
-	underStage12Condition->data.comparisonValue.f = 12.f;
-	underStage12Condition->next = nullptr;
-
-	auto* aboveStage12Condition = new RE::TESConditionItem();
-	aboveStage12Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-	aboveStage12Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-	aboveStage12Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-	aboveStage12Condition->data.functionData.params[0] = inQuest;
-	aboveStage12Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kGreaterThanOrEqualTo;
-	aboveStage12Condition->data.comparisonValue.f = 12.f;
-	aboveStage12Condition->next = nullptr;
-
-	auto* underStage15Condition = new RE::TESConditionItem();
-	underStage15Condition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-	underStage15Condition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-	underStage15Condition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kGetStage);
-	underStage15Condition->data.functionData.params[0] = inQuest;
-	underStage15Condition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan;
-	underStage15Condition->data.comparisonValue.f = 15.f;
-	underStage15Condition->next = nullptr;
+	auto* checkSpeakerCondition = SQG::CreateCondition(targetForm->data.objectReference, RE::FUNCTION_DATA::FunctionID::kGetIsID, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, {.f = 1.f}); //todo check directly targetForm
+	auto* aboveStage0Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kGreaterThan,{.f = 0.f});
+	auto* aboveStage10Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kGreaterThan, {.f = 10.f});
+	auto* underStage11Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kLessThan,{.f = 11.f});
+	auto* underStage12Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kLessThan, {.f = 12.f});
+	auto* aboveStage12Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kGreaterThanOrEqualTo, {.f = 12.f});
+	auto* underStage15Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kLessThan, {.f = 15.f});
 	
 	auto* wonderEntry = SQG::AddDialogTopic(inQuest, targetForm, "I've not decided yet. I'd like to hear your side of the story.");
 	wonderEntry->AddAnswer
@@ -205,7 +140,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		11,
 		4
 	);
-	wonderEntry->AddAnswer //TODO make blocking
+	wonderEntry->AddAnswer
 	(
 		"Your boss is a liar.",
 		"Tell me again about the reasons of the contract",
@@ -224,7 +159,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	auto* attackEntry = SQG::AddDialogTopic(inQuest, targetForm, "As you guessed. Prepare to die !");
 	attackEntry->AddAnswer
 	(
-		"Wait a minute ! Could I have a last will please ?", //TODO make blocking
+		"Wait a minute ! Could I have a last will please ?",
 		"",
 		{checkSpeakerCondition, aboveStage0Condition, underStage12Condition},
 		11,
