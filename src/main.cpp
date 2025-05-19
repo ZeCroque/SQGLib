@@ -270,6 +270,8 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	RE::CONDITION_ITEM_DATA::GlobalOrFloat conditionItemData;
 	conditionItemData.f = 11.f;
 	SQG::AddForceGreet(inQuest, targetForm, "So you came here to kill me, right ?", {SQG::PackageConditionDescriptor{.functionId = RE::FUNCTION_DATA::FunctionID::kGetStage, .functionCaller = inQuest, .opCode = RE::CONDITION_ITEM_DATA::OpCode::kLessThan, .useGlobal = false, .data = conditionItemData, .isOr = false}});
+
+	SQG::AddHelloTopic(targetForm, "What did you decide then ?");
 }
 
 void AttachScriptsToQuest(const RE::TESQuest* inQuest)

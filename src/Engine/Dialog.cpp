@@ -14,6 +14,7 @@ namespace SQG
 			bool hasAnyValidEntry = false;
 		};
 		std::map<RE::FormID, SpeakerData> speakersData;
+		DialogTopicData::AnswerData* lastSelectedAnswer;
 
 		// # Hooks
 		// =======================
@@ -41,7 +42,22 @@ namespace SQG
 					{
 						if(const auto forceGreetAnswer = forceGreetAnswers.find(speaker->formID); forceGreetAnswer != forceGreetAnswers.end())
 						{
-							generatedResponse->responseText = forceGreetAnswer->second;
+							generatedResponse->responseText = forceGreetAnswer->second.answer;
+							lastSelectedAnswer = &forceGreetAnswer->second;
+						}
+					}
+					else if(parentTopicInfo->parentTopic->data.subtype.all(RE::DIALOGUE_DATA::Subtype::kHello))
+					{
+						if(!lastSelectedAnswer || (lastSelectedAnswer->parentEntry && lastSelectedAnswer->parentEntry->childEntries.empty()))
+						{
+							if(auto helloTopic = helloTopics.find(speaker->formID); helloTopic != helloTopics.end())
+							{
+								generatedResponse->responseText = helloTopic->second;
+							}
+						}
+						else
+						{
+							generatedResponse->responseText = lastSelectedAnswer->answer;
 						}
 					}
 					else if(const auto topicInfoBinding = speakersData[speaker->formID].topicsInfosBindings.find(parentTopicInfo->formID); topicInfoBinding != speakersData[speaker->formID].topicsInfosBindings.end())
@@ -223,6 +239,7 @@ namespace SQG
 						{
 							SQG::DialogTopicData::AnswerData* answer = topicInfoBinding->second;
 							answer->alreadySaid = true;
+							lastSelectedAnswer = answer;
 
 							if(answer->targetStage != -1) //Done specific logic for target stage because asynchronous nature of script would prevent the topic list to be correctly updated. It is however still required to set the stage with fragment as well or QuestFragments won't be triggered otherwise.
 							{
