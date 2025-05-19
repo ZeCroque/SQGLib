@@ -13,4 +13,19 @@ namespace SQG
 		result->next = nullptr;
 		return result;
 	}
+
+	bool CheckCondition(RE::TESObjectREFR* inCaller, const std::list<RE::TESConditionItem*>& inConditions)
+	{
+		RE::TESCondition condition;
+		RE::TESConditionItem** conditionItemHolder = &condition.head;
+		for(const auto* conditionItem : inConditions)
+		{
+			*conditionItemHolder = new RE::TESConditionItem();
+			(*conditionItemHolder)->data = conditionItem->data;
+			conditionItemHolder = &((*conditionItemHolder)->next);
+		}
+		*conditionItemHolder = nullptr;
+
+		return condition(inCaller, inCaller);
+	}
 }
