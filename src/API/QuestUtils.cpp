@@ -73,7 +73,7 @@ namespace SQG
 		}
 	}
 
-	void AddObjective(RE::TESQuest* inQuest, const std::uint16_t inIndex, const std::string& inText, const std::vector<uint8_t>& inQuestTargetsAliasIndexes)
+	void AddObjective(RE::TESQuest* inQuest, const std::uint16_t inIndex, const std::string& inText, const std::list<uint8_t>& inQuestTargetsAliasIndexes)
 	{
 		const auto& objectiveData = questsData[inQuest->formID].objectives.emplace_back(std::make_unique<QuestData::Objective>());
 		objectiveData->objective.index = inIndex;
