@@ -275,9 +275,33 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 	}
 }
 
+std::ifstream fileStream;
+
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
-	int z = 42;
+	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+
+
+	fileStream.open("SQGDebug.pex");
+	//		fileStream.read(reinterpret_cast<char*>(a_bytes), a_numBytes);
+	//	path = new RE::BSFixedString("data\\SCRIPTS\\SQGDebug.pex");
+
+	auto y = reinterpret_cast<void**>(RE::VTABLE_SkyrimScript__Store[0].address());
+	auto open = y[6];
+	auto relpath = y[8];
+	auto read = y[4];
+
+	scriptMachine->linker.allowRelinking = true;
+	scriptMachine->linker.Process("SQGDebug");
+	auto a = scriptMachine->linker.classMap;
+	for(auto b : *a)
+	{
+		if(b.first == "SQGDebug")
+		{
+			int p = 43;
+		}
+	}
+	//scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject);
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
@@ -344,6 +368,41 @@ extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryIn
 	return true;
 }
 
+static bool OpenScriptHook(RE::SkyrimScript::Store* inInstance, const char* inScriptName)
+{
+	if(!std::strcmp(inScriptName, "SQGDebug"))
+	{
+		return true;
+	}
+	return false;
+}
+
+struct OpenScriptHookedPatch final : Xbyak::CodeGenerator
+{
+	explicit OpenScriptHookedPatch(const uintptr_t inHookedCall, const uintptr_t inResumeAddress, const uintptr_t inHookAddress, const uintptr_t inBypassAddress)
+	{
+		Xbyak::Label bypass;
+
+		mov(r10, inHookedCall); 
+		call(r10); //Call hooked method
+
+		mov(rdx, rsi);
+		mov(r10, inHookAddress); //Call hook
+		call(r10);
+
+		test(al, al);
+		jnz(bypass); //if hook handled the script, bypass normal exec
+
+		mov(r10, inResumeAddress); //if not resume
+		jmp(r10);
+
+		L(bypass);
+			mov(r10, inBypassAddress);
+			jmp(r10);
+
+    }
+};
+
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
 {
@@ -403,6 +462,12 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	auto& trampoline = SKSE::GetTrampoline();
 	SQG::QuestEngine::RegisterHooks(trampoline);
 	SQG::DialogEngine::RegisterHooks(trampoline);
+
+	auto a = REL::Module::get().base();
+	
+	const auto hookAddress = REL::Offset(0x1249FD7).address();
+	OpenScriptHookedPatch osh{REL::Offset(0x1284C00).address(), hookAddress + 0x5, reinterpret_cast<uintptr_t>(OpenScriptHook), REL::Offset(0x124A020).address()};
+    trampoline.write_branch<5>(hookAddress, trampoline.allocate(osh));
 
 	return true;
 }
