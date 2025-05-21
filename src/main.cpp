@@ -3,6 +3,7 @@
 #include <SQG/API/QuestUtils.h>
 #include <DPF/API.h>
 
+#include "PCH.h"
 #include "Engine/Dialog.h"
 #include "Engine/Package.h"
 #include "Engine/Quest.h"
@@ -260,12 +261,8 @@ RE::TESQuest* GetSelectedQuest(RE::StaticFunctionTag*)
 {
 	return selectedQuest;
 }
+RE::BSFixedString* path;
 
-std::string SwapSelectedQuest(RE::StaticFunctionTag*)
-{
-	selectedQuest = selectedQuest == SQG::QuestEngine::referenceQuest ? generatedQuest : SQG::QuestEngine::referenceQuest;
-	return "Selected " + std::string(selectedQuest ? selectedQuest->GetFullName() : "nullptr");
-}
 
 void StartSelectedQuest(RE::StaticFunctionTag*)
 {
@@ -275,9 +272,184 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 	}
 }
 
+void RE::BSStorage::dtor()
+{
+	using func_t = decltype(&RE::BSStorage::dtor);
+	static REL::Relocation<func_t> func{ RE::BSStorage::VTABLE[0].address() };
+	return func(this);
+}
+
+RE::BSStorage::~BSStorage()
+{
+	dtor();
+}
+
+void RE::BSScript::IStore::dtor()
+{
+	using func_t = decltype(&RE::BSScript::IStore::dtor);
+	static REL::Relocation<func_t> func{ RE::BSScript::IStore::VTABLE[0].address() };
+	return func(this);
+}
+
+RE::BSScript::IStore::~IStore()
+{
+	dtor();
+}
+
+RE::BSStorageDefs::ErrorCode RE::BSScript::IStore::write()
+{
+	using func_t = decltype(&RE::BSScript::IStore::write);
+	static REL::Relocation<func_t> func{ RE::BSScript::IStore::VTABLE[0].address() + 5};
+	return func(this);
+}
+
+RE::BSStorageDefs::ErrorCode RE::BSScript::IStore::Write(std::size_t a_numBytes, const std::byte* a_bytes)
+{
+	return write();
+}
+
+namespace RE
+{
+	namespace BSStorageDefs
+	{
+		enum class ErrorCode
+		{
+			Default = 0
+		};
+	}
+}
+
+
+std::ifstream fileStream;
+class Store : public RE::BSScript::IStore
+{
+public:
+	// override (BSScript::IStore)
+	std::size_t GetSize() const override
+	{
+		int z = 42;
+		return 42;
+	}
+	std::size_t GetPosition() const override
+	{
+		int z = 42;
+		return 0;
+	}
+
+	RE::BSStorageDefs::ErrorCode Seek(std::size_t a_offset, RE::BSStorageDefs::SeekMode a_seekMode) const override
+	{
+		int z = 42;
+		return RE::BSStorageDefs::ErrorCode();
+	}
+
+	RE::BSStorageDefs::ErrorCode Read(std::size_t a_numBytes, std::byte* a_bytes) const override
+	{
+		fileStream.read(reinterpret_cast<char*>(a_bytes), a_numBytes);
+		return RE::BSStorageDefs::ErrorCode();
+	}
+
+	RE::BSStorageDefs::ErrorCode Write(std::size_t a_numBytes, const std::byte* a_bytes) override
+	{
+		int z = 42;
+		return RE::BSStorageDefs::ErrorCode();
+	}
+
+	bool Open(const char* a_fileName) override
+	{
+		int z = 42;
+		fileStream.open("SQGDebug.pex");
+		return true;
+	}
+
+	void Close() override
+	{
+		fileStream.close();
+		auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+		auto a = scriptMachine->linker.classMap;
+		for(auto b : *a)
+		{
+			int y = 44;
+			if(b.first == "SQGDebug")
+			{
+				int p = 43;
+				auto i = b.second.get();
+				auto z = 42;
+			}
+		}
+		int z = 42;
+	}
+
+	const RE::BSFixedString& GetRelPath() override
+	{
+		return *path;
+	}
+
+	bool HasOpenFile() override
+	{
+		int z = 42;
+		return true;
+	}
+
+	bool FileIsGood() override
+	{
+		int z = 42;
+		return true;
+	}
+
+	void Unk_0B() override
+	{
+		
+	}
+};
+
+RE::BSTSmartPointer<Store> s;
+std::string SwapSelectedQuest(RE::StaticFunctionTag*)
+{
+	selectedQuest = selectedQuest == SQG::QuestEngine::referenceQuest ? generatedQuest : SQG::QuestEngine::referenceQuest;
+	return "Selected " + std::string(selectedQuest ? selectedQuest->GetFullName() : "nullptr");
+}
+
+static Store* GetCustomStore()
+{
+	if(!s)
+	{
+		path = new RE::BSFixedString("data\\SCRIPTS\\SQGDebug.pex");
+		s = RE::make_smart<Store>();
+	}
+	return s.get();
+}
+
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
-	int z = 42;
+	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+	auto vm = RE::SkyrimVM::GetSingleton();
+
+	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
+
+	auto u = vm->scriptStore;
+
+	auto y = reinterpret_cast<void**>(RE::VTABLE_SkyrimScript__Store[0].address());
+	auto open = y[6];
+	auto relpath = y[8];
+	auto read = y[4];
+
+	GetCustomStore();
+	vm->scriptLoader.SetScriptStore(s);
+	vm->scriptStore = s;
+
+	scriptMachine->linker.allowRelinking = true;
+	scriptMachine->linker.Process("SQGDebug");
+	auto a = scriptMachine->linker.classMap;
+	for(auto b : *a)
+	{
+		int y = 44;
+		if(b.first == "SQGDebug")
+		{
+			int p = 43;
+		}
+	}
+	//scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject);
+	auto z = 42;
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
@@ -344,6 +516,82 @@ extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryIn
 	return true;
 }
 
+static bool OpenScriptHook(char* scriptName)
+{
+	if(!std::strcmp(scriptName, "SQGDebug"))
+	{
+		return true;
+	}
+	return false;
+}
+
+struct OpenScriptHookedPatch final : Xbyak::CodeGenerator
+{
+	explicit OpenScriptHookedPatch(const uintptr_t inHookedCall, const uintptr_t inResumeAddress, const uintptr_t inHookAddress, const uintptr_t inBypassAddress)
+	{
+		Xbyak::Label bypass;
+
+		mov(r10, inHookedCall); //call hooked method (do it when hooking anyway since it seems to fix crashes probably stack related)
+		call(r10);
+
+		mov(rcx, rsi);
+		mov(r10, inHookAddress); //Call hook
+		call(r10);
+
+		test(al, al);
+		jnz(bypass); //if hook handled the script, bypass normal exec
+
+		mov(rcx, inResumeAddress); //if not resume
+		jmp(rcx);
+
+		L(bypass);
+			mov(rcx, reinterpret_cast<std::uintptr_t>(GetCustomStore));
+			call(rcx);
+			mov(rcx, rax);
+			mov(r10, inResumeAddress + 0x4);
+			jmp(r10);
+    }
+};
+
+static bool OpenScript2Hook(char** scriptName)
+{
+	auto a = *scriptName;
+	if(!std::strcmp(*scriptName, "SQGDebug"))
+	{
+		return true;
+	}
+	return false;
+}
+
+struct OpenScript2HookedPatch final : Xbyak::CodeGenerator
+{
+	explicit OpenScript2HookedPatch(const uintptr_t inHookedCall, const uintptr_t inResumeAddress, const uintptr_t inHookAddress, const uintptr_t inBypassAddress)
+	{
+		Xbyak::Label bypass;
+
+		mov(r10, inHookedCall); //call hooked method (do it when hooking anyway since it seems to fix crashes probably stack related)
+		call(r10);
+
+		mov(rcx, r12);
+		mov(r10, inHookAddress); //Call hook
+		call(r10);
+
+		test(al, al);
+		jnz(bypass); //if hook handled the script, bypass normal exec
+
+		mov(rdx, inResumeAddress); //if not resume
+		jmp(rdx);
+
+		L(bypass);
+			mov(rdx, reinterpret_cast<std::uintptr_t>(GetCustomStore));
+			call(rdx);
+			mov(rdx, rax);
+			mov(r10, inResumeAddress + 0x4);
+			jmp(r10);
+    }
+};
+
+
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
 {
@@ -401,8 +649,19 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 	SKSE::AllocTrampoline(1<<10);
 	auto& trampoline = SKSE::GetTrampoline();
-	SQG::QuestEngine::RegisterHooks(trampoline);
-	SQG::DialogEngine::RegisterHooks(trampoline);
+	//SQG::QuestEngine::RegisterHooks(trampoline);
+	//SQG::DialogEngine::RegisterHooks(trampoline);
+
+	auto a = REL::Module::get().base();
+	
+	const auto hookAddress = REL::Offset(0x1249FD7).address();
+	OpenScriptHookedPatch osh{REL::Offset(0x1284C00).address(), hookAddress + 0x5, reinterpret_cast<uintptr_t>(OpenScriptHook), REL::Offset(0x124A020).address()};
+    trampoline.write_branch<5>(hookAddress, trampoline.allocate(osh));
+
+	const auto hookAddress2 = REL::Offset(0x124AEFC).address();
+	OpenScript2HookedPatch osh2{REL::Offset(0x1284C00).address(), hookAddress2 + 0x5, reinterpret_cast<uintptr_t>(OpenScript2Hook), REL::Offset(0x124A020).address()};
+    trampoline.write_branch<5>(hookAddress2, trampoline.allocate(osh2));
+	
 
 	return true;
 }
