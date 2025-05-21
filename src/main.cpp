@@ -13,10 +13,12 @@
 RE::TESQuest* generatedQuest = nullptr;
 RE::TESQuest* selectedQuest = nullptr;
 RE::TESObjectREFR* targetForm = nullptr;
+RE::TESObjectREFR* targetForm2 = nullptr;
+RE::TESObjectREFR* selectedForm = nullptr;
 RE::TESObjectREFR* activator = nullptr;
 RE::TESObjectREFR* targetActivator = nullptr;
 
-void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
+void FillQuestWithGeneratedData(RE::TESQuest* inQuest, RE::TESObjectREFR* inTarget)
 {
 	//Parametrize quest
 	//=======================
@@ -44,7 +46,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 
 	//Add aliases
 	//=======================
-	SQG::AddRefAlias(inQuest, 0, "SQGTestAliasTarget", targetForm);
+	SQG::AddRefAlias(inQuest, 0, "SQGTestAliasTarget", inTarget);
 
 	//Add packages
 	//=======================
@@ -73,7 +75,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		scriptMachine->CreateObject("PF_SQGAcquirePackage", packageCustomScriptObject);
 		scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
 
-		SQG::AddAliasPackage(inQuest, targetForm, customAcquirePackage, "PF_SQGAcquirePackage");
+		SQG::AddAliasPackage(inQuest, inTarget, customAcquirePackage, "PF_SQGAcquirePackage");
 	}
 
 	//ACTIVATE PACKAGE
@@ -96,7 +98,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		scriptMachine->CreateObject("PF_SQGActivatePackage", packageCustomScriptObject);
 		scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
 
-		SQG::AddAliasPackage(inQuest, targetForm, customActivatePackage, "PF_SQGActivatePackage");
+		SQG::AddAliasPackage(inQuest, inTarget, customActivatePackage, "PF_SQGActivatePackage");
 	}
 
 	//TRAVEL PACKAGE
@@ -117,13 +119,13 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		scriptMachine->CreateObject("PF_SQGTravelPackage", packageCustomScriptObject);
 		scriptMachine->BindObject(packageCustomScriptObject, packageHandle, false);
 
-		SQG::AddAliasPackage(inQuest, targetForm, customTravelPackage, "PF_SQGTravelPackage");
+		SQG::AddAliasPackage(inQuest, inTarget, customTravelPackage, "PF_SQGTravelPackage");
 	}
 
 	//Add dialogs
 	//===========================
 
-	auto* checkSpeakerCondition = SQG::CreateCondition(targetForm->data.objectReference, RE::FUNCTION_DATA::FunctionID::kGetIsID, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, {.f = 1.f}); //todo check directly targetForm
+	auto* checkSpeakerCondition = SQG::CreateCondition(inTarget->data.objectReference, RE::FUNCTION_DATA::FunctionID::kGetIsID, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, {.f = 1.f}); //todo check directly targetForm
 	auto* aboveStage0Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kGreaterThan,{.f = 0.f});
 	auto* aboveStage10Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kGreaterThan, {.f = 10.f});
 	auto* underStage11Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kLessThan,{.f = 11.f});
@@ -131,7 +133,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	auto* aboveStage12Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kGreaterThanOrEqualTo, {.f = 12.f});
 	auto* underStage15Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kLessThan, {.f = 15.f});
 	
-	auto* wonderEntry = SQG::AddDialogTopic(inQuest, targetForm, "I've not decided yet. I'd like to hear your side of the story.");
+	auto* wonderEntry = SQG::AddDialogTopic(inQuest, inTarget, "I've not decided yet. I'd like to hear your side of the story.");
 	wonderEntry->AddAnswer
 	(
 		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
@@ -146,7 +148,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		"Tell me again about the reasons of the contract",
 		{checkSpeakerCondition, aboveStage10Condition, underStage15Condition}
 	);
-	auto* moreWonderEntry = SQG::AddDialogTopic(inQuest, targetForm, "What did he do ?", wonderEntry);
+	auto* moreWonderEntry = SQG::AddDialogTopic(inQuest, inTarget, "What did he do ?", wonderEntry);
 	moreWonderEntry->AddAnswer
 	(
 		"He lied, I'm the good one in the story.",
@@ -156,7 +158,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		0
 	);
 
-	auto* attackEntry = SQG::AddDialogTopic(inQuest, targetForm, "As you guessed. Prepare to die !");
+	auto* attackEntry = SQG::AddDialogTopic(inQuest, inTarget, "As you guessed. Prepare to die !");
 	attackEntry->AddAnswer
 	(
 		"Wait a minute ! Could I have a last will please ?",
@@ -171,7 +173,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		"I can't believe my boss would lie. Prepare to die !",
 		{checkSpeakerCondition, aboveStage0Condition, underStage15Condition}
 	);
-	auto* lastWillYesEntry = SQG::AddDialogTopic(inQuest, targetForm, "Yes, of course, proceed but don't do anything inconsiderate.", attackEntry);
+	auto* lastWillYesEntry = SQG::AddDialogTopic(inQuest, inTarget, "Yes, of course, proceed but don't do anything inconsiderate.", attackEntry);
 	lastWillYesEntry->AddAnswer
 	(						
 		"Thank you for your consideration",
@@ -180,7 +182,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		15,
 		1
 	);
-	auto* lastWillNoEntry = SQG::AddDialogTopic(inQuest, targetForm, "No, I came here for business, not charity.", attackEntry);
+	auto* lastWillNoEntry = SQG::AddDialogTopic(inQuest, inTarget, "No, I came here for business, not charity.", attackEntry);
 	lastWillNoEntry->AddAnswer
 	(
 		"Your lack of dignity is a shame.",
@@ -190,7 +192,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		2
 	);
 
-	auto* spareEntry = SQG::AddDialogTopic(inQuest, targetForm, "Actually, I decided to spare you.");
+	auto* spareEntry = SQG::AddDialogTopic(inQuest, inTarget, "Actually, I decided to spare you.");
 	spareEntry->AddAnswer
 	(
 		"You're the kindest. I will make sure to hide myself from the eyes of your organization.",
@@ -200,8 +202,8 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		3
 	);
 
-	SQG::AddForceGreet(inQuest, targetForm, "So you came here to kill me, right ?", {underStage11Condition});
-	SQG::AddHelloTopic(targetForm, "What did you decide then ?");
+	SQG::AddForceGreet(inQuest, inTarget, "So you came here to kill me, right ?", {underStage11Condition});
+	SQG::AddHelloTopic(inTarget, "What did you decide then ?");
 }
 
 void AttachScriptsToQuest(const RE::TESQuest* inQuest)
@@ -237,14 +239,9 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 {
 	//Create quest if needed
 	//=======================
-	if(generatedQuest)
-	{
-		return "Quest yet generated.";
-	}
-
 	selectedQuest = generatedQuest = SQG::CreateQuest();
 
-	FillQuestWithGeneratedData(generatedQuest);
+	FillQuestWithGeneratedData(generatedQuest, selectedForm);
 	AttachScriptsToQuest(generatedQuest);
 
 	//Notify success
@@ -278,6 +275,7 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
 	int z = 42;
+	selectedForm = targetForm2;
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
@@ -377,7 +375,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				SQG::PackageEngine::RegisterSinks();
 
 				selectedQuest = SQG::QuestEngine::referenceQuest;
-				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
+				selectedForm = targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
+				targetForm2 = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00F018}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
 				targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
 			}
