@@ -356,8 +356,7 @@ public:
 
 	bool Open(const char* a_fileName) override
 	{
-		int z = 42;
-		fileStream.open("SQGDebug.pex");
+		fileStream.open ("SQGDebug.pex", std::ios::binary);
 		return true;
 	}
 
@@ -424,15 +423,7 @@ void DraftDebugFunction(RE::StaticFunctionTag*)
 	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 	auto vm = RE::SkyrimVM::GetSingleton();
 
-	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
-
-	auto u = vm->scriptStore;
-
-	auto y = reinterpret_cast<void**>(RE::VTABLE_SkyrimScript__Store[0].address());
-	auto open = y[6];
-	auto relpath = y[8];
-	auto read = y[4];
-
+	auto baseStore = vm->scriptStore;
 	GetCustomStore();
 	vm->scriptLoader.SetScriptStore(s);
 	vm->scriptStore = s;
@@ -448,8 +439,9 @@ void DraftDebugFunction(RE::StaticFunctionTag*)
 			int p = 43;
 		}
 	}
-	//scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject);
-	auto z = 42;
+
+	vm->scriptLoader.SetScriptStore(baseStore);
+	vm->scriptStore = baseStore;
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
@@ -516,82 +508,6 @@ extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryIn
 	return true;
 }
 
-static bool OpenScriptHook(char* scriptName)
-{
-	if(!std::strcmp(scriptName, "SQGDebug"))
-	{
-		return true;
-	}
-	return false;
-}
-
-struct OpenScriptHookedPatch final : Xbyak::CodeGenerator
-{
-	explicit OpenScriptHookedPatch(const uintptr_t inHookedCall, const uintptr_t inResumeAddress, const uintptr_t inHookAddress, const uintptr_t inBypassAddress)
-	{
-		Xbyak::Label bypass;
-
-		mov(r10, inHookedCall); //call hooked method (do it when hooking anyway since it seems to fix crashes probably stack related)
-		call(r10);
-
-		mov(rcx, rsi);
-		mov(r10, inHookAddress); //Call hook
-		call(r10);
-
-		test(al, al);
-		jnz(bypass); //if hook handled the script, bypass normal exec
-
-		mov(rcx, inResumeAddress); //if not resume
-		jmp(rcx);
-
-		L(bypass);
-			mov(rcx, reinterpret_cast<std::uintptr_t>(GetCustomStore));
-			call(rcx);
-			mov(rcx, rax);
-			mov(r10, inResumeAddress + 0x4);
-			jmp(r10);
-    }
-};
-
-static bool OpenScript2Hook(char** scriptName)
-{
-	auto a = *scriptName;
-	if(!std::strcmp(*scriptName, "SQGDebug"))
-	{
-		return true;
-	}
-	return false;
-}
-
-struct OpenScript2HookedPatch final : Xbyak::CodeGenerator
-{
-	explicit OpenScript2HookedPatch(const uintptr_t inHookedCall, const uintptr_t inResumeAddress, const uintptr_t inHookAddress, const uintptr_t inBypassAddress)
-	{
-		Xbyak::Label bypass;
-
-		mov(r10, inHookedCall); //call hooked method (do it when hooking anyway since it seems to fix crashes probably stack related)
-		call(r10);
-
-		mov(rcx, r12);
-		mov(r10, inHookAddress); //Call hook
-		call(r10);
-
-		test(al, al);
-		jnz(bypass); //if hook handled the script, bypass normal exec
-
-		mov(rdx, inResumeAddress); //if not resume
-		jmp(rdx);
-
-		L(bypass);
-			mov(rdx, reinterpret_cast<std::uintptr_t>(GetCustomStore));
-			call(rdx);
-			mov(rdx, rax);
-			mov(r10, inResumeAddress + 0x4);
-			jmp(r10);
-    }
-};
-
-
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
 {
@@ -649,19 +565,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 	SKSE::AllocTrampoline(1<<10);
 	auto& trampoline = SKSE::GetTrampoline();
-	//SQG::QuestEngine::RegisterHooks(trampoline);
-	//SQG::DialogEngine::RegisterHooks(trampoline);
-
-	auto a = REL::Module::get().base();
-	
-	const auto hookAddress = REL::Offset(0x1249FD7).address();
-	OpenScriptHookedPatch osh{REL::Offset(0x1284C00).address(), hookAddress + 0x5, reinterpret_cast<uintptr_t>(OpenScriptHook), REL::Offset(0x124A020).address()};
-    trampoline.write_branch<5>(hookAddress, trampoline.allocate(osh));
-
-	const auto hookAddress2 = REL::Offset(0x124AEFC).address();
-	OpenScript2HookedPatch osh2{REL::Offset(0x1284C00).address(), hookAddress2 + 0x5, reinterpret_cast<uintptr_t>(OpenScript2Hook), REL::Offset(0x124A020).address()};
-    trampoline.write_branch<5>(hookAddress2, trampoline.allocate(osh2));
-	
+	SQG::QuestEngine::RegisterHooks(trampoline);
+	SQG::DialogEngine::RegisterHooks(trampoline);
 
 	return true;
 }
