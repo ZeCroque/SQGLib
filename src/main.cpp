@@ -368,10 +368,12 @@ extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryIn
 	return true;
 }
 
+bool reading = false;
 static bool OpenScriptHook(RE::SkyrimScript::Store* inInstance, const char* inScriptName)
 {
 	if(!std::strcmp(inScriptName, "SQGDebug"))
 	{
+		reading = true;
 		return true;
 	}
 	return false;
@@ -400,6 +402,68 @@ struct OpenScriptHookedPatch final : Xbyak::CodeGenerator
 			mov(r10, inBypassAddress);
 			jmp(r10);
 
+    }
+};//RE::SkyrimScript::Store* inInstance, void* a_numBytes, char* a_bytes
+
+std::size_t a_numBytes;
+char** a_bytes;
+auto code = 0xF457C0DE;
+static bool ReadScriptHook()
+{
+	std::memcpy(*a_bytes, &code, a_numBytes);
+	return true;
+}
+
+struct ReadScriptHookedPatch final : Xbyak::CodeGenerator
+{
+	explicit ReadScriptHookedPatch(const uintptr_t inHookAddress, const uintptr_t inResumeAddress)
+	{
+		//Xbyak::Label bypass;
+
+		//mov(rax, inHookAddress); //Call hook
+		//call(rax);
+
+		//test(al, al);
+		//jnz(bypass); //if hook handled the script, bypass normal exec
+
+		//mov(ptr[rsp+0x38], rdi);
+		//mov(rax, inResumeAddress); //if not resume
+		//jmp(rax);
+
+		//L(bypass);
+		//	mov(eax, 1);
+		//	mov(rcx, rbx);
+		//	mov(rbx, ptr[rsp + 0x48]);
+		//	add(rsp, 0x20);
+		//	pop(rbp);
+		//	ret();
+
+
+
+
+
+		Xbyak::Label bypass;
+
+		mov(rax, code);
+		push(rax);
+		ret();
+
+		//mov(rax, reinterpret_cast<std::uintptr_t>(&a_numBytes));
+		//mov(ptr[rax], rdx);
+		//mov(rax, reinterpret_cast<std::uintptr_t>(&a_bytes));
+		//mov(ptr[rax], rsi);
+		//mov(rax, inHookAddress); //Call hook
+		//call(rax);
+
+		////test(al, al);
+		////jnz(bypass); //if hook handled the script, bypass normal exec
+
+		//mov(ptr[rsp+0x18], rbx);
+		//mov(rax, inResumeAddress); //if not resume
+		//jmp(rax);
+
+	/*	L(bypass);
+			ret();*/
     }
 };
 
@@ -468,6 +532,10 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	const auto hookAddress = REL::Offset(0x1249FD7).address();
 	OpenScriptHookedPatch osh{REL::Offset(0x1284C00).address(), hookAddress + 0x5, reinterpret_cast<uintptr_t>(OpenScriptHook), REL::Offset(0x124A020).address()};
     trampoline.write_branch<5>(hookAddress, trampoline.allocate(osh));
+
+	const auto hookAddress2 = REL::Offset(0x919DE0).address();
+	ReadScriptHookedPatch rsh{reinterpret_cast<uintptr_t>(ReadScriptHook), hookAddress2 + 0x5};
+    //trampoline.write_branch<5>(hookAddress2, trampoline.allocate(rsh));
 
 	return true;
 }
