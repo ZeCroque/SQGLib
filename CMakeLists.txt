@@ -47,6 +47,7 @@ set(PRIVATE_HEADERS
 	${SOURCE_DIR}/Engine/Dialog.h
 	${SOURCE_DIR}/Engine/Package.h
 	${SOURCE_DIR}/Engine/Quest.h
+	${SOURCE_DIR}/Engine/Script.h
 )
 
 set(HPP
@@ -61,6 +62,7 @@ set(CPP
 	${SOURCE_DIR}/Engine/Dialog.cpp
 	${SOURCE_DIR}/Engine/Package.cpp
 	${SOURCE_DIR}/Engine/Quest.cpp
+	${SOURCE_DIR}/Engine/Script.cpp
 )
 
 set(SOURCES
