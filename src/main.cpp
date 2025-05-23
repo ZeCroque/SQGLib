@@ -270,54 +270,6 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 		selectedQuest->Start();
 	}
 }
-
-void RE::BSStorage::dtor()
-{
-	using func_t = decltype(&RE::BSStorage::dtor);
-	static REL::Relocation<func_t> func{ REL::Offset(0x196320).address() };
-	return func(this);
-}
-
-RE::BSStorage::~BSStorage()
-{
-	dtor();
-}
-
-void RE::BSScript::IStore::dtor()
-{
-	using func_t = decltype(&RE::BSScript::IStore::dtor);
-	static REL::Relocation<func_t> func{ REL::Offset(0x919EF0).address() };
-	return func(this);
-}
-
-RE::BSScript::IStore::~IStore()
-{
-	dtor();
-}
-
-RE::BSStorageDefs::ErrorCode RE::BSScript::IStore::write()
-{
-	using func_t = decltype(&RE::BSScript::IStore::write);
-	static REL::Relocation<func_t> func{  REL::Offset(0x91A090).address() };
-	return func(this);
-}
-
-RE::BSStorageDefs::ErrorCode RE::BSScript::IStore::Write(std::size_t a_numBytes, const std::byte* a_bytes)
-{
-	return write();
-}
-
-namespace RE
-{
-	namespace BSStorageDefs
-	{
-		enum class ErrorCode
-		{
-			Default = 0
-		};
-	}
-}
-
 RE::BSTSmartPointer<RE::BSScript::IStore> baseStore;
 
 std::ifstream fileStream;
