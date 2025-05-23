@@ -5,6 +5,9 @@
     "boost-stl-interfaces",
     "rsm-binary-io",
     "spdlog",
-    "xbyak"
+    "xbyak",
+    "boost-property-tree",
+    "fmt",
+    "pugixml"
   ]
 }

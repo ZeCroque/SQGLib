@@ -2,3 +2,6 @@
 	path = external/CommonLibSSE
 	url = https://github.com/ZeCroque/CommonLibSSE.git
 	branch = SQGLibPatchRebased
+[submodule "external/Caprica"]
+	path = external/Caprica
+	url = https://github.com/ZeCroque/Caprica.git

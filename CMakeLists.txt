@@ -150,12 +150,15 @@ if(NOT TARGET CommonLibSSE::CommonLibSSE)
 	add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/CommonLibSSE" CommonLibSSE EXCLUDE_FROM_ALL)
 endif()
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/DPF" DPFLib EXCLUDE_FROM_ALL)
+set(CAPRICA_STATIC_LIBRARY ON)
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/Caprica" Caprica EXCLUDE_FROM_ALL)
 
 target_link_libraries(
 	"${PROJECT_NAME}"
 	PRIVATE
 		CommonLibSSE::CommonLibSSE
 		DPFLib
+		Caprica
 )
 
 target_precompile_headers(
