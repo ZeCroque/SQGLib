@@ -6,3 +6,6 @@
 	path = external/DPF
 	url = https://github.com/ZeCroque/DPF-Dynamic-Persistent-Forms.git
 	branch = libify
+[submodule "external/Caprica"]
+	path = external/Caprica
+	url = https://github.com/ZeCroque/Caprica.git
