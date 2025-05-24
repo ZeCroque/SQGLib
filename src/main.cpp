@@ -340,42 +340,60 @@ caprica::papyrus::PapyrusCompilationNode* getNode(const caprica::papyrus::Papyru
 
 static bool gBaseFound = true;
 
-bool addSingleFile(const caprica::IInputFile& input,
+bool addSingleFile(const caprica::IInputFile&,
                    const std::filesystem::path& baseOutputDir,
                    caprica::CapricaJobManager* jobManager,
                    caprica::papyrus::PapyrusCompilationNode::NodeType nodeType) {
   // Get the file size and last modified time using std::filesystem
-  std::error_code ec;
+  auto script = R"(Scriptname SQGDebug Extends Quest Hidden
 
-  const auto relPath = input.resolved_relative();
-  const auto namespaceDir = relPath.parent_path();
-  const auto absPath = input.resolved_absolute();
-  const auto filename = absPath.filename();
-  const auto absBaseDir = input.resolved_absolute_basedir();
-  auto lastModTime = std::filesystem::last_write_time(absPath, ec);
-  if (ec) {
-    std::cout << "An error occurred while trying to get the last modified time of '" << absPath << "'!" << std::endl;
-    return false;
-  }
-  auto fileSize = std::filesystem::file_size(absPath, ec);
-  if (ec) {
-    std::cout << "An error occurred while trying to get the file size of '" << absPath << "'!" << std::endl;
-    return false;
-  }
+ReferenceAlias Property SQGTestAliasTarget Auto
 
-  auto namespaceName = caprica::FSUtils::pathToObjectName(namespaceDir);
+Function Fragment_0()
+SetObjectiveDisplayed(10)
+EndFunction
 
-  auto node = getNode(nodeType,
+Function Fragment_1()
+SetObjectiveDisplayed(12)
+EndFunction
+
+Function Fragment_2()
+SetObjectiveDisplayed(15)
+SetObjectiveFailed(12)
+EndFunction
+
+Function Fragment_3()
+SetObjectiveCompleted(15)
+EndFunction
+
+Function Fragment_4()
+SetObjectiveFailed(12)
+EndFunction
+
+Function Fragment_5()
+SetObjectiveCompleted(10)
+SetObjectiveFailed(12)
+EndFunction
+
+Function Fragment_6()
+SetObjectiveFailed(10)
+SetObjectiveCompleted(12)
+EndFunction)"sv;
+
+  auto node = new caprica::papyrus::PapyrusCompilationNode(
                       jobManager,
-                      baseOutputDir,
-                      namespaceDir,
-                      absBaseDir,
-                      filename,
-                      lastModTime.time_since_epoch().count(),
-                      fileSize,
-                      !input.requiresRemap());
+                      caprica::papyrus::PapyrusCompilationNode::NodeType::PapyrusCompile,
+                      "SQGDebug.psc",
+                      "",
+                      "SQGDebug.psc",
+                      0,
+                      script.size(),
+                      false,
+					  true);
+node->readFileData = script;
+	
   caprica::papyrus::PapyrusCompilationContext::pushNamespaceFullContents(
-          namespaceName,
+          "",
           caprica::caseless_unordered_identifier_ref_map<caprica::papyrus::PapyrusCompilationNode *>{
                   {caprica::identifier_ref(node->baseName), node}
           });
@@ -587,25 +605,18 @@ void DraftDebugFunction(RE::StaticFunctionTag*)
     parseUserFlags("H:\\Games\\SkyrimSE\\Data\\Scripts\\Source\\TESV_Papyrus_Flags.flg");
 
     caprica::conf::General::inputFiles.reserve(caprica::conf::General::inputFiles.size() + 1);
-    caprica::conf::General::inputFiles.emplace_back(std::make_shared<caprica::InputFile>("D:\\tmp\\CapricaCompileScripts\\Caprica\\SQGDebug.psc", true));
+    caprica::conf::General::inputFiles.emplace_back(std::make_shared<caprica::InputFile>(".psc", true));
 
 
     const std::filesystem::path baseOutputDir("D:\\tmp\\CapricaCompileScripts\\Caprica");
     caprica::conf::General::outputDirectory = baseOutputDir;
 
-    for (auto& input : caprica::conf::General::inputFiles) {
-      if (!input->resolve()) {
-        std::cout << "Unable to locate input file '" << input->get_unresolved_path() << "'." << std::endl;
-        return;
-      }
-        if(!addSingleFile(*input,
-                                baseOutputDir,
-                                &jobManager,
-                                caprica::papyrus::PapyrusCompilationNode::NodeType::PapyrusCompile)) {
-        std::cout << "Unable to add input file '" << input->get_unresolved_path() << "'." << std::endl;
-        return;
-      }
-    }
+	caprica::conf::General::inputFiles[0]->resolved = true;
+
+	addSingleFile(*caprica::conf::General::inputFiles[0],
+	                                baseOutputDir,
+	                                &jobManager,
+	                                caprica::papyrus::PapyrusCompilationNode::NodeType::PapyrusCompile);
 
     jobManager.startup((uint32_t) std::thread::hardware_concurrency());
     caprica::papyrus::PapyrusCompilationContext::RenameImports(&jobManager);
@@ -732,7 +743,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	{
 	    return false;
 	}
-
+	//DraftDebugFunction(nullptr);
 	SKSE::AllocTrampoline(1<<10);
 	auto& trampoline = SKSE::GetTrampoline();
 	SQG::QuestEngine::RegisterHooks(trampoline);

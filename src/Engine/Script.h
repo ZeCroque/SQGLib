@@ -1,4 +1,5 @@
 #pragma once
+#include "common/allocators/ChainedPool.h"
 
 namespace SQG
 {
@@ -28,6 +29,8 @@ namespace SQG
 			static RE::BSTSmartPointer<RE::BSScript::IStore> baseStore;
 			bool readingCustomScript = false;
 			std::string path;
+			mutable caprica::allocators::ChainedPool::HeapIterator it;
+			mutable int index = 0;
 		};
 	}
 }
