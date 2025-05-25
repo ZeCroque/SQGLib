@@ -47,11 +47,48 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	//=======================
 	SQG::AddRefAlias(inQuest, 0, "SQGTestAliasTarget", targetForm);
 
-	//Add packages
-	//=======================
+	//Add script logic
+	//===========================
+	std::ifstream ifs;
+	for(std::filesystem::path scriptPath = "./Data/SKSE/Plugins/SQGLib/"; const auto& file : std::filesystem::directory_iterator{scriptPath})
+	{
+		ifs.open(file, std::ifstream::ate);
+		auto size = ifs.tellg();
+		ifs.close();
+		char* buf = new char[size];
+		std::memset(buf, 0, size);
+		ifs.open(file);
+		ifs.read(buf, size);
+		ifs.close();
+		SQG::ScriptEngine::AddScript(file.path().stem().string(), buf);
+		delete[] buf;
+	}
 
 	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 	auto* policy = scriptMachine->GetObjectHandlePolicy();
+
+	const auto selectedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, inQuest);
+	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
+	scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject);
+	scriptMachine->BindObject(questCustomScriptObject, selectedQuestHandle, false);
+	SQG::questsData[inQuest->formID].script = questCustomScriptObject.get();
+
+	RE::BSTSmartPointer<RE::BSScript::Object> referenceAliasBaseScriptObject;
+	scriptMachine->CreateObject("SQGQuestTargetScript", referenceAliasBaseScriptObject);
+	const auto questAliasHandle = selectedQuestHandle & 0x0000FFFFFFFF;
+	scriptMachine->BindObject(referenceAliasBaseScriptObject, questAliasHandle, false);
+
+	RE::BSScript::Variable propertyValue;
+	propertyValue.SetObject(referenceAliasBaseScriptObject);
+	scriptMachine->SetPropertyValue(questCustomScriptObject, "SQGTestAliasTarget", propertyValue);
+	questCustomScriptObject->initialized = true; //Required when creating object with properties
+
+	RE::BSTSmartPointer<RE::BSScript::Object> dialogFragmentsCustomScriptObject;
+	scriptMachine->CreateObject("SQGTopicFragments", dialogFragmentsCustomScriptObject);
+	scriptMachine->BindObject(dialogFragmentsCustomScriptObject, selectedQuestHandle, false);
+
+	//Add packages
+	//=======================
 
 	//ACQUIRE PACKAGE
 	//=============================
@@ -205,35 +242,6 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 	SQG::AddHelloTopic(targetForm, "What did you decide then ?");
 }
 
-void AttachScriptsToQuest(const RE::TESQuest* inQuest)
-{
-	//Add script logic
-	//===========================
-	auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-	auto* policy = scriptMachine->GetObjectHandlePolicy();
-
-	const auto selectedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, inQuest);
-	//TODO!! try to call script compiler from c++ before loading custom script
-	RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
-	scriptMachine->CreateObjectWithProperties("SQGDebug", 1, questCustomScriptObject);
-	scriptMachine->BindObject(questCustomScriptObject, selectedQuestHandle, false);
-	SQG::questsData[inQuest->formID].script = questCustomScriptObject.get();
-
-	RE::BSTSmartPointer<RE::BSScript::Object> referenceAliasBaseScriptObject;
-	scriptMachine->CreateObject("SQGQuestTargetScript", referenceAliasBaseScriptObject);
-	const auto questAliasHandle = selectedQuestHandle & 0x0000FFFFFFFF;
-	scriptMachine->BindObject(referenceAliasBaseScriptObject, questAliasHandle, false);
-
-	RE::BSScript::Variable propertyValue;
-	propertyValue.SetObject(referenceAliasBaseScriptObject);
-	scriptMachine->SetPropertyValue(questCustomScriptObject, "SQGTestAliasTarget", propertyValue);
-	questCustomScriptObject->initialized = true; //Required when creating object with properties
-
-	RE::BSTSmartPointer<RE::BSScript::Object> dialogFragmentsCustomScriptObject;
-	scriptMachine->CreateObject("SQGTopicFragments", dialogFragmentsCustomScriptObject);
-	scriptMachine->BindObject(dialogFragmentsCustomScriptObject, selectedQuestHandle, false);
-}
-
 std::string GenerateQuest(RE::StaticFunctionTag*)
 {
 	//Create quest if needed
@@ -246,7 +254,6 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 	selectedQuest = generatedQuest = SQG::CreateQuest();
 
 	FillQuestWithGeneratedData(generatedQuest);
-	AttachScriptsToQuest(generatedQuest);
 
 	//Notify success
 	//===========================
@@ -278,41 +285,7 @@ std::string SwapSelectedQuest(RE::StaticFunctionTag*)
 
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
-	auto script = R"(Scriptname SQGDebug Extends Quest Hidden
-
-ReferenceAlias Property SQGTestAliasTarget Auto
-
-Function Fragment_0()
-SetObjectiveDisplayed(10)
-EndFunction
-
-Function Fragment_1()
-SetObjectiveDisplayed(12)
-EndFunction
-
-Function Fragment_2()
-SetObjectiveDisplayed(15)
-SetObjectiveFailed(12)
-EndFunction
-
-Function Fragment_3()
-SetObjectiveCompleted(15)
-EndFunction
-
-Function Fragment_4()
-SetObjectiveFailed(12)
-EndFunction
-
-Function Fragment_5()
-SetObjectiveCompleted(10)
-SetObjectiveFailed(12)
-EndFunction
-
-Function Fragment_6()
-SetObjectiveFailed(10)
-SetObjectiveCompleted(12)
-EndFunction)"sv;
-	SQG::ScriptEngine::AddScript("SQGDebug", script); //TODO remove psc
+	int z = 42;
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)

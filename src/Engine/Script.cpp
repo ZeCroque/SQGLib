@@ -81,6 +81,8 @@ namespace SQG
 			if(compiledScripts.contains(a_fileName))
 			{
 				chainedPoolIt = compiledScripts[a_fileName]->getData().begin();
+				chainedPoolPos = 0;
+				index = 0;
 				scriptName = a_fileName;
 				fakePath = "data\\SCRIPTS\\" + scriptName + ".pex";
 				readingCustomScript = true;
@@ -344,8 +346,8 @@ namespace SQG
 			    {caprica::identifier_ref(node->baseName), node}
 			});
 
-		    caprica::papyrus::PapyrusCompilationContext::doCompile(&jobManager);
-			jobManager.enjoin();
+		    caprica::papyrus::PapyrusCompilationContext::awaitCompile();
+			caprica::papyrus::PapyrusCompilationContext::removeFromNamespace(node->baseName);
 		}
 	}
 }

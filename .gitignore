@@ -6,4 +6,5 @@ SSEEdit Backups
 SSEEdit Cache
 meta.ini
 Release
-SKSE
+*.dll
+*.pdb
