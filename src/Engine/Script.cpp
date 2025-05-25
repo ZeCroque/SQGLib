@@ -1,5 +1,7 @@
 #include "Script.h"
 
+#include "common/FakeScripts.h"
+#include "common/parser/CapricaUserFlagsParser.h"
 #include "papyrus/PapyrusCompilationContext.h"
 
 namespace SQG
@@ -7,24 +9,29 @@ namespace SQG
 	namespace ScriptEngine
 	{
 		RE::BSTSmartPointer<Store> Store::store;
-		std::ifstream Store::fileStream;
 		RE::BSTSmartPointer<RE::BSScript::IStore> Store::baseStore;
+		std::map<std::string, caprica::papyrus::PapyrusCompilationNode*> compiledScripts;
 
 		std::size_t Store::GetSize() const
 		{
-			//if(readingCustomScript)
-			//{
-			//	std::ifstream file("SQGDebug.pex", std::ios::binary | std::ios::ate);
-			//	return file.tellg();
-			//}
+			if(readingCustomScript)
+			{
+				auto& data = compiledScripts[scriptName]->getData();
+				std::size_t size = 0;
+				for(auto it = data.begin(); it != data.end(); ++it)
+				{
+					size += it.size();
+				}
+				return size;
+			}
 			return baseStore->GetSize();
 		}
 		std::size_t Store::GetPosition() const
 		{
-			//if(readingCustomScript)
-			//{
-			//	return fileStream.tellg();
-			//}
+			if(readingCustomScript)
+			{
+				return chainedPoolPos * 1024 * 4 + index;
+			}
 			return baseStore->GetPosition();
 		}
 
@@ -42,17 +49,16 @@ namespace SQG
 		{
 			if(readingCustomScript)
 			{
-				//fileStream.read(reinterpret_cast<char*>(a_bytes), a_numBytes);
-				auto buf = reinterpret_cast<char*>(a_bytes);
-
-				for(auto i = 0; i < a_numBytes; ++i)
+				const auto buf = reinterpret_cast<char*>(a_bytes);
+				for(std::size_t i = 0; i < a_numBytes; ++i)
 				{
-					buf[i] = it.data()[index];
+					buf[i] = chainedPoolIt.data()[index];
 					++index;
-					if(index == it.size())
+					if(index == chainedPoolIt.size())
 					{
 						index = 0;
-						++it;
+						++chainedPoolIt;
+						++chainedPoolPos;
 					}
 				}
 				return RE::BSStorageDefs::ErrorCode();
@@ -72,11 +78,11 @@ namespace SQG
 
 		bool Store::Open(const char* a_fileName)
 		{
-			if(!std::strcmp(a_fileName, "SQGDebug"))
+			if(compiledScripts.contains(a_fileName))
 			{
-				it = caprica::papyrus::PapyrusCompilationNode::pexFiles.begin()->get()->strm.begin();
-				//fileStream.open("SQGDebug.pex", std::ios::binary);
-				//path = "data\\SCRIPTS\\SQGDebug.pex";
+				chainedPoolIt = compiledScripts[a_fileName]->getData().begin();
+				scriptName = a_fileName;
+				fakePath = "data\\SCRIPTS\\" + scriptName + ".pex";
 				readingCustomScript = true;
 				return true;
 			}
@@ -87,7 +93,6 @@ namespace SQG
 		{
 			if(readingCustomScript)
 			{
-				//fileStream.close();
 				readingCustomScript = false;
 				return;
 			}
@@ -96,28 +101,28 @@ namespace SQG
 
 		const RE::BSFixedString& Store::GetRelPath()
 		{
-			//if(readingCustomScript)
-			//{
-			//	return path;
-			//}
+			if(readingCustomScript)
+			{
+				return fakePath;
+			}
 			return baseStore->GetRelPath();
 		}
 
 		bool Store::HasOpenFile()
 		{
-			//if(readingCustomScript)
-			//{
-			//	return fileStream.is_open();
-			//}
+			if(readingCustomScript)
+			{
+				return true;
+			}
 			return baseStore->HasOpenFile();
 		}
 
 		bool Store::FileIsGood()
 		{
-			//if(readingCustomScript)
-			//{
-			//	return fileStream.is_open();
-			//}
+			if(readingCustomScript)
+			{
+				return true;
+			}
 			return baseStore->FileIsGood();
 		}
 
@@ -143,6 +148,204 @@ namespace SQG
 				store = RE::make_smart<Store>();
 			}
 			return store.get();
+		}
+
+		caprica::papyrus::PapyrusCompilationNode* getNode(const caprica::papyrus::PapyrusCompilationNode::NodeType& nodeType,
+                                                  caprica::CapricaJobManager* jobManager,
+                                                  const std::filesystem::path& baseOutputDir,
+                                                  const std::filesystem::path& curDir,
+                                                  const std::filesystem::path& absBaseDir,
+                                                  const std::filesystem::path& fileName,
+                                                  time_t lastModTime,
+                                                  size_t fileSize,
+                                                  bool strictNS) {
+		  std::filesystem::path cur;
+		  if (curDir == ".")
+		    cur = "";
+		  else
+		    cur = curDir;
+		  std::filesystem::path sourceFilePath = absBaseDir / cur / fileName;
+		  std::filesystem::path filenameToDisplay = cur / fileName;
+
+		  auto node = new caprica::papyrus::PapyrusCompilationNode(jobManager,
+		                                                           nodeType,
+		                                                           std::move(filenameToDisplay.string()),
+		                                                           std::move(baseOutputDir.string()),
+		                                                           std::move(sourceFilePath.string()),
+		                                                           lastModTime,
+		                                                           fileSize,
+		                                                           strictNS);
+		  return node;
+		}
+
+		caprica::papyrus::PapyrusCompilationNode* getNode(const caprica::papyrus::PapyrusCompilationNode::NodeType& nodeType,
+		                                                  caprica::CapricaJobManager* jobManager,
+		                                                  const std::filesystem::path& baseOutputDir,
+		                                                  const std::filesystem::path& curDir,
+		                                                  const std::filesystem::path& absBaseDir,
+		                                                  const WIN32_FIND_DATA& data,
+		                                                  bool strictNS) {
+		  const auto lastModTime = [](FILETIME ft) -> time_t {
+		    ULARGE_INTEGER ull;
+		    ull.LowPart = ft.dwLowDateTime;
+		    ull.HighPart = ft.dwHighDateTime;
+		    return ull.QuadPart / 10000000ULL - 11644473600ULL;
+		  }(data.ftLastWriteTime);
+		  const auto fileSize = [](DWORD low, DWORD high) {
+		    ULARGE_INTEGER ull;
+		    ull.LowPart = low;
+		    ull.HighPart = high;
+		    return ull.QuadPart;
+		  }(data.nFileSizeLow, data.nFileSizeHigh);
+		  return getNode(nodeType,
+		                 jobManager,
+		                 baseOutputDir,
+		                 curDir,
+		                 absBaseDir,
+		                 data.cFileName,
+		                 lastModTime,
+		                 fileSize,
+		                 strictNS);
+		}
+
+		bool addFilesFromDirectory(const caprica::IInputFile& input,
+		                           const std::filesystem::path& baseOutputDir,
+		                           caprica::CapricaJobManager* jobManager,
+		                           caprica::papyrus::PapyrusCompilationNode::NodeType nodeType,
+		                           const std::string& startingNS = "") {
+		  // Blargle flargle.... Using the raw Windows API is 5x
+		  // faster than boost::filesystem::recursive_directory_iterator,
+		  // at 40ms vs. 200ms for the boost solution, and the raw API
+		  // solution also gets us the relative paths, absolute paths,
+		  // last write time, and file size, all without any extra processing.
+		  if (!input.exists()) {
+		    std::cout << "ERROR: Input file '" << input.get_unresolved_path() << "' was not found!" << std::endl;
+		    return false;
+		  }
+		  auto abspath = input.resolved_absolute();
+		  auto absBaseDir = input.resolved_absolute_basedir();
+		  auto subdir = input.resolved_relative();
+		  if (subdir == ".")
+		    subdir = "";
+		  bool recursive = input.isRecursive();
+		  std::vector<std::filesystem::path> dirs {};
+		  dirs.push_back(subdir);
+		  auto baseDirMap = caprica::caseless_unordered_identifier_ref_map<bool>{};
+
+		  const auto DOTDOT = std::string_view("..");
+		  const auto DOT = std::string_view(".");
+
+		  while (dirs.size()) {
+		    HANDLE hFind;
+		    WIN32_FIND_DATA data;
+		    auto curDir = dirs.back();
+		    dirs.pop_back();
+		    auto curSearchPattern = absBaseDir / curDir / "*";
+		    caprica::caseless_unordered_identifier_ref_map<caprica::papyrus::PapyrusCompilationNode *> namespaceMap{};
+		    namespaceMap.reserve(8000);
+
+		    hFind = FindFirstFileA(curSearchPattern.string().c_str(), &data);
+		    if (hFind == INVALID_HANDLE_VALUE) {
+		      std::cout << "An error occurred while trying to iterate the files in '" << curSearchPattern << "'!" << std::endl;
+		      return false;
+		    }
+
+		    do {
+		      std::string_view filenameRef = data.cFileName;
+		      if (filenameRef != DOT && filenameRef != DOTDOT) {
+		        if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+		          if (recursive)
+		            dirs.push_back(curDir / data.cFileName);
+		        } else {
+			          caprica::papyrus::PapyrusCompilationNode* node =
+		                getNode(nodeType, jobManager, baseOutputDir, curDir, absBaseDir, data, !input.requiresRemap());
+
+		            namespaceMap.emplace(caprica::identifier_ref(node->baseName), node);
+		        }
+		      }
+		    } while (FindNextFileA(hFind, &data));
+		    FindClose(hFind);
+
+  			caprica::papyrus::PapyrusCompilationContext::pushNamespaceFullContents("", std::move(namespaceMap));
+		    // We don't repopulate it because it's either in the root of whatever was imported or it's not in this import at all
+		    baseDirMap.clear();
+		  }
+		  return true;
+		}
+
+		static const std::unordered_set FAKE_SKYRIM_SCRIPTS_SET = {
+		        "fake://skyrim/__ScriptObject.psc",
+		        "fake://skyrim/DLC1SCWispWallScript.psc",
+		};
+		bool handleImports(const std::vector<caprica::ImportDir>& f, caprica::CapricaJobManager* jobManager) {
+		  // Skyrim hacks; we need to import Skyrim's fake scripts into the global namespace first.
+			caprica::caseless_unordered_identifier_ref_map<caprica::papyrus::PapyrusCompilationNode *> tempMap{};
+			for (auto &fake_script: FAKE_SKYRIM_SCRIPTS_SET) {
+			  auto basename = caprica::FSUtils::filenameAsRef(fake_script);
+			  auto node =
+			      new caprica::papyrus::PapyrusCompilationNode(jobManager,
+			                                                   caprica::papyrus::PapyrusCompilationNode::NodeType::PapyrusImport,
+			                                                   std::string(basename),
+			                                                   "",
+			                                                   std::string(fake_script),
+			                                                   0,
+			                                                   caprica::FakeScripts::getSizeOfFakeScript(fake_script, caprica::conf::Papyrus::game),
+			                                                   false);
+			  tempMap.emplace(caprica::identifier_ref(node->baseName), node);
+			}
+			caprica::papyrus::PapyrusCompilationContext::pushNamespaceFullContents("", std::move(tempMap));
+
+		  for (auto& dir : f) {
+		    std::string ns = "";
+		    if (!addFilesFromDirectory(dir, "", jobManager, caprica::papyrus::PapyrusCompilationNode::NodeType::PapyrusImport, ns))
+		      return false;
+		  }
+		  return true;
+		}
+
+		void parseUserFlags(std::string &&flagsPath) {
+		  caprica::CapricaReportingContext reportingContext{flagsPath};
+		  auto parser = new caprica::parser::CapricaUserFlagsParser(reportingContext, flagsPath);
+		  parser->parseUserFlags(caprica::conf::Papyrus::userFlagsDefinition);
+		  delete parser;
+		}
+
+		caprica::CapricaJobManager jobManager{};
+
+		void Init()
+		{
+			caprica::conf::Papyrus::game = caprica::GameID::Skyrim;
+
+		    std::string d("H:\\Games\\SkyrimSE\\Data\\Scripts\\Source");
+		    caprica::conf::Papyrus::importDirectories.emplace_back(caprica::FSUtils::canonical(d), false);
+
+
+		     if (!handleImports(caprica::conf::Papyrus::importDirectories, &jobManager)) {
+		      std::cout << "Import failed!" << std::endl;
+		      return;
+		    }
+
+		    parseUserFlags("H:\\Games\\SkyrimSE\\Data\\Scripts\\Source\\TESV_Papyrus_Flags.flg");
+			 caprica::papyrus::PapyrusCompilationContext::awaitRead();
+
+			Store::Init();
+		}
+
+		void AddScript(const std::string& inStringName, const std::string_view& inData)
+		{
+			auto node = new caprica::papyrus::PapyrusCompilationNode(
+                  &jobManager,
+                  inStringName,
+                  inData);
+			compiledScripts[inStringName] = node;
+			caprica::papyrus::PapyrusCompilationContext::pushNamespaceFullContents(
+				"",
+				caprica::caseless_unordered_identifier_ref_map<caprica::papyrus::PapyrusCompilationNode *>{
+			    {caprica::identifier_ref(node->baseName), node}
+			});
+
+		    caprica::papyrus::PapyrusCompilationContext::doCompile(&jobManager);
+			jobManager.enjoin();
 		}
 	}
 }

@@ -28,9 +28,14 @@ namespace SQG
 			static std::ifstream fileStream;
 			static RE::BSTSmartPointer<RE::BSScript::IStore> baseStore;
 			bool readingCustomScript = false;
-			std::string path;
-			mutable caprica::allocators::ChainedPool::HeapIterator it;
-			mutable int index = 0;
+			std::string scriptName;
+			RE::BSFixedString fakePath;
+			mutable caprica::allocators::ChainedPool::HeapIterator chainedPoolIt;
+			mutable std::size_t chainedPoolPos = 0;
+			mutable std::size_t index = 0;
 		};
+
+		void Init();
+		void AddScript(const std::string& inStringName, const std::string_view& inData);
 	}
 }
