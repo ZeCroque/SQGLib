@@ -440,22 +440,10 @@ void parseUserFlags(std::string &&flagsPath) {
   delete parser;
 }
 
+caprica::CapricaJobManager jobManager{};
+
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
-    caprica::CapricaJobManager jobManager{};
-    caprica::conf::Papyrus::game = caprica::GameID::Skyrim;
-
-    std::string d("H:\\Games\\SkyrimSE\\Data\\Scripts\\Source");
-    caprica::conf::Papyrus::importDirectories.emplace_back(caprica::FSUtils::canonical(d), false);
-
-
-     if (!handleImports(caprica::conf::Papyrus::importDirectories, &jobManager)) {
-      std::cout << "Import failed!" << std::endl;
-      return;
-    }
-
-    parseUserFlags("H:\\Games\\SkyrimSE\\Data\\Scripts\\Source\\TESV_Papyrus_Flags.flg");
-
 	auto script = R"(Scriptname SQGDebug Extends Quest Hidden
 
 ReferenceAlias Property SQGTestAliasTarget Auto
@@ -510,6 +498,7 @@ EndFunction)"sv;
 	});
 
     caprica::papyrus::PapyrusCompilationContext::doCompile(&jobManager);
+	jobManager.enjoin();
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
@@ -614,6 +603,20 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
 				targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
+
+				caprica::conf::Papyrus::game = caprica::GameID::Skyrim;
+
+			    std::string d("H:\\Games\\SkyrimSE\\Data\\Scripts\\Source");
+			    caprica::conf::Papyrus::importDirectories.emplace_back(caprica::FSUtils::canonical(d), false);
+
+
+			     if (!handleImports(caprica::conf::Papyrus::importDirectories, &jobManager)) {
+			      std::cout << "Import failed!" << std::endl;
+			      return;
+			    }
+
+			    parseUserFlags("H:\\Games\\SkyrimSE\\Data\\Scripts\\Source\\TESV_Papyrus_Flags.flg");
+				 caprica::papyrus::PapyrusCompilationContext::awaitRead();
 			}
 			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
 			{
