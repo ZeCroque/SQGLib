@@ -424,21 +424,15 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 			}
 			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
 			{
-				std::string name = static_cast<char*>(message->data);
-				name = name.substr(0, name.size() - 3).append("sqg");
-				DPF::LoadCache(name);
+				DPF::LoadCache(message);
 			}
 			else if(message->type == SKSE::MessagingInterface::kSaveGame)
 			{
-				std::string name = static_cast<char*>(message->data);
-				name = name.append(".sqg");
-				DPF::SaveCache(name);
+				DPF::SaveCache(message);
 			}
 			else if(message->type == SKSE::MessagingInterface::kDeleteGame)
 			{
-				std::string name = static_cast<char*>(message->data);
-				name = name.append(".sqg");
-				DPF::DeleteCache(name);
+				DPF::DeleteCache(message);
 			}
 		})
 	)
@@ -448,7 +442,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 	SKSE::AllocTrampoline(1<<10);
 	auto& trampoline = SKSE::GetTrampoline();
-
 	SQG::QuestEngine::RegisterHooks(trampoline);
 	SQG::DialogEngine::RegisterHooks(trampoline);
 
