@@ -843,7 +843,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				topicInfoEventSink = std::make_unique<TopicInfoEventSink>();
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(topicInfoEventSink.get());
 
-				Init();
+				Init(0x800, "SQGLib.esp");
 			}
 			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
 			{
