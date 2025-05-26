@@ -8,6 +8,7 @@
 #include "Engine/Package.h"
 #include "Engine/Quest.h"
 #include "Engine/Script.h"
+#include "SQG/API/ScriptUtils.h"
 
 // # Papyrus
 // =======================
@@ -60,7 +61,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 		ifs.open(file);
 		ifs.read(buf, size);
 		ifs.close();
-		SQG::ScriptEngine::AddScript(file.path().stem().string(), buf);
+		SQG::AddScript(file.path().stem().string(), buf);
 		delete[] buf;
 	}
 

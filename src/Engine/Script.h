@@ -5,6 +5,8 @@ namespace SQG
 {
 	namespace ScriptEngine
 	{
+		// # Script Store
+		// =======================
 		class Store : public RE::BSScript::IStore
 		{
 		public:
@@ -35,6 +37,8 @@ namespace SQG
 			mutable std::size_t index = 0;
 		};
 
+		// # Caprica
+		// =======================
 		void Init();
 		void AddScript(const std::string& inStringName, const std::string_view& inData);
 	}

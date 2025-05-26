@@ -40,6 +40,7 @@ set(PUBLIC_HEADERS
 	${PUBLIC_HEADER_DIR}/API/DialogUtils.h
 	${PUBLIC_HEADER_DIR}/API/QuestUtils.h
 	${PUBLIC_HEADER_DIR}/API/PackageUtils.h
+	${PUBLIC_HEADER_DIR}/API/ScriptUtils.h
 )
 
 set(PRIVATE_HEADERS
@@ -59,6 +60,7 @@ set(CPP
 	${SOURCE_DIR}/API/DialogUtils.cpp
 	${SOURCE_DIR}/API/PackageUtils.cpp
 	${SOURCE_DIR}/API/QuestUtils.cpp
+	${SOURCE_DIR}/API/ScriptUtils.cpp
 	${SOURCE_DIR}/Engine/Dialog.cpp
 	${SOURCE_DIR}/Engine/Package.cpp
 	${SOURCE_DIR}/Engine/Quest.cpp
