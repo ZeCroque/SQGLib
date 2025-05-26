@@ -110,12 +110,16 @@ target_include_directories(
 		${HEADER_DIR}
 )	
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/CommonLibSSE" CommonLibSSE EXCLUDE_FROM_ALL)
+if(NOT TARGET CommonLibSSE::CommonLibSSE)
+	add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/CommonLibSSE" CommonLibSSE EXCLUDE_FROM_ALL)
+endif()
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/DPF" DPFLib EXCLUDE_FROM_ALL)
 
 target_link_libraries(
 	"${PROJECT_NAME}"
 	PRIVATE
 		CommonLibSSE::CommonLibSSE
+		DPFLib
 )
 
 target_precompile_headers(

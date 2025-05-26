@@ -2,3 +2,7 @@
 	path = external/CommonLibSSE
 	url = https://github.com/ZeCroque/CommonLibSSE.git
 	branch = SQGLibPatch
+[submodule "DPF"]
+	path = external/DPF
+	url = https://github.com/ZeCroque/DPF-Dynamic-Persistent-Forms.git
+	branch = libify
