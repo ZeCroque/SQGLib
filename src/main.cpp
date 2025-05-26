@@ -260,12 +260,8 @@ RE::TESQuest* GetSelectedQuest(RE::StaticFunctionTag*)
 {
 	return selectedQuest;
 }
+RE::BSFixedString* path;
 
-std::string SwapSelectedQuest(RE::StaticFunctionTag*)
-{
-	selectedQuest = selectedQuest == SQG::QuestEngine::referenceQuest ? generatedQuest : SQG::QuestEngine::referenceQuest;
-	return "Selected " + std::string(selectedQuest ? selectedQuest->GetFullName() : "nullptr");
-}
 
 void StartSelectedQuest(RE::StaticFunctionTag*)
 {
@@ -273,6 +269,183 @@ void StartSelectedQuest(RE::StaticFunctionTag*)
 	{
 		selectedQuest->Start();
 	}
+}
+
+void RE::BSStorage::dtor()
+{
+	using func_t = decltype(&RE::BSStorage::dtor);
+	static REL::Relocation<func_t> func{ REL::Offset(0x196320).address() };
+	return func(this);
+}
+
+RE::BSStorage::~BSStorage()
+{
+	dtor();
+}
+
+void RE::BSScript::IStore::dtor()
+{
+	using func_t = decltype(&RE::BSScript::IStore::dtor);
+	static REL::Relocation<func_t> func{ REL::Offset(0x919EF0).address() };
+	return func(this);
+}
+
+RE::BSScript::IStore::~IStore()
+{
+	dtor();
+}
+
+RE::BSStorageDefs::ErrorCode RE::BSScript::IStore::write()
+{
+	using func_t = decltype(&RE::BSScript::IStore::write);
+	static REL::Relocation<func_t> func{  REL::Offset(0x91A090).address() };
+	return func(this);
+}
+
+RE::BSStorageDefs::ErrorCode RE::BSScript::IStore::Write(std::size_t a_numBytes, const std::byte* a_bytes)
+{
+	return write();
+}
+
+namespace RE
+{
+	namespace BSStorageDefs
+	{
+		enum class ErrorCode
+		{
+			Default = 0
+		};
+	}
+}
+
+RE::BSTSmartPointer<RE::BSScript::IStore> baseStore;
+
+std::ifstream fileStream;
+class Store : public RE::BSScript::IStore
+{
+public:
+	std::size_t GetSize() const override
+	{
+		if(readingCustomScript)
+		{
+			std::ifstream file("SQGDebug.pex", std::ios::binary | std::ios::ate);
+			return file.tellg();
+		}
+		return baseStore->GetSize();
+	}
+	std::size_t GetPosition() const override
+	{
+		if(readingCustomScript)
+		{
+			return fileStream.tellg();
+		}
+		return baseStore->GetPosition();
+	}
+
+	RE::BSStorageDefs::ErrorCode Seek(std::size_t a_offset, RE::BSStorageDefs::SeekMode a_seekMode) const override
+	{
+		if(readingCustomScript)
+		{
+			///Unsupported
+			return static_cast<RE::BSStorageDefs::ErrorCode>(8);
+		}
+		return baseStore->Seek(a_offset, a_seekMode);
+	}
+
+	RE::BSStorageDefs::ErrorCode Read(std::size_t a_numBytes, std::byte* a_bytes) const override
+	{
+		if(readingCustomScript)
+		{
+			fileStream.read(reinterpret_cast<char*>(a_bytes), a_numBytes);
+			return RE::BSStorageDefs::ErrorCode();
+		}
+		return baseStore->Read(a_numBytes, a_bytes);
+	}
+
+	RE::BSStorageDefs::ErrorCode Write(std::size_t a_numBytes, const std::byte* a_bytes) override
+	{
+		if(readingCustomScript)
+		{
+			///Unsupported
+			return static_cast<RE::BSStorageDefs::ErrorCode>(8);
+		}
+		return baseStore->Write(a_numBytes, a_bytes);
+	}
+
+	bool Open(const char* a_fileName) override
+	{
+		if(!std::strcmp(a_fileName, "SQGDebug"))
+		{
+			fileStream.open("SQGDebug.pex", std::ios::binary);
+			path = "data\\SCRIPTS\\SQGDebug.pex";
+			readingCustomScript = true;
+			return true;
+		}
+		return baseStore->Open(a_fileName);
+	}
+
+	void Close() override
+	{
+		if(readingCustomScript)
+		{
+			fileStream.close();
+			readingCustomScript = false;
+			return;
+		}
+		baseStore->Close();
+	}
+
+	const RE::BSFixedString& GetRelPath() override
+	{
+		if(readingCustomScript)
+		{
+			return path;
+		}
+		return baseStore->GetRelPath();
+	}
+
+	bool HasOpenFile() override
+	{
+		if(readingCustomScript)
+		{
+			return fileStream.is_open();
+		}
+		return baseStore->HasOpenFile();
+	}
+
+	bool FileIsGood() override
+	{
+		if(readingCustomScript)
+		{
+			return fileStream.is_open();
+		}
+		return baseStore->FileIsGood();
+	}
+
+	void Unk_0B() override
+	{
+		baseStore->Unk_0B();
+	}
+
+private:
+	bool readingCustomScript = false;
+	std::string path;
+};
+
+RE::BSTSmartPointer<Store> s;
+std::string SwapSelectedQuest(RE::StaticFunctionTag*)
+{
+	selectedQuest = selectedQuest == SQG::QuestEngine::referenceQuest ? generatedQuest : SQG::QuestEngine::referenceQuest;
+	return "Selected " + std::string(selectedQuest ? selectedQuest->GetFullName() : "nullptr");
+}
+
+static Store* GetCustomStore()
+{
+	if(!s)
+	{
+		s = RE::make_smart<Store>();
+	}
+	return s.get();
 }
 
 void DraftDebugFunction(RE::StaticFunctionTag*)
@@ -380,6 +553,11 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				targetForm = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x00439A}, "SQGLib.esp"));
 				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
 				targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
+
+				auto vm = RE::SkyrimVM::GetSingleton();
+				baseStore = vm->scriptStore;
+				GetCustomStore();
+				vm->scriptLoader.SetScriptStore(s);
 			}
 			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
 			{
