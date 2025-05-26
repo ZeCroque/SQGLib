@@ -41,7 +41,10 @@ namespace SQG
 									for(auto& aliasPackageData : aliasPackagesData.second)
 									{
 										instancedPackages->push_back(aliasPackageData.package);
-										packagesFragmentName[aliasPackageData.package->formID] = aliasPackageData.fragmentScriptName;
+										if(!aliasPackageData.fragmentScriptName.empty())
+										{
+											packagesFragmentName[aliasPackageData.package->formID] = aliasPackageData.fragmentScriptName;
+										}
 									}
 								}
 							}
