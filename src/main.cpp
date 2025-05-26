@@ -273,7 +273,7 @@ std::string GenerateQuest(RE::StaticFunctionTag*)
 		return "Quest yet generated.";
 	}
 
-	selectedQuest = generatedQuest = CreateForm(referenceQuest);
+	selectedQuest = generatedQuest = DPF::CreateForm(referenceQuest);
 
 	FillQuestWithGeneratedData(generatedQuest);
 	AttachScriptsToQuest(generatedQuest);
@@ -376,7 +376,7 @@ public:
 							//ACQUIRE PACKAGE
 							//=============================
 
-							customAcquirePackage = SQG::CreatePackageFromTemplate(CreateForm(acquirePackage), acquirePackage, generatedQuest);
+							customAcquirePackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(acquirePackage), acquirePackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
@@ -408,7 +408,7 @@ public:
 							//ACTIVATE PACKAGE
 							//=============================
 
-							customActivatePackage = SQG::CreatePackageFromTemplate(CreateForm(activatePackage), activatePackage, generatedQuest);
+							customActivatePackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(activatePackage), activatePackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageTarget::Target targetData{};
@@ -434,7 +434,7 @@ public:
 							//TRAVEL PACKAGE
 							//=============================
 
-							customTravelPackage = SQG::CreatePackageFromTemplate(CreateForm(travelPackage), travelPackage, generatedQuest);
+							customTravelPackage = SQG::CreatePackageFromTemplate(DPF::CreateForm(travelPackage), travelPackage, generatedQuest);
 
 							std::unordered_map<std::string, SQG::PackageData> packageDataMap;
 							RE::PackageLocation::Data locationData{};
@@ -843,34 +843,25 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				topicInfoEventSink = std::make_unique<TopicInfoEventSink>();
 				RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(topicInfoEventSink.get());
 
-				Init(0x800, "SQGLib.esp");
+				DPF::Init(0x800, "SQGLib.esp");
 			}
 			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
 			{
 				std::string name = static_cast<char*>(message->data);
 				name = name.substr(0, name.size() - 3).append("sqg");
-				LoadCache(name);
-
-			}
-			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
-			{
-				helloTopicInfo = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00C503}, "SQGLib.esp"));
-				subTopicsInfos[0] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF96}, "SQGLib.esp"));
-				subTopicsInfos[1] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF99}, "SQGLib.esp"));
-				subTopicsInfos[2] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9C}, "SQGLib.esp"));
-				subTopicsInfos[3] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{0x00BF9F}, "SQGLib.esp"));
+				DPF::LoadCache(name);
 			}
 			else if(message->type == SKSE::MessagingInterface::kSaveGame)
 			{
 				std::string name = static_cast<char*>(message->data);
 				name = name.append(".sqg");
-				SaveCache(name);
+				DPF::SaveCache(name);
 			}
 			else if(message->type == SKSE::MessagingInterface::kDeleteGame)
 			{
 				std::string name = static_cast<char*>(message->data);
 				name = name.append(".sqg");
-				DeleteCache(name);
+				DPF::DeleteCache(name);
 			}
 		})
 	)
