@@ -25,7 +25,8 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/includes)
+set(PUBLIC_HEADER_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/includes/)
+set(PUBLIC_HEADER_DIR ${PUBLIC_HEADER_ROOT_DIR}/SQG/)
 
 set(VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/includes/Plugin.h")
 configure_file(
@@ -34,19 +35,32 @@ configure_file(
 	@ONLY
 )
 
-set(HEADERS
-	${HEADER_DIR}/PCH.h
-	${HEADER_DIR}/DialogUtils.h
-	${HEADER_DIR}/QuestUtils.h
-	${HEADER_DIR}/PackageUtils.h
+set(PUBLIC_HEADERS
+	${PUBLIC_HEADER_DIR}/DialogUtils.h
+	${PUBLIC_HEADER_DIR}/QuestUtils.h
+	${PUBLIC_HEADER_DIR}/PackageUtils.h
 )
 
-set(SOURCES
+set(HEADERS
+	${SOURCE_DIR}/PCH.h
+)
+
+set(HPP
+)
+
+set(CPP
 	${SOURCE_DIR}/main.cpp
 	${SOURCE_DIR}/DialogUtils.cpp
 	${SOURCE_DIR}/PackageUtils.cpp
 	${SOURCE_DIR}/QuestUtils.cpp
 )
+
+set(SOURCES
+	${CPP}
+	${HPP}
+)
+
+set_source_files_properties(${HPP} PROPERTIES HEADER_FILE_ONLY TRUE)
 
 configure_file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.rc.in"
@@ -56,13 +70,16 @@ configure_file(
 
 file(COPY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Template.ChildProcessDbgSettings ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.ChildProcessDbgSettings)
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${SOURCES})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/includes PREFIX "Header Files" FILES ${HEADERS})
+source_group("Private/Includes" REGULAR_EXPRESSION  ${CMAKE_CURRENT_BINARY_DIR}/includes/*)
+source_group(TREE ${SOURCE_DIR} PREFIX "Private/Includes" FILES ${PRIVATE_HEADERS})
+source_group(TREE ${SOURCE_DIR} PREFIX "Private/Sources" FILES ${SOURCES})
+source_group(TREE ${PUBLIC_HEADER_DIR} PREFIX "Public" FILES  ${PUBLIC_HEADERS})
 
 add_library(
 	"${PROJECT_NAME}"
 	SHARED
-	${HEADERS}
+	${PRIVATE_HEADERS}
+	${PUBLIC_HEADERS}
 	${SOURCES}
 	"${VERSION_HEADER}"
 	"${CMAKE_CURRENT_BINARY_DIR}/version.rc"
@@ -115,6 +132,8 @@ target_include_directories(
 		${CMAKE_CURRENT_BINARY_DIR}/includes
 		${SOURCE_DIR}
 		${HEADER_DIR}
+	PUBLIC
+		${PUBLIC_HEADER_ROOT_DIR}
 )	
 
 if(NOT TARGET CommonLibSSE::CommonLibSSE)
@@ -132,7 +151,7 @@ target_link_libraries(
 target_precompile_headers(
 	"${PROJECT_NAME}"
 	PRIVATE
-		${HEADER_DIR}/PCH.h
+		${SOURCE_DIR}/PCH.h
 )	
 
 install(
