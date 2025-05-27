@@ -457,6 +457,12 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					        }
 						}
 					}
+
+					const auto speakersCount = serializer->Read<size_t>();
+					for(auto i = 0; i < speakersCount; ++i)
+					{
+						SQG::DeserializeDialogTopic(serializer, SQG::dialogTopicsData[serializer->ReadFormId()]);
+					}
 				}
 			}
 			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
@@ -531,6 +537,13 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				        }
 					});
 					serializer->Write<size_t>(0);
+				}
+
+				serializer->Write<size_t>(SQG::dialogTopicsData.size());
+				for(const auto& [speakerFormId, data] : SQG::dialogTopicsData)
+				{
+					serializer->WriteFormId(speakerFormId);
+					SQG::SerializeDialogTopic(serializer, data);
 				}
 
 				serializer->Close();

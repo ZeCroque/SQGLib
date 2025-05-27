@@ -1,5 +1,11 @@
 #pragma once
 
+namespace DPF
+{
+	class FileReader;
+	class FileWriter;
+}
+
 namespace SQG
 {
 	constexpr int SUB_TOPIC_COUNT = 4;
@@ -33,4 +39,7 @@ namespace SQG
 	void AddForceGreet(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inForceGreet, const std::list<RE::TESConditionItem*>& inConditions);
 
 	void AddHelloTopic(const RE::TESObjectREFR* inSpeaker, const std::string& inHello, const std::list<RE::TESConditionItem*>& inConditions = std::list<RE::TESConditionItem*>());
+
+	void DeserializeDialogTopic(DPF::FileReader* inSerializer, DialogTopicData& outData);
+	void SerializeDialogTopic(DPF::FileWriter* inSerializer, const DialogTopicData& inData);
 }

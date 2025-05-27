@@ -1,7 +1,9 @@
 #include "SQG/API/DialogUtils.h"
 
+#include "DPF/FileSystem.h"
 #include "Engine/Dialog.h"
 #include "Engine/Package.h"
+#include "SQG/API/ConditionUtils.h"
 #include "SQG/API/PackageUtils.h"
 #include "SQG/API/QuestUtils.h"
 
@@ -50,5 +52,61 @@ namespace SQG
 	void AddHelloTopic(const RE::TESObjectREFR* inSpeaker, const std::string& inHello, const std::list<RE::TESConditionItem*>& inConditions)
 	{
 		SQG::helloAnswers[inSpeaker->formID].emplace_back(nullptr, inHello, "", inConditions, -1, -1, false);
+	}
+
+	void DeserializeDialogTopic(DPF::FileReader* inSerializer, DialogTopicData& outData)
+	{
+		outData.owningQuest = reinterpret_cast<RE::TESQuest*>(inSerializer->ReadFormRef());
+		outData.prompt = inSerializer->ReadString();
+
+		const auto answerCount = inSerializer->Read<size_t>();
+		for(auto i = 0; i < answerCount; ++i)
+		{
+			const auto targetStage = inSerializer->Read<int>();
+			const auto answer = inSerializer->ReadString();
+			const auto promptOverride = inSerializer->ReadString();
+			const auto fragmentId = inSerializer->Read<int>();
+
+			std::list<RE::TESConditionItem*> conditions;
+			const auto conditionsCount = inSerializer->Read<size_t>();
+			for(auto j = 0; j < conditionsCount; ++j)
+			{
+				conditions.push_back(DeserializeCondition(inSerializer));
+			}
+
+			outData.AddAnswer(answer.c_str(), promptOverride.c_str(), conditions, targetStage, fragmentId);
+		}
+
+		const auto childCount = inSerializer->Read<size_t>();
+		outData.childEntries.reserve(childCount);
+		for(auto i = 0; i < childCount; ++i)
+		{
+			DeserializeDialogTopic(inSerializer, *outData.childEntries.emplace_back(std::make_unique<DialogTopicData>()));
+		}
+	}
+
+	void SerializeDialogTopic(DPF::FileWriter* inSerializer, const DialogTopicData& inData)
+	{
+		inSerializer->WriteFormRef(inData.owningQuest);
+		inSerializer->WriteString(inData.prompt.c_str());
+		inSerializer->Write<size_t>(inData.answers.size());
+		for(auto& answer : inData.answers)
+		{
+			inSerializer->Write<int>(answer.targetStage);
+			inSerializer->WriteString(answer.answer.c_str());
+			inSerializer->WriteString(answer.promptOverride.c_str());
+			inSerializer->Write<int>(answer.fragmentId);
+			inSerializer->Write<size_t>(answer.conditions.size());
+			for(auto* condition : answer.conditions)
+			{
+				SerializeCondition(inSerializer, condition);
+			}
+		}
+
+		inSerializer->Write<size_t>(inData.childEntries.size());
+		for(auto& child : inData.childEntries)
+		{
+			SerializeDialogTopic(inSerializer, *child.get());
+		}
 	}
 }
