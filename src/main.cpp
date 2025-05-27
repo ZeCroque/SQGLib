@@ -406,10 +406,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 						const auto stagesCount = serializer->Read<size_t>();
 						for(auto j = 0; j < stagesCount; ++j)
 						{
-							const auto flags = serializer->Read<REX::EnumSet<RE::QUEST_STAGE_DATA::Flag, std::uint8_t>>();
-							const auto type = flags.all(RE::QUEST_STAGE_DATA::Flag::kStartUpStage) ? SQG::QuestStageType::Startup : (flags.all(RE::QUEST_STAGE_DATA::Flag::kShutDownStage) ? SQG::QuestStageType::Shutdown : SQG::QuestStageType::Default);
-
-							const auto index = serializer->Read<uint16_t>();
+							const auto data = serializer->Read<RE::QUEST_STAGE_DATA>();
+							const auto type = data.flags.all(RE::QUEST_STAGE_DATA::Flag::kStartUpStage) ? SQG::QuestStageType::Startup : (data.flags.all(RE::QUEST_STAGE_DATA::Flag::kShutDownStage) ? SQG::QuestStageType::Shutdown : SQG::QuestStageType::Default);
 
 							std::string logEntry;
 							if(serializer->Read<bool>())
@@ -423,7 +421,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 								fragmentIndex = serializer->Read<int>();
 							}
 
-							SQG::AddQuestStage(quest, index, type, logEntry, fragmentIndex);
+							SQG::AddQuestStage(quest, data.index, type, logEntry, fragmentIndex);
 						}
 
 						const auto objectiveCount = serializer->Read<size_t>();
@@ -487,9 +485,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					serializer->Write<size_t>(data.stages.size());
 					for(const auto& stage : data.stages)
 					{
-						//TODO try to serialize data directly
-						serializer->Write<REX::EnumSet<RE::QUEST_STAGE_DATA::Flag, std::uint8_t>>(stage->data.flags);
-						serializer->Write<uint16_t>(stage->data.index);
+						serializer->Write<RE::QUEST_STAGE_DATA>(stage->data);
 
 						const auto hasLogEntry = stage->questStageItem != nullptr;
 						serializer->Write<bool>(hasLogEntry);
