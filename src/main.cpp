@@ -394,11 +394,103 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 			}
 			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
 			{
-				DPF::LoadCache(message);
+				if(auto serializer = DPF::LoadCache(message))
+				{
+					auto size = serializer->Read<size_t>();
+					for(auto i = 0; i < size; ++i)
+					{
+						auto formId = serializer->Read<RE::FormID>();
+						auto* quest = generatedQuest = DPF::GetForm<RE::TESQuest>(formId);
+
+						auto stagesCount = serializer->Read<size_t>();
+						for(auto j = 0; j < stagesCount; ++j)
+						{
+							const auto flags = serializer->Read<REX::EnumSet<RE::QUEST_STAGE_DATA::Flag, std::uint8_t>>();
+							const auto type = flags.all(RE::QUEST_STAGE_DATA::Flag::kStartUpStage) ? SQG::QuestStageType::Startup : (flags.all(RE::QUEST_STAGE_DATA::Flag::kShutDownStage) ? SQG::QuestStageType::Shutdown : SQG::QuestStageType::Default);
+
+							auto index = serializer->Read<uint16_t>();
+
+							std::string logEntry;
+							if(serializer->Read<bool>())
+							{
+								logEntry = serializer->ReadString();
+							}
+
+							int fragmentIndex = -1;
+							if(serializer->Read<bool>())
+							{
+								fragmentIndex = serializer->Read<int>();
+							}
+
+							SQG::AddQuestStage(quest, index, type, logEntry, fragmentIndex);
+						}
+
+						auto objectiveCount = serializer->Read<size_t>();
+						for(int j = 0; j < objectiveCount; ++j)
+						{
+							const auto index = serializer->Read<uint16_t>();
+
+							const auto text = serializer->ReadString();
+
+							const auto numTargets = serializer->Read<uint32_t>();
+							std::list<uint8_t> targets;
+							for(auto i = 0; i < numTargets; ++i)
+							{
+								targets.emplace_back(serializer->Read<uint8_t>());
+							}
+
+							SQG::AddObjective(quest, index, text, targets);
+						}
+					}
+				}
 			}
 			else if(message->type == SKSE::MessagingInterface::kSaveGame)
 			{
-				DPF::SaveCache(message);
+				auto* serializer = DPF::SaveCache(message, true);
+				serializer->Write(SQG::questsData.size());
+				for(auto& [formId, data] : SQG::questsData)
+				{
+					serializer->Write(formId);
+
+					serializer->Write(data.stages.size());
+					for(auto& stage : data.stages)
+					{
+						//TODO try to serialize data directly
+						serializer->Write(stage->data.flags);
+						serializer->Write(stage->data.index);
+
+						const auto hasLogEntry = stage->questStageItem != nullptr;
+						serializer->Write(hasLogEntry);
+						if(hasLogEntry)
+						{
+							serializer->WriteString(data.logEntries[stage->data.index].c_str());
+						}
+
+						if(auto it = SQG::questsData[formId].stagesToFragmentIndex.find(stage->data.index); it != SQG::questsData[formId].stagesToFragmentIndex.end())
+						{
+							serializer->Write(true);
+							serializer->Write(it->second);
+						}
+						else
+						{
+							serializer->Write(false);
+						}
+					}
+
+					serializer->Write(data.objectives.size());
+					for(auto& objective : data.objectives)
+					{
+						serializer->Write(objective->objective.index);
+						serializer->WriteString(objective->objective.displayText.c_str());
+						serializer->Write(objective->objective.numTargets);
+						for(auto i = 0; i < objective->objective.numTargets; ++i)
+						{
+							serializer->Write(objective->objective.targets[i]->alias);
+						}
+					}
+
+					serializer->Close();
+				}
 			}
 			else if(message->type == SKSE::MessagingInterface::kDeleteGame)
 			{
