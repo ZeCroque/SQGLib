@@ -1,10 +1,15 @@
 #pragma once
 #include "common/allocators/ChainedPool.h"
+#include "papyrus/PapyrusCompilationContext.h"
 
 namespace SQG
 {
 	namespace ScriptEngine
 	{
+		// # Common
+		// =======================
+		extern std::map<std::string, caprica::papyrus::PapyrusCompilationNode*> compiledScripts;
+
 		// # Script Store
 		// =======================
 		class Store : public RE::BSScript::IStore

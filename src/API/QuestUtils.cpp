@@ -18,7 +18,9 @@ namespace SQG
 
 	RE::TESQuest* CreateQuest()
 	{
-		return DPF::CreateForm(QuestEngine::referenceQuest);
+		const auto result = DPF::CreateForm(QuestEngine::referenceQuest);
+		questsData[result->formID].quest = result;
+		return result;
 	}
 
 	void AddQuestStage(RE::TESQuest* inQuest, const std::uint16_t inIndex, const QuestStageType inQuestStageType, const std::string& inLogEntry, const int inScriptFragmentIndex)

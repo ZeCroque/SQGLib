@@ -394,21 +394,22 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 			}
 			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
 			{
-				if(auto serializer = DPF::LoadCache(message))
+				if(const auto serializer = DPF::LoadCache(message))
 				{
-					auto size = serializer->Read<size_t>();
+					const auto size = serializer->Read<size_t>();
 					for(auto i = 0; i < size; ++i)
 					{
-						auto formId = serializer->Read<RE::FormID>();
+						const auto formId = serializer->Read<RE::FormID>();
 						auto* quest = generatedQuest = DPF::GetForm<RE::TESQuest>(formId);
+						SQG::questsData[formId].quest = quest;
 
-						auto stagesCount = serializer->Read<size_t>();
+						const auto stagesCount = serializer->Read<size_t>();
 						for(auto j = 0; j < stagesCount; ++j)
 						{
 							const auto flags = serializer->Read<REX::EnumSet<RE::QUEST_STAGE_DATA::Flag, std::uint8_t>>();
 							const auto type = flags.all(RE::QUEST_STAGE_DATA::Flag::kStartUpStage) ? SQG::QuestStageType::Startup : (flags.all(RE::QUEST_STAGE_DATA::Flag::kShutDownStage) ? SQG::QuestStageType::Shutdown : SQG::QuestStageType::Default);
 
-							auto index = serializer->Read<uint16_t>();
+							const auto index = serializer->Read<uint16_t>();
 
 							std::string logEntry;
 							if(serializer->Read<bool>())
@@ -425,8 +426,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 							SQG::AddQuestStage(quest, index, type, logEntry, fragmentIndex);
 						}
 
-						auto objectiveCount = serializer->Read<size_t>();
-						for(int j = 0; j < objectiveCount; ++j)
+						const auto objectiveCount = serializer->Read<size_t>();
+						for(auto j = 0; j < objectiveCount; ++j)
 						{
 							const auto index = serializer->Read<uint16_t>();
 
@@ -442,25 +443,56 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 							SQG::AddObjective(quest, index, text, targets);
 						}
 					}
+
+					const auto scriptCount = serializer->Read<size_t>();
+					for(auto i = 0; i < scriptCount; ++i)
+					{
+						auto stringName = serializer->ReadString();
+						const auto node = SQG::ScriptEngine::compiledScripts[stringName] = new caprica::papyrus::PapyrusCompilationNode(nullptr, stringName, "");
+						node->createPexWriter();
+
+						while(const auto heapSize = serializer->Read<size_t>())
+						{
+							for (size_t j = 0; j < heapSize; ++j) 
+							{
+					            node->getData().make<char>(serializer->Read<char>());
+					        }
+						}
+					}
 				}
+			}
+			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
+			{
+				auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+				auto* policy = scriptMachine->GetObjectHandlePolicy();
+
+				for(auto& [formId, data] : SQG::questsData)
+				{
+					const auto questHandle = policy->GetHandleForObject(RE::FormType::Quest, data.quest);
+					RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
+					scriptMachine->FindBoundObject(questHandle, "SQGDebug", questCustomScriptObject);
+					SQG::questsData[formId].script = questCustomScriptObject.get();
+				}
+
 			}
 			else if(message->type == SKSE::MessagingInterface::kSaveGame)
 			{
 				auto* serializer = DPF::SaveCache(message, true);
-				serializer->Write(SQG::questsData.size());
+
+				serializer->Write<size_t>(SQG::questsData.size());
 				for(auto& [formId, data] : SQG::questsData)
 				{
-					serializer->Write(formId);
+					serializer->Write<RE::FormID>(formId);
 
-					serializer->Write(data.stages.size());
-					for(auto& stage : data.stages)
+					serializer->Write<size_t>(data.stages.size());
+					for(const auto& stage : data.stages)
 					{
 						//TODO try to serialize data directly
-						serializer->Write(stage->data.flags);
-						serializer->Write(stage->data.index);
+						serializer->Write<REX::EnumSet<RE::QUEST_STAGE_DATA::Flag, std::uint8_t>>(stage->data.flags);
+						serializer->Write<uint16_t>(stage->data.index);
 
 						const auto hasLogEntry = stage->questStageItem != nullptr;
-						serializer->Write(hasLogEntry);
+						serializer->Write<bool>(hasLogEntry);
 						if(hasLogEntry)
 						{
 							serializer->WriteString(data.logEntries[stage->data.index].c_str());
@@ -468,8 +500,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 						if(auto it = SQG::questsData[formId].stagesToFragmentIndex.find(stage->data.index); it != SQG::questsData[formId].stagesToFragmentIndex.end())
 						{
-							serializer->Write(true);
-							serializer->Write(it->second);
+							serializer->Write<bool>(true);
+							serializer->Write<int>(it->second);
 						}
 						else
 						{
@@ -477,20 +509,35 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 						}
 					}
 
-					serializer->Write(data.objectives.size());
-					for(auto& objective : data.objectives)
+					serializer->Write<size_t>(data.objectives.size());
+					for(const auto& objective : data.objectives)
 					{
-						serializer->Write(objective->objective.index);
+						serializer->Write<uint16_t>(objective->objective.index);
 						serializer->WriteString(objective->objective.displayText.c_str());
-						serializer->Write(objective->objective.numTargets);
+						serializer->Write<uint32_t>(objective->objective.numTargets);
 						for(auto i = 0; i < objective->objective.numTargets; ++i)
 						{
-							serializer->Write(objective->objective.targets[i]->alias);
+							serializer->Write<uint8_t>(objective->objective.targets[i]->alias);
 						}
 					}
-
-					serializer->Close();
 				}
+
+				serializer->Write<size_t>(SQG::ScriptEngine::compiledScripts.size());
+				for(const auto& [scriptName, node] : SQG::ScriptEngine::compiledScripts)
+				{
+					serializer->WriteString(scriptName.c_str());
+					node->getPexWriter()->applyToBuffers([&](const char* scriptData, size_t size)
+					{
+						serializer->Write<size_t>(size);
+				        for (size_t i = 0; i < size; ++i) 
+						{
+				            serializer->Write<char>(scriptData[i]);
+				        }
+					});
+					serializer->Write<size_t>(0);
+				}
+
+				serializer->Close();
 			}
 			else if(message->type == SKSE::MessagingInterface::kDeleteGame)
 			{

@@ -2,7 +2,6 @@
 
 #include "common/FakeScripts.h"
 #include "common/parser/CapricaUserFlagsParser.h"
-#include "papyrus/PapyrusCompilationContext.h"
 
 namespace SQG
 {

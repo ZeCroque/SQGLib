@@ -13,6 +13,8 @@ namespace SQG
 	{
 		static constexpr int QUEST_STAGE_ITEMS_CHUNK_SIZE = 50;
 
+		RE::TESQuest* quest;
+
 		std::vector<std::unique_ptr<RE::TESQuestStage>> stages;
 
 		//Quest loaded by the game all have their TESQuestStageItems instanced continuously. This replicates it, could be done in a more dynamic way but I think it's enough for now.
