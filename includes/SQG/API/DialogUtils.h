@@ -40,6 +40,8 @@ namespace SQG
 
 	void AddHelloTopic(const RE::TESObjectREFR* inSpeaker, const std::string& inHello, const std::list<RE::TESConditionItem*>& inConditions = std::list<RE::TESConditionItem*>());
 
+	DialogTopicData::AnswerData DeserializeAnswer(DPF::FileReader* inSerializer, DialogTopicData* inParent);
 	void DeserializeDialogTopic(DPF::FileReader* inSerializer, DialogTopicData& outData);
+	void SerializeAnswer(DPF::FileWriter* inSerializer, const DialogTopicData::AnswerData& inAnswerData);
 	void SerializeDialogTopic(DPF::FileWriter* inSerializer, const DialogTopicData& inData);
 }

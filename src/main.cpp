@@ -482,6 +482,24 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					{
 						SQG::DeserializeDialogTopic(serializer, SQG::dialogTopicsData[serializer->ReadFormId()]);
 					}
+
+					auto forceGreetAnswersCount = serializer->Read<size_t>();
+					for(int i = 0; i < forceGreetAnswersCount; ++i)
+					{
+						auto speakerFormId = serializer->ReadFormId();
+						SQG::forceGreetAnswers[speakerFormId] = SQG::DeserializeAnswer(serializer, nullptr);
+					}
+
+					auto helloAnswersCount = serializer->Read<size_t>();
+					for(auto i = 0; i < helloAnswersCount; ++i)
+					{
+						auto speakerFormId = serializer->ReadFormId();
+						auto answersCount = serializer->Read<size_t>();
+						for(auto j = 0; j < answersCount; ++j)
+						{
+							SQG::helloAnswers[speakerFormId].emplace_back(SQG::DeserializeAnswer(serializer, nullptr));
+						}
+					}
 				}
 			}
 			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
@@ -579,6 +597,24 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				{
 					serializer->WriteFormId(speakerFormId);
 					SQG::SerializeDialogTopic(serializer, data);
+				}
+
+				serializer->Write<size_t>(SQG::forceGreetAnswers.size());
+				for(auto& [speakerFormId, answer] : SQG::forceGreetAnswers)
+				{
+					serializer->WriteFormId(speakerFormId);
+					SQG::SerializeAnswer(serializer, answer);
+				}
+
+				serializer->Write<size_t>(SQG::helloAnswers.size());
+				for(auto& [speakerFormId, answers] : SQG::helloAnswers)
+				{
+					serializer->WriteFormId(speakerFormId);
+					serializer->Write<size_t>(answers.size());
+					for(auto& answer : answers)
+					{
+						SQG::SerializeAnswer(serializer, answer);
+					}
 				}
 
 				serializer->Close();
