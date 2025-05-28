@@ -440,6 +440,25 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 							SQG::AddObjective(quest, index, text, targets);
 						}
+
+						auto aliasesPackagesDataCount = serializer->Read<size_t>();
+						for(auto i = 0; i < aliasesPackagesDataCount; ++i)
+						{
+							auto aliasId = serializer->ReadFormId();
+							auto aliasesPackagesDataListCount = serializer->Read<size_t>();
+							for(auto j = 0; j < aliasesPackagesDataListCount; ++j)
+							{
+								auto* package = reinterpret_cast<RE::TESPackage*>(serializer->ReadFormRef());
+								auto* packageTemplate = reinterpret_cast<RE::TESPackage*>(serializer->ReadFormRef());
+								SQG::FillPackageWithTemplate(package, packageTemplate, quest);
+
+								const auto fragmentName = serializer->ReadString();
+
+								SQG::DeserializePackageData(serializer, package);
+
+								SQG::questsData[formId].aliasesPackagesData[aliasId].push_back({package, fragmentName});
+							}
+						}
 					}
 
 					const auto scriptCount = serializer->Read<size_t>();
@@ -476,6 +495,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
 					scriptMachine->FindBoundObject(questHandle, data.quest->GetFormEditorID(), questCustomScriptObject);
 					SQG::questsData[formId].script = questCustomScriptObject.get();
+
+					SQG::PackageEngine::InitAliasPackages(formId);
 				}
 
 			}
@@ -520,6 +541,20 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 						for(auto i = 0; i < objective->objective.numTargets; ++i)
 						{
 							serializer->Write<uint8_t>(objective->objective.targets[i]->alias);
+						}
+					}
+
+					serializer->Write<size_t>(data.aliasesPackagesData.size());
+					for(auto& [aliasId, aliasPackageDataList] : data.aliasesPackagesData)
+					{
+						serializer->WriteFormId(aliasId);
+						serializer->Write<size_t>(aliasPackageDataList.size());
+						for(auto& aliasPackageData : aliasPackageDataList)
+						{
+							serializer->WriteFormRef(aliasPackageData.package);
+							serializer->WriteFormRef(reinterpret_cast<RE::TESCustomPackageData*>(aliasPackageData.package->data)->templateParent);
+							serializer->WriteString(aliasPackageData.fragmentScriptName.c_str());
+							SQG::SerializePackageData(serializer, aliasPackageData.package);
 						}
 					}
 				}

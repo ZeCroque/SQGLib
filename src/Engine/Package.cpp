@@ -25,34 +25,7 @@ namespace SQG
 		public:
 			RE::BSEventNotifyControl ProcessEvent(const RE::TESQuestInitEvent* a_event, RE::BSTEventSource<RE::TESQuestInitEvent>* a_eventSource) override
 			{
-				if(const auto questData = questsData.find(a_event->formID); questData != questsData.end())
-				{
-					for (const auto& aliasPackagesData : questData->second.aliasesPackagesData)
-					{
-						auto* alias = RE::TESForm::LookupByID<RE::TESObjectREFR>(aliasPackagesData.first);
-						if(const auto* aliasInstancesList = reinterpret_cast<RE::ExtraAliasInstanceArray*>(alias->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray)))
-						{
-							aliasInstancesList->lock.LockForWrite();
-							for(auto* aliasInstanceData : aliasInstancesList->aliases)
-							{
-								if(aliasInstanceData->quest == RE::TESForm::LookupByID<RE::TESQuest>(a_event->formID))
-								{
-									auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
-									aliasInstanceData->instancedPackages = instancedPackages;
-									for(auto& aliasPackageData : aliasPackagesData.second)
-									{
-										instancedPackages->push_back(aliasPackageData.package);
-										if(!aliasPackageData.fragmentScriptName.empty())
-										{
-											packagesFragmentName[aliasPackageData.package->formID] = aliasPackageData.fragmentScriptName;
-										}
-									}
-								}
-							}
-							aliasInstancesList->lock.UnlockForWrite();
-						}
-					}
-				}
+				InitAliasPackages(a_event->formID);
 				return RE::BSEventNotifyControl::kContinue;
 			}
 		};
@@ -86,6 +59,38 @@ namespace SQG
 		};
 		std::unique_ptr<PackageEventSink> packageEventSink;
 
+
+		void InitAliasPackages(RE::FormID inQuestId)
+		{
+			if(const auto questData = questsData.find(inQuestId); questData != questsData.end())
+			{
+				for (const auto& aliasPackagesData : questData->second.aliasesPackagesData)
+				{
+					auto* alias = RE::TESForm::LookupByID<RE::TESObjectREFR>(aliasPackagesData.first);
+					if(const auto* aliasInstancesList = reinterpret_cast<RE::ExtraAliasInstanceArray*>(alias->extraList.GetByType(RE::ExtraDataType::kAliasInstanceArray)))
+					{
+						aliasInstancesList->lock.LockForWrite();
+						for(auto* aliasInstanceData : aliasInstancesList->aliases)
+						{
+							if(aliasInstanceData->quest == RE::TESForm::LookupByID<RE::TESQuest>(inQuestId))
+							{
+								auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
+								aliasInstanceData->instancedPackages = instancedPackages;
+								for(auto& aliasPackageData : aliasPackagesData.second)
+								{
+									instancedPackages->push_back(aliasPackageData.package);
+									if(!aliasPackageData.fragmentScriptName.empty())
+									{
+										packagesFragmentName[aliasPackageData.package->formID] = aliasPackageData.fragmentScriptName;
+									}
+								}
+							}
+						}
+						aliasInstancesList->lock.UnlockForWrite();
+					}
+				}
+			}
+		}
 
 		void RegisterSinks()
 		{

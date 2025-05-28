@@ -11,6 +11,8 @@ namespace SQG
 		extern RE::TESPackage* travelPackage;
 		extern RE::TESPackage* forceGreetPackage;
 
+		void InitAliasPackages(RE::FormID inQuestId);
+
 		// # Sinks
 		// =======================
 		void RegisterSinks();
