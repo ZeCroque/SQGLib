@@ -22,7 +22,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest)
 {
 	//Parametrize quest
 	//=======================
-	inQuest->SetFormEditorID("SQGTestQuest");
+	inQuest->SetFormEditorID("SQGDebug");
 	inQuest->fullName = "00_SQG_POC";
 
 	//Add stages
@@ -474,7 +474,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				{
 					const auto questHandle = policy->GetHandleForObject(RE::FormType::Quest, data.quest);
 					RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
-					scriptMachine->FindBoundObject(questHandle, "SQGDebug", questCustomScriptObject);
+					scriptMachine->FindBoundObject(questHandle, data.quest->GetFormEditorID(), questCustomScriptObject);
 					SQG::questsData[formId].script = questCustomScriptObject.get();
 				}
 
