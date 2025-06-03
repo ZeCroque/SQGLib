@@ -1,5 +1,4 @@
 #include "SQG/API/DialogUtils.h"
-#include "SQG/API/DialogUtils.h"
 
 #include "DPF/FileSystem.h"
 #include "Engine/Dialog.h"
@@ -43,8 +42,8 @@ namespace SQG
 	void AddForceGreet(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inForceGreet, const std::list<RE::TESConditionItem*>& inConditions)
 	{
 		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
-		packageDataMap["Topic"] = SQG::PackageData(SQG::DialogEngine::forceGreetTopic);
-		auto* customForceGreetPackage = SQG::CreatePackageFromTemplate(SQG::PackageEngine::forceGreetPackage, inQuest, packageDataMap, inConditions);
+		packageDataMap["Topic"] = SQG::PackageData(SQG::Engine::Dialog::forceGreetTopic);
+		auto* customForceGreetPackage = SQG::CreatePackageFromTemplate(SQG::Engine::Package::forceGreetPackage, inQuest, packageDataMap, inConditions);
 		SQG::AddAliasPackage(inQuest, inSpeaker, customForceGreetPackage);
 
 		SQG::forceGreetAnswers[inSpeaker->formID] = {nullptr, inForceGreet, "", {}, -1, -1, false};
@@ -64,12 +63,12 @@ namespace SQG
 
 		std::list<RE::TESConditionItem*> conditions;
 		const auto conditionsCount = inSerializer->Read<size_t>();
-		for(auto j = 0; j < conditionsCount; ++j)
+		for(size_t j = 0; j < conditionsCount; ++j)
 		{
 			conditions.push_back(DeserializeCondition(inSerializer));
 		}
 
-		return DialogTopicData::AnswerData(inParent, answer, promptOverride, conditions, targetStage , fragmentId, false);
+		return DialogTopicData::AnswerData{inParent, answer, promptOverride, conditions, targetStage , fragmentId, false};
 	}
 
 	void DeserializeDialogTopic(DPF::FileReader* inSerializer, DialogTopicData& outData)
@@ -78,14 +77,14 @@ namespace SQG
 		outData.prompt = inSerializer->ReadString();
 
 		const auto answerCount = inSerializer->Read<size_t>();
-		for(auto i = 0; i < answerCount; ++i)
+		for(size_t i = 0; i < answerCount; ++i)
 		{
 			outData.answers.emplace_back(DeserializeAnswer(inSerializer, &outData));
 		}
 
 		const auto childCount = inSerializer->Read<size_t>();
 		outData.childEntries.reserve(childCount);
-		for(auto i = 0; i < childCount; ++i)
+		for(size_t i = 0; i < childCount; ++i)
 		{
 			DeserializeDialogTopic(inSerializer, *outData.childEntries.emplace_back(std::make_unique<DialogTopicData>()));
 		}
@@ -98,7 +97,7 @@ namespace SQG
 		inSerializer->WriteString(inAnswerData.promptOverride.c_str());
 		inSerializer->Write<int>(inAnswerData.fragmentId);
 		inSerializer->Write<size_t>(inAnswerData.conditions.size());
-		for(auto* condition : inAnswerData.conditions)
+		for(const auto* condition : inAnswerData.conditions)
 		{
 			SerializeCondition(inSerializer, condition);
 		}

@@ -1,23 +1,20 @@
 #pragma once
 
-namespace SQG
+namespace SQG::Engine::Quest
 {
-	namespace QuestEngine
-	{
-		// # Common
-		// =======================
-		extern RE::TESQuest* referenceQuest;
+	// # Common
+	// =======================
+	extern RE::TESQuest* referenceQuest;
 
-		// # Hooks
-		// =======================
-		void RegisterHooks(SKSE::Trampoline& inTrampoline);
+	// # Hooks
+	// =======================
+	void RegisterHooks(SKSE::Trampoline& inTrampoline);
 
-		// # Sinks
-		// =======================
-		void RegisterSinks();
+	// # Sinks
+	// =======================
+	void RegisterSinks();
 
-		// # Data
-		// =======================
-		void LoadData(RE::TESDataHandler* inDataHandler);
-	}
+	// # Data
+	// =======================
+	void LoadData(RE::TESDataHandler* inDataHandler);
 }

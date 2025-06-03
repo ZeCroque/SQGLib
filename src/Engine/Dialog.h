@@ -1,21 +1,18 @@
 #pragma once
 
-namespace SQG
+namespace SQG::Engine::Dialog
 {
-	namespace DialogEngine
-	{
-		// # Hooks
-		// =======================
-		void RegisterHooks(SKSE::Trampoline& inTrampoline);
+	// # Hooks
+	// =======================
+	void RegisterHooks(SKSE::Trampoline& inTrampoline);
 
-		// # Sinks
-		// =======================
-		extern RE::TESTopic* forceGreetTopic;
+	// # Sinks
+	// =======================
+	extern RE::TESTopic* forceGreetTopic;
 
-		void RegisterSinks();
+	void RegisterSinks();
 
-		// # Data
-		// =======================
-		void LoadData(RE::TESDataHandler* inDataHandler);
-	}
+	// # Data
+	// =======================
+	void LoadData(RE::TESDataHandler* inDataHandler);
 }

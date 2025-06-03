@@ -14,7 +14,7 @@
 // =======================
 RE::TESObjectREFR* activator = nullptr;
 RE::TESObjectREFR* targetActivator = nullptr;
-int generatedQuestIndex = 0;
+size_t generatedQuestIndex = 0;
 
 std::vector<RE::TESQuest*> generatedQuests;
 std::vector<RE::TESObjectREFR*> targets;
@@ -115,7 +115,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest, RE::TESObjectREFR* inTarg
 		packageDataMap["AllowStealing"] = SQG::PackageData({.b = true});
 		auto* customAcquirePackage = SQG::CreatePackageFromTemplate
 		(
-			SQG::PackageEngine::acquirePackage,
+			SQG::Engine::Package::acquirePackage,
 			inQuest,
 			packageDataMap, 
 			{SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, {.f = 15.f})});
@@ -137,7 +137,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest, RE::TESObjectREFR* inTarg
 		packageDataMap["Target"] = SQG::PackageData(RE::PackageTarget::Type::kNearReference, targetData);
 		auto* customActivatePackage = SQG::CreatePackageFromTemplate
 		(
-			SQG::PackageEngine::activatePackage, 
+			SQG::Engine::Package::activatePackage, 
 			inQuest, 
 			packageDataMap, 
 			{SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, {.f = 20.f})}
@@ -158,7 +158,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest, RE::TESObjectREFR* inTarg
 		packageDataMap["Place to Travel"] = SQG::PackageData(RE::PackageLocation::Type::kNearReference, {.refHandle = activator->CreateRefHandle()}, 0);
 		auto* customTravelPackage = SQG::CreatePackageFromTemplate
 		(
-			SQG::PackageEngine::travelPackage, 
+			SQG::Engine::Package::travelPackage, 
 			inQuest, 
 			packageDataMap,
 			{SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, {.f = 30.f})}
@@ -186,7 +186,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest, RE::TESObjectREFR* inTarg
 	auto* wonderEntry = SQG::AddDialogTopic(inQuest, inTarget, "I've not decided yet. I'd like to hear your side of the story.");
 	wonderEntry->AddAnswer
 	(
-		"Thank you very much, you'll see that I don't diserve this cruelty. Your boss is a liar.",
+		"Thank you very much, you'll see that I don't deserve this cruelty. Your boss is a liar.",
 		"",
 		{checkSpeakerCondition, aboveStage0Condition, underStage11Condition},
 		11,
@@ -295,7 +295,8 @@ std::string SwapSelectedQuest(RE::StaticFunctionTag*)
 
 void DraftDebugFunction(RE::StaticFunctionTag*)
 {
-	int z = 42;
+	// ReSharper disable once CppDeclaratorNeverUsed
+	[[maybe_unused]] int z = 42;
 }	
 
 bool RegisterFunctions(RE::BSScript::IVirtualMachine* inScriptMachine)
@@ -386,15 +387,15 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 			{
 				if(DPF::Init(0x800, "SQGLib.esp", "sqg"))
 				{
-					SQG::ScriptEngine::Init();
+					SQG::Engine::Script::Init();
 
-					SQG::QuestEngine::LoadData(dataHandler);
-					SQG::DialogEngine::LoadData(dataHandler);
-					SQG::PackageEngine::LoadData();
+					SQG::Engine::Quest::LoadData(dataHandler);
+					SQG::Engine::Dialog::LoadData(dataHandler);
+					SQG::Engine::Package::LoadData();
 
-					SQG::QuestEngine::RegisterSinks();
-					SQG::DialogEngine::RegisterSinks();
-					SQG::PackageEngine::RegisterSinks();
+					SQG::Engine::Quest::RegisterSinks();
+					SQG::Engine::Dialog::RegisterSinks();
+					SQG::Engine::Package::RegisterSinks();
 
 					activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
 					targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
@@ -410,22 +411,22 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				SQG::dialogTopicsData.clear();
 				SQG::forceGreetAnswers.clear();
 				SQG::helloAnswers.clear();
-				SQG::ScriptEngine::compiledScripts.clear();
-				SQG::PackageEngine::packagesFragmentName.clear();
+				SQG::Engine::Script::compiledScripts.clear();
+				SQG::Engine::Package::packagesFragmentName.clear();
 				generatedQuests.clear();
 				targets.clear();
 
 				if(const auto serializer = DPF::LoadCache(message))
 				{
 					const auto size = serializer->Read<size_t>();
-					for(auto i = 0; i < size; ++i)
+					for(size_t i = 0; i < size; ++i)
 					{
 						const auto formId = serializer->Read<RE::FormID>();
 						auto* quest = DPF::GetForm<RE::TESQuest>(formId);
 						SQG::questsData[formId].quest = quest;
 
 						const auto stagesCount = serializer->Read<size_t>();
-						for(auto j = 0; j < stagesCount; ++j)
+						for(size_t j = 0; j < stagesCount; ++j)
 						{
 							const auto data = serializer->Read<RE::QUEST_STAGE_DATA>();
 							const auto type = data.flags.all(RE::QUEST_STAGE_DATA::Flag::kStartUpStage) ? SQG::QuestStageType::Startup : (data.flags.all(RE::QUEST_STAGE_DATA::Flag::kShutDownStage) ? SQG::QuestStageType::Shutdown : SQG::QuestStageType::Default);
@@ -446,28 +447,28 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 						}
 
 						const auto objectiveCount = serializer->Read<size_t>();
-						for(auto j = 0; j < objectiveCount; ++j)
+						for(size_t j = 0; j < objectiveCount; ++j)
 						{
 							const auto index = serializer->Read<uint16_t>();
 
 							const auto text = serializer->ReadString();
 
 							const auto numTargets = serializer->Read<uint32_t>();
-							std::list<uint8_t> targets;
-							for(auto i = 0; i < numTargets; ++i)
+							std::list<uint8_t> questTargets;
+							for(uint32_t k = 0; k < numTargets; ++k)
 							{
-								targets.emplace_back(serializer->Read<uint8_t>());
+								questTargets.emplace_back(serializer->Read<uint8_t>());
 							}
 
-							SQG::AddObjective(quest, index, text, targets);
+							SQG::AddObjective(quest, index, text, questTargets);
 						}
 
 						auto aliasesPackagesDataCount = serializer->Read<size_t>();
-						for(auto i = 0; i < aliasesPackagesDataCount; ++i)
+						for(size_t j = 0; j < aliasesPackagesDataCount; ++j)
 						{
 							auto aliasId = serializer->ReadFormId();
 							auto aliasesPackagesDataListCount = serializer->Read<size_t>();
-							for(auto j = 0; j < aliasesPackagesDataListCount; ++j)
+							for(size_t k = 0; k < aliasesPackagesDataListCount; ++k)
 							{
 								auto* package = reinterpret_cast<RE::TESPackage*>(serializer->ReadFormRef());
 								auto* packageTemplate = reinterpret_cast<RE::TESPackage*>(serializer->ReadFormRef());
@@ -483,10 +484,10 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					}
 
 					const auto scriptCount = serializer->Read<size_t>();
-					for(auto i = 0; i < scriptCount; ++i)
+					for(size_t i = 0; i < scriptCount; ++i)
 					{
 						auto stringName = serializer->ReadString();
-						const auto node = SQG::ScriptEngine::compiledScripts[stringName] = new caprica::papyrus::PapyrusCompilationNode(nullptr, stringName, "");
+						const auto node = SQG::Engine::Script::compiledScripts[stringName] = new caprica::papyrus::PapyrusCompilationNode(nullptr, stringName, "");
 						node->createPexWriter();
 
 						while(const auto heapSize = serializer->Read<size_t>())
@@ -499,24 +500,24 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					}
 
 					const auto speakersCount = serializer->Read<size_t>();
-					for(auto i = 0; i < speakersCount; ++i)
+					for(size_t i = 0; i < speakersCount; ++i)
 					{
 						SQG::DeserializeDialogTopic(serializer, SQG::dialogTopicsData[serializer->ReadFormId()]);
 					}
 
 					auto forceGreetAnswersCount = serializer->Read<size_t>();
-					for(int i = 0; i < forceGreetAnswersCount; ++i)
+					for(size_t i = 0; i < forceGreetAnswersCount; ++i)
 					{
 						auto speakerFormId = serializer->ReadFormId();
 						SQG::forceGreetAnswers[speakerFormId] = SQG::DeserializeAnswer(serializer, nullptr);
 					}
 
 					auto helloAnswersCount = serializer->Read<size_t>();
-					for(auto i = 0; i < helloAnswersCount; ++i)
+					for(size_t i = 0; i < helloAnswersCount; ++i)
 					{
 						auto speakerFormId = serializer->ReadFormId();
 						auto answersCount = serializer->Read<size_t>();
-						for(auto j = 0; j < answersCount; ++j)
+						for(size_t j = 0; j < answersCount; ++j)
 						{
 							SQG::helloAnswers[speakerFormId].emplace_back(SQG::DeserializeAnswer(serializer, nullptr));
 						}
@@ -536,7 +537,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					scriptMachine->FindBoundObject(questHandle, data.quest->GetFormEditorID(), questCustomScriptObject);
 					SQG::questsData[formId].script = questCustomScriptObject.get();
 
-					SQG::PackageEngine::InitAliasPackages(formId);
+					SQG::Engine::Package::InitAliasPackages(formId);
 				}
 
 			}
@@ -578,7 +579,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 						serializer->Write<uint16_t>(objective->objective.index);
 						serializer->WriteString(objective->objective.displayText.c_str());
 						serializer->Write<uint32_t>(objective->objective.numTargets);
-						for(auto i = 0; i < objective->objective.numTargets; ++i)
+						for(uint32_t i = 0; i < objective->objective.numTargets; ++i)
 						{
 							serializer->Write<uint8_t>(objective->objective.targets[i]->alias);
 						}
@@ -589,21 +590,21 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					{
 						serializer->WriteFormId(aliasId);
 						serializer->Write<size_t>(aliasPackageDataList.size());
-						for(auto& aliasPackageData : aliasPackageDataList)
+						for(auto& [package, fragmentScriptName] : aliasPackageDataList)
 						{
-							serializer->WriteFormRef(aliasPackageData.package);
-							serializer->WriteFormRef(reinterpret_cast<RE::TESCustomPackageData*>(aliasPackageData.package->data)->templateParent);
-							serializer->WriteString(aliasPackageData.fragmentScriptName.c_str());
-							SQG::SerializePackageData(serializer, aliasPackageData.package);
+							serializer->WriteFormRef(package);
+							serializer->WriteFormRef(reinterpret_cast<RE::TESCustomPackageData*>(package->data)->templateParent);
+							serializer->WriteString(fragmentScriptName.c_str());
+							SQG::SerializePackageData(serializer, package);
 						}
 					}
 				}
 
-				serializer->Write<size_t>(SQG::ScriptEngine::compiledScripts.size());
-				for(const auto& [scriptName, node] : SQG::ScriptEngine::compiledScripts)
+				serializer->Write<size_t>(SQG::Engine::Script::compiledScripts.size());
+				for(const auto& [scriptName, node] : SQG::Engine::Script::compiledScripts)
 				{
 					serializer->WriteString(scriptName.c_str());
-					node->getPexWriter()->applyToBuffers([&](const char* scriptData, size_t size)
+					node->getPexWriter()->applyToBuffers([&](const char* scriptData, const size_t size)
 					{
 						serializer->Write<size_t>(size);
 				        for (size_t i = 0; i < size; ++i) 
@@ -653,8 +654,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 	SKSE::AllocTrampoline(1<<10);
 	auto& trampoline = SKSE::GetTrampoline();
-	SQG::QuestEngine::RegisterHooks(trampoline);
-	SQG::DialogEngine::RegisterHooks(trampoline);
+	SQG::Engine::Quest::RegisterHooks(trampoline);
+	SQG::Engine::Dialog::RegisterHooks(trampoline);
 
 	return true;
 }

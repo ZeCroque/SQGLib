@@ -154,6 +154,12 @@ endif()
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/DPF" DPFLib EXCLUDE_FROM_ALL)
 set(CAPRICA_STATIC_LIBRARY ON)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/Caprica" Caprica EXCLUDE_FROM_ALL)
+if (MSVC)
+	target_compile_options(Caprica PUBLIC /W0)
+else()
+	target_compile_options(Caprica PUBLIC -w)
+endif()
+
 
 target_link_libraries(
 	"${PROJECT_NAME}"

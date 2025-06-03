@@ -52,15 +52,13 @@ namespace SQG
 			{
 				if(nameMapData.name.c_str() == name)
 				{
-					for(auto i = 0; i < customPackageData->data.dataSize; ++i)
+					for(uint16_t i = 0; i < customPackageData->data.dataSize; ++i)
 					{
 						if(customPackageData->data.uids[i] == nameMapData.uid)
 						{
-							const auto packageDataTypeName = customPackageData->data.data[i]->GetTypeName();
-
-							if(packageDataTypeName == "Location")
+							if(const auto packageDataTypeName = customPackageData->data.data[i]->GetTypeName(); packageDataTypeName == "Location")
 							{
-								const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[i] - 1);
+								const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[i] - 1);  // NOLINT(clang-diagnostic-reinterpret-base-class, bugprone-pointer-arithmetic-on-polymorphic-object)
 								bgsPackageDataLocation->pointer->locType = packageData.locationData.locType;
 								bgsPackageDataLocation->pointer->rad = packageData.locationData.rad;
 								if(packageData.locationData.locType == RE::PackageLocation::Type::kNearReference)
@@ -146,11 +144,11 @@ namespace SQG
 	{
 		const auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(outPackage->data);
 
-		int dataCount = inSerializer->Read<uint16_t>();
+		const int dataCount = inSerializer->Read<uint16_t>();
 		for(auto i = 0; i < dataCount; ++i)
 		{
 			const auto dataUid = inSerializer->Read<int8_t>();
-			for(auto j = 0; j < customPackageData->data.dataSize; ++j)
+			for(uint16_t j = 0; j < customPackageData->data.dataSize; ++j)
 			{
 				if(dataUid == customPackageData->data.uids[j])
 				{
@@ -158,7 +156,7 @@ namespace SQG
 
 					if(packageDataTypeName == "Location")
 					{
-						const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[i] - 1);
+						const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[i] - 1);  // NOLINT(clang-diagnostic-reinterpret-base-class, bugprone-pointer-arithmetic-on-polymorphic-object)
 						bgsPackageDataLocation->pointer->rad = inSerializer->Read<uint32_t>();
 						bgsPackageDataLocation->pointer->locType = inSerializer->Read<REX::EnumSet<RE::PackageLocation::Type, std::uint8_t>>();
 						if(bgsPackageDataLocation->pointer->locType == RE::PackageLocation::Type::kNearReference)
@@ -219,15 +217,15 @@ namespace SQG
 		const auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(inPackage->data);
 
 		inSerializer->Write<uint16_t>(customPackageData->data.dataSize);
-		for(auto i = 0; i < customPackageData->data.dataSize; ++i)
+		for(uint16_t i = 0; i < customPackageData->data.dataSize; ++i)
 		{
 			inSerializer->Write<int8_t>(customPackageData->data.uids[i]);
 			
 			const auto packageDataTypeName = customPackageData->data.data[i]->GetTypeName();
-			inSerializer->WriteString(packageDataTypeName.c_str());
+			inSerializer->WriteString(packageDataTypeName.c_str());  
 			if(packageDataTypeName == "Location")
 			{
-				const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[i] - 1);
+				const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[i] - 1); // NOLINT(clang-diagnostic-reinterpret-base-class, bugprone-pointer-arithmetic-on-polymorphic-object)
 				inSerializer->Write<uint32_t>(bgsPackageDataLocation->pointer->rad);
 				inSerializer->Write<REX::EnumSet<RE::PackageLocation::Type, std::uint8_t>>(bgsPackageDataLocation->pointer->locType);
 				if(bgsPackageDataLocation->pointer->locType == RE::PackageLocation::Type::kNearReference)
@@ -272,7 +270,7 @@ namespace SQG
 		while(*conditionItemHolder)
 		{
 			inSerializer->Write<bool>(true);
-;			SerializeCondition(inSerializer, *conditionItemHolder);
+			SerializeCondition(inSerializer, *conditionItemHolder);
 			conditionItemHolder = &(*conditionItemHolder)->next;
 		}
 		inSerializer->Write<bool>(false);

@@ -9,7 +9,7 @@ namespace SQG
 
 	QuestData::Objective::~Objective()
 	{
-		for(auto i = 0; i < objective.numTargets; ++i)
+		for(uint32_t i = 0; i < objective.numTargets; ++i)
 		{
 			delete objective.targets[i];	
 		}
@@ -18,7 +18,7 @@ namespace SQG
 
 	RE::TESQuest* CreateQuest()
 	{
-		const auto result = DPF::CreateForm(QuestEngine::referenceQuest);
+		const auto result = DPF::CreateForm(Engine::Quest::referenceQuest);
 		questsData[result->formID].quest = result;
 		return result;
 	}

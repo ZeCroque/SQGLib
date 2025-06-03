@@ -1,25 +1,22 @@
 #pragma once
 
-namespace SQG
+namespace SQG::Engine::Package
 {
-	namespace PackageEngine
-	{
-		// # Common
-		// =======================
-		extern RE::TESPackage* acquirePackage;	
-		extern RE::TESPackage* activatePackage;
-		extern RE::TESPackage* travelPackage;
-		extern RE::TESPackage* forceGreetPackage;
-		extern std::map<RE::FormID, std::string> packagesFragmentName;
+	// # Common
+	// =======================
+	extern RE::TESPackage* acquirePackage;	
+	extern RE::TESPackage* activatePackage;
+	extern RE::TESPackage* travelPackage;
+	extern RE::TESPackage* forceGreetPackage;
+	extern std::map<RE::FormID, std::string> packagesFragmentName;
 
-		void InitAliasPackages(RE::FormID inQuestId);
+	void InitAliasPackages(RE::FormID inQuestId);
 
-		// # Sinks
-		// =======================
-		void RegisterSinks();
+	// # Sinks
+	// =======================
+	void RegisterSinks();
 
-		// # Data
-		// =======================
-		void LoadData();
-	}
+	// # Data
+	// =======================
+	void LoadData();
 }
