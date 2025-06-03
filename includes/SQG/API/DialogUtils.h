@@ -26,7 +26,7 @@ namespace SQG
 		void AddAnswer(const RE::BSString& inTopicInfoText, const RE::BSString& inTopicOverrideText, const std::list<RE::TESConditionItem*>& inConditions, int inTargetStage = -1, int inFragmentId = -1);
 
 		RE::TESQuest* owningQuest;
-		RE::BSFixedString prompt;	// in CK : Topic text max 80/TopicInfo text max 150 -> TODO test if hardcap
+		RE::BSFixedString prompt;
 		std::list<AnswerData> answers;
 		std::vector<std::unique_ptr<DialogTopicData>> childEntries;
 	};

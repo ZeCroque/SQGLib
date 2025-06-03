@@ -175,7 +175,7 @@ void FillQuestWithGeneratedData(RE::TESQuest* inQuest, RE::TESObjectREFR* inTarg
 	//Add dialogs
 	//===========================
 
-	auto* checkSpeakerCondition = SQG::CreateCondition(inTarget->data.objectReference, RE::FUNCTION_DATA::FunctionID::kGetIsID, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, {.f = 1.f}); //todo check directly targetForm
+	auto* checkSpeakerCondition = SQG::CreateCondition(inTarget->data.objectReference, RE::FUNCTION_DATA::FunctionID::kGetIsID, RE::CONDITION_ITEM_DATA::OpCode::kEqualTo, {.f = 1.f});
 	auto* aboveStage0Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kGreaterThan,{.f = 0.f});
 	auto* aboveStage10Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kGreaterThan, {.f = 10.f});
 	auto* underStage11Condition = SQG::CreateCondition(inQuest, RE::FUNCTION_DATA::FunctionID::kGetStage, RE::CONDITION_ITEM_DATA::OpCode::kLessThan,{.f = 11.f});
@@ -384,20 +384,25 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 		{
 			if (auto* dataHandler = RE::TESDataHandler::GetSingleton(); message->type == SKSE::MessagingInterface::kDataLoaded)
 			{
-				DPF::Init(0x800, "SQGLib.esp", "sqg");
+				if(DPF::Init(0x800, "SQGLib.esp", "sqg"))
+				{
+					SQG::ScriptEngine::Init();
 
-				SQG::ScriptEngine::Init();
+					SQG::QuestEngine::LoadData(dataHandler);
+					SQG::DialogEngine::LoadData(dataHandler);
+					SQG::PackageEngine::LoadData();
 
-				SQG::QuestEngine::LoadData(dataHandler);
-				SQG::DialogEngine::LoadData(dataHandler);
-				SQG::PackageEngine::LoadData();
+					SQG::QuestEngine::RegisterSinks();
+					SQG::DialogEngine::RegisterSinks();
+					SQG::PackageEngine::RegisterSinks();
 
-				SQG::QuestEngine::RegisterSinks();
-				SQG::DialogEngine::RegisterSinks();
-				SQG::PackageEngine::RegisterSinks();
-
-				activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
-				targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
+					activator =  reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x001885}, "SQGLib.esp"));  
+					targetActivator = reinterpret_cast<RE::TESObjectREFR*>(dataHandler->LookupForm(RE::FormID{0x008438}, "SQGLib.esp"));
+				}
+				else
+				{
+					SKSE::stl::report_and_fail("You must enable the SQGLib.esp plugin in your mod manager.");
+				}
 			}
 			else if(message->type == SKSE::MessagingInterface::kPreLoadGame)
 			{

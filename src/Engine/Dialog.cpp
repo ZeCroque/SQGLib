@@ -284,7 +284,6 @@ namespace SQG
 		// =======================
 		void LoadData(RE::TESDataHandler* inDataHandler)
 		{
-			//TODO handle failure
 			forceGreetTopic = reinterpret_cast<RE::TESTopic*>(inDataHandler->LookupForm(RE::FormID{0x00EAB4}, "SQGLib.esp"));
 			subTopicsInfos[0] = reinterpret_cast<RE::TESTopicInfo*>(inDataHandler->LookupForm(RE::FormID{0x00BF96}, "SQGLib.esp"));
 			subTopicsInfos[1] = reinterpret_cast<RE::TESTopicInfo*>(inDataHandler->LookupForm(RE::FormID{0x00BF99}, "SQGLib.esp"));
