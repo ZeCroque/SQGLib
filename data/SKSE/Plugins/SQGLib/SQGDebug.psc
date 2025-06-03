@@ -1,4 +1,4 @@
-Scriptname SQGDebug Extends Quest Hidden
+Scriptname SQGDebugZZ Extends Quest Hidden
 
 ReferenceAlias Property SQGTestAliasTarget Auto
 

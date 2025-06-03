@@ -1,4 +1,4 @@
-Scriptname SQGTopicFragments Extends Quest Hidden
+Scriptname TF_SQGDebugZZ Extends Quest Hidden
 
 Function Fragment_0()
 SetStage(12)

@@ -10,6 +10,7 @@ namespace SQG
 		extern RE::TESPackage* activatePackage;
 		extern RE::TESPackage* travelPackage;
 		extern RE::TESPackage* forceGreetPackage;
+		extern std::map<RE::FormID, std::string> packagesFragmentName;
 
 		void InitAliasPackages(RE::FormID inQuestId);
 

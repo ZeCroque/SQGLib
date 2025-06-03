@@ -1,4 +1,4 @@
-Scriptname PF_SQGTravelPackage Extends Package Hidden
+Scriptname PF_SQGTravelPackageZZ Extends Package Hidden
 
 Function Fragment_1()
 Debug.MessageBox("moved")

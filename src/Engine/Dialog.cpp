@@ -16,6 +16,7 @@ namespace SQG
 		};
 		std::map<RE::FormID, SpeakerData> speakersData;
 		DialogTopicData::AnswerData* lastSelectedAnswer;
+		RE::FormID lastSpeakerId;
 
 		// # Hooks
 		// =======================
@@ -229,7 +230,7 @@ namespace SQG
 				{
 					if(a_event->type == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicBegin)
 					{
-						if(!speakersData.contains(a_event->speakerRef->formID) || !speakersData[a_event->speakerRef->formID].hasAnyValidEntry)
+						if(!speakersData.contains(a_event->speakerRef->formID) || !speakersData[a_event->speakerRef->formID].hasAnyValidEntry || lastSpeakerId != a_event->speakerRef->formID)
 						{
 							ProcessDialogEntries(a_event->speakerRef.get(), SQG::dialogTopicsData[a_event->speakerRef->formID].childEntries);
 						}
@@ -253,7 +254,7 @@ namespace SQG
 								auto* policy = scriptMachine->GetObjectHandlePolicy();
 								const auto updatedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, answer->parentEntry->owningQuest);
 								RE::BSTSmartPointer<RE::BSScript::Object> questCustomScriptObject;
-								scriptMachine->FindBoundObject(updatedQuestHandle, "SQGTopicFragments", questCustomScriptObject);
+								scriptMachine->FindBoundObject(updatedQuestHandle, (std::string("TF_") + answer->parentEntry->owningQuest->GetFormEditorID()).c_str(), questCustomScriptObject);
 
 								const auto* methodInfo = questCustomScriptObject->type->GetMemberFuncIter() + answer->fragmentId;
 								RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
@@ -264,6 +265,7 @@ namespace SQG
 							ProcessDialogEntries(a_event->speakerRef.get(), !answer->parentEntry->childEntries.empty() ? answer->parentEntry->childEntries : SQG::dialogTopicsData[a_event->speakerRef->formID].childEntries);
 						}
 					}
+					lastSpeakerId = a_event->speakerRef->formID;
 				}
 				return RE::BSEventNotifyControl::kContinue;
 			}

@@ -1,4 +1,4 @@
-Scriptname SQGQuestTargetScript extends ReferenceAlias  
+Scriptname SQGQuestTargetScriptZZ extends ReferenceAlias  
 
 Event OnDeath(Actor AkKiller)
 	GetOwningQuest().SetObjectiveFailed(12)
