@@ -284,13 +284,26 @@ namespace SQG::Engine::Script
 	caprica::CapricaJobManager jobManager{};
 	void Init()
 	{
+		constexpr std::string_view flagsName = "TESV_Papyrus_Flags.flg";
+		std::string scriptPath = "./Data/Source/Scripts/";
+		auto flagPath = scriptPath + flagsName.data();
+		if(!std::filesystem::exists(flagPath))
+		{
+			scriptPath = "./Data/Scripts/Source/";
+			flagPath = scriptPath + flagsName.data();
+			if (!std::filesystem::exists(flagPath))
+			{
+				SKSE::stl::report_and_fail("Missing vanilla source scripts.");
+			}
+		}
+
 		caprica::conf::Papyrus::game = caprica::GameID::Skyrim;
-		caprica::conf::Papyrus::importDirectories.emplace_back(caprica::FSUtils::canonical(R"(.\Data\Scripts\Source)"), false);
+		caprica::conf::Papyrus::importDirectories.emplace_back(caprica::FSUtils::canonical(scriptPath), false);
 		if(!HandleImports(caprica::conf::Papyrus::importDirectories, &jobManager)) 
 		{
 			return;
 		}
-		ParseUserFlags(R"(.\Data\Scripts\Source\TESV_Papyrus_Flags.flg)");
+		ParseUserFlags(flagPath);
 		caprica::papyrus::PapyrusCompilationContext::awaitRead();
 
 		Store::Init();
