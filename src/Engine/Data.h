@@ -2,6 +2,12 @@
 
 #include "REX/REX/Singleton.h"
 
+namespace DPF
+{
+	class FileReader;
+	class FileWriter;
+}
+
 // ReSharper disable once CppInconsistentNaming
 namespace caprica::papyrus
 {
@@ -34,6 +40,11 @@ namespace SQG
 		std::list<AnswerData> answers;
 		std::vector<std::unique_ptr<DialogTopicData>> childEntries;
 	};
+
+	DialogTopicData::AnswerData DeserializeAnswer(DPF::FileReader* inSerializer, DialogTopicData* inParent);
+	void DeserializeDialogTopic(DPF::FileReader* inSerializer, DialogTopicData& outData);
+	void SerializeAnswer(DPF::FileWriter* inSerializer, const DialogTopicData::AnswerData& inAnswerData);
+	void SerializeDialogTopic(DPF::FileWriter* inSerializer, const DialogTopicData& inData);
 
 	// Quest Data
 	// =======================
@@ -95,6 +106,14 @@ namespace SQG
 		RE::TESTopic* topicData;
 		PackageNativeData nativeData{};
 	};
+
+	void DeserializePackageData(DPF::FileReader* inSerializer, RE::TESPackage* outPackage);
+	void SerializePackageData(DPF::FileWriter* inSerializer, const RE::TESPackage* inPackage);
+
+	// Condition Data
+	// =======================
+	RE::TESConditionItem* DeserializeCondition(DPF::FileReader* inSerializer);
+	void SerializeCondition(DPF::FileWriter* inSerializer, const RE::TESConditionItem* inCondition);
 
 	// Data Manager
 	// =======================
