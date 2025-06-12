@@ -415,39 +415,13 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 				if(const auto serializer = DPF::LoadCache(message))
 				{
-					const auto size = serializer->Read<size_t>();
-					for(size_t i = 0; i < size; ++i)
-					{
-						const auto formId = serializer->Read<RE::FormID>();
-						SQG::DeserializeQuestData(serializer, formId);
-					}
-
-					const auto scriptCount = serializer->Read<size_t>();
-					for(size_t i = 0; i < scriptCount; ++i)
-					{
-						auto scriptName = serializer->ReadString();
-						SQG::DeserializeScript(serializer, scriptName);
-					}
-
-					const auto speakersCount = serializer->Read<size_t>();
-					for(size_t i = 0; i < speakersCount; ++i)
-					{
-						auto speakerFormId = serializer->ReadFormId();
-						SQG::DeserializeDialogTopic(serializer, dataManager->dialogsData[speakerFormId].topLevelTopic);
-						dataManager->dialogsData[speakerFormId].forceGreetAnswer = SQG::DeserializeAnswer(serializer, nullptr);
-						const auto answersCount = serializer->Read<size_t>();
-						for(size_t j = 0; j < answersCount; ++j)
-						{
-							dataManager->dialogsData[speakerFormId].helloAnswers.emplace_back(SQG::DeserializeAnswer(serializer, nullptr));
-						}
-					}
+					SQG::Deserialize(serializer);
 				}
 				generatedQuestIndex = dataManager->questsData.size();
 			}
 			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
 			{
 				auto* dataManager = SQG::DataManager::GetSingleton();
-
 				auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 				auto* policy = scriptMachine->GetObjectHandlePolicy();
 
@@ -464,38 +438,11 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 			}
 			else if(message->type == SKSE::MessagingInterface::kSaveGame)
 			{
-				auto* dataManager = SQG::DataManager::GetSingleton();
-
-				auto* serializer = DPF::SaveCache(message, true);
-
-				serializer->Write<size_t>(dataManager->questsData.size());
-				for(auto& [formId, data] : dataManager->questsData)
+				if (auto* serializer = DPF::SaveCache(message, true))
 				{
-					serializer->Write<RE::FormID>(formId);
-					SQG::SerializeQuestData(serializer, data);
+					SQG::Serialize(serializer);
+					serializer->Close();
 				}
-
-				serializer->Write<size_t>(dataManager->compiledScripts.size());
-				for(const auto& [scriptName, node] : dataManager->compiledScripts)
-				{
-					serializer->WriteString(scriptName.c_str());
-					SQG::SerializeScript(serializer, node);
-				}
-
-				serializer->Write<size_t>(dataManager->dialogsData.size());
-				for(const auto& [speakerFormId, data] : dataManager->dialogsData)
-				{
-					serializer->WriteFormId(speakerFormId);
-					SQG::SerializeDialogTopic(serializer, data.topLevelTopic);
-					SQG::SerializeAnswer(serializer, data.forceGreetAnswer);
-					serializer->Write<size_t>(data.helloAnswers.size());
-					for(auto& answer : data.helloAnswers)
-					{
-						SQG::SerializeAnswer(serializer, answer);
-					}
-				}
-
-				serializer->Close();
 			}
 			else if(message->type == SKSE::MessagingInterface::kDeleteGame)
 			{

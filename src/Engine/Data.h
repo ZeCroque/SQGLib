@@ -50,8 +50,10 @@ namespace SQG
 
 	DialogTopicData::AnswerData DeserializeAnswer(DPF::FileReader* inSerializer, DialogTopicData* inParent);
 	void DeserializeDialogTopic(DPF::FileReader* inSerializer, DialogTopicData& outData);
+	void DeserializeDialog(DPF::FileReader* inSerializer);
 	void SerializeAnswer(DPF::FileWriter* inSerializer, const DialogTopicData::AnswerData& inAnswerData);
 	void SerializeDialogTopic(DPF::FileWriter* inSerializer, const DialogTopicData& inData);
+	void SerializeDialog(DPF::FileWriter* inSerializer, RE::FormID inSpeakerId, const DialogData& inData);
 
 	// Quest Data
 	// =======================
@@ -94,8 +96,8 @@ namespace SQG
 		std::map<uint16_t, int> stagesToFragmentIndex;
 	};
 
-	void DeserializeQuestData(DPF::FileReader* inSerializer, const RE::FormID inFormId);
-	void SerializeQuestData(DPF::FileWriter* inSerializer, QuestData& inData);
+	void DeserializeQuestData(DPF::FileReader* inSerializer);
+	void SerializeQuestData(DPF::FileWriter* inSerializer, RE::FormID inQuestId, QuestData& inData);
 
 	// Package Data
 	// =======================
@@ -127,8 +129,12 @@ namespace SQG
 
 	// Script Data
 	// =======================
-	void DeserializeScript(DPF::FileReader* inSerializer, const std::string& inScriptName);
-	void SerializeScript(DPF::FileWriter* inSerializer, const caprica::papyrus::PapyrusCompilationNode* inNode);
+	void DeserializeScript(DPF::FileReader* inSerializer);
+	void SerializeScript(DPF::FileWriter* inSerializer, const std::string& inScriptName, const caprica::papyrus::PapyrusCompilationNode* inNode);
+
+	//Common
+	void Deserialize(DPF::FileReader* inSerializer);
+	void Serialize(DPF::FileWriter* inSerializer);
 
 	// Data Manager
 	// =======================
