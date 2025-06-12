@@ -373,7 +373,7 @@ namespace SQG
 			{
 				inSerializer->Write<int8_t>(customPackageData->data.uids[i]);
 
-				const auto packageDataTypeName = customPackageData->data.data[i]->GetTypeName();
+				const auto& packageDataTypeName = customPackageData->data.data[i]->GetTypeName();
 				inSerializer->WriteString(packageDataTypeName.c_str());
 				if (packageDataTypeName == "Location")
 				{
