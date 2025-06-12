@@ -2,6 +2,7 @@
 
 #include "DPF/API.h"
 #include "DPF/FileSystem.h"
+#include "papyrus/PapyrusCompilationContext.h"
 #include "SQG/API/ConditionUtils.h"
 #include "SQG/API/PackageUtils.h"
 #include "SQG/API/QuestUtils.h"
@@ -402,6 +403,37 @@ namespace SQG
 		inSerializer->WriteFormRef(static_cast<RE::TESForm*>(inCondition->data.functionData.params[0]));
 		inSerializer->Write<RE::CONDITION_ITEM_DATA::OpCode>(inCondition->data.flags.opCode);
 		inSerializer->Write<RE::CONDITION_ITEM_DATA::GlobalOrFloat>(inCondition->data.comparisonValue);
+	}
+
+	// Script Data
+	// =======================
+	void DeserializeScript(DPF::FileReader* inSerializer, const std::string& inScriptName)
+	{
+		auto* dataManager = SQG::DataManager::GetSingleton();
+
+		const auto node = dataManager->compiledScripts[inScriptName] = new caprica::papyrus::PapyrusCompilationNode(nullptr, inScriptName, "");
+		node->createPexWriter();
+
+		while (const auto heapSize = inSerializer->Read<size_t>())
+		{
+			for (size_t j = 0; j < heapSize; ++j)
+			{
+				node->getData().make<char>(inSerializer->Read<char>());
+			}
+		}
+	}
+
+	void SerializeScript(DPF::FileWriter* inSerializer, const caprica::papyrus::PapyrusCompilationNode* inNode)
+	{
+		inNode->getPexWriter()->applyToBuffers([&](const char* scriptData, const size_t size)
+		{
+			inSerializer->Write<size_t>(size);
+			for (size_t i = 0; i < size; ++i)
+			{
+				inSerializer->Write<char>(scriptData[i]);
+			}
+		});
+		inSerializer->Write<size_t>(0);
 	}
 
 	// Data Manager

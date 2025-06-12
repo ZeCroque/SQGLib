@@ -425,17 +425,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					const auto scriptCount = serializer->Read<size_t>();
 					for(size_t i = 0; i < scriptCount; ++i)
 					{
-						auto stringName = serializer->ReadString();
-						const auto node = dataManager->compiledScripts[stringName] = new caprica::papyrus::PapyrusCompilationNode(nullptr, stringName, "");
-						node->createPexWriter();
-
-						while(const auto heapSize = serializer->Read<size_t>())
-						{
-							for (size_t j = 0; j < heapSize; ++j) 
-							{
-					            node->getData().make<char>(serializer->Read<char>());
-					        }
-						}
+						auto scriptName = serializer->ReadString();
+						SQG::DeserializeScript(serializer, scriptName);
 					}
 
 					const auto speakersCount = serializer->Read<size_t>();
@@ -499,15 +490,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				for(const auto& [scriptName, node] : dataManager->compiledScripts)
 				{
 					serializer->WriteString(scriptName.c_str());
-					node->getPexWriter()->applyToBuffers([&](const char* scriptData, const size_t size)
-					{
-						serializer->Write<size_t>(size);
-				        for (size_t i = 0; i < size; ++i) 
-						{
-				            serializer->Write<char>(scriptData[i]);
-				        }
-					});
-					serializer->Write<size_t>(0);
+					SQG::SerializeScript(serializer, node);
 				}
 
 				serializer->Write<size_t>(dataManager->dialogTopicsData.size());

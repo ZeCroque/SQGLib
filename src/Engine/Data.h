@@ -118,6 +118,11 @@ namespace SQG
 	RE::TESConditionItem* DeserializeCondition(DPF::FileReader* inSerializer);
 	void SerializeCondition(DPF::FileWriter* inSerializer, const RE::TESConditionItem* inCondition);
 
+	// Script Data
+	// =======================
+	void DeserializeScript(DPF::FileReader* inSerializer, const std::string& inScriptName);
+	void SerializeScript(DPF::FileWriter* inSerializer, const caprica::papyrus::PapyrusCompilationNode* inNode);
+
 	// Data Manager
 	// =======================
 	class DataManager : public REX::Singleton<DataManager>
