@@ -59,15 +59,15 @@ namespace SQG
 
 		void DeserializeDialog(DPF::FileReader* inSerializer)
 		{
-			auto* dataManager = SQG::DataManager::GetSingleton();
+			auto* dataManager = DataManager::GetSingleton();
 
 			const auto speakerFormId = inSerializer->ReadFormId();
-			SQG::DeserializeDialogTopic(inSerializer, dataManager->dialogsData[speakerFormId].topLevelTopic);
-			dataManager->dialogsData[speakerFormId].forceGreetAnswer = SQG::DeserializeAnswer(inSerializer, nullptr);
+			DeserializeDialogTopic(inSerializer, dataManager->dialogsData[speakerFormId].topLevelTopic);
+			dataManager->dialogsData[speakerFormId].forceGreetAnswer = DeserializeAnswer(inSerializer, nullptr);
 			const auto answersCount = inSerializer->Read<size_t>();
 			for (size_t j = 0; j < answersCount; ++j)
 			{
-				dataManager->dialogsData[speakerFormId].helloAnswers.emplace_back(SQG::DeserializeAnswer(inSerializer, nullptr));
+				dataManager->dialogsData[speakerFormId].helloAnswers.emplace_back(DeserializeAnswer(inSerializer, nullptr));
 			}
 		}
 
@@ -104,12 +104,12 @@ namespace SQG
 		void SerializeDialog(DPF::FileWriter* inSerializer, const RE::FormID inSpeakerId, const DialogData& inData)
 		{
 			inSerializer->WriteFormId(inSpeakerId);
-			SQG::SerializeDialogTopic(inSerializer, inData.topLevelTopic);
-			SQG::SerializeAnswer(inSerializer, inData.forceGreetAnswer);
+			SerializeDialogTopic(inSerializer, inData.topLevelTopic);
+			SerializeAnswer(inSerializer, inData.forceGreetAnswer);
 			inSerializer->Write<size_t>(inData.helloAnswers.size());
 			for (auto& answer : inData.helloAnswers)
 			{
-				SQG::SerializeAnswer(inSerializer, answer);
+				SerializeAnswer(inSerializer, answer);
 			}
 		}
 	}
@@ -129,7 +129,7 @@ namespace SQG
 	{
 		void DeserializeQuestData(DPF::FileReader* inSerializer)
 		{
-			auto* dataManager = SQG::DataManager::GetSingleton();
+			auto* dataManager = DataManager::GetSingleton();
 
 			const auto formId = inSerializer->Read<RE::FormID>();
 			auto* quest = DPF::GetForm<RE::TESQuest>(formId);
@@ -139,7 +139,7 @@ namespace SQG
 			for (size_t j = 0; j < stagesCount; ++j)
 			{
 				const auto data = inSerializer->Read<RE::QUEST_STAGE_DATA>();
-				const auto type = data.flags.all(RE::QUEST_STAGE_DATA::Flag::kStartUpStage) ? SQG::QuestStageType::Startup : (data.flags.all(RE::QUEST_STAGE_DATA::Flag::kShutDownStage) ? SQG::QuestStageType::Shutdown : SQG::QuestStageType::Default);
+				const auto type = data.flags.all(RE::QUEST_STAGE_DATA::Flag::kStartUpStage) ? QuestStageType::Startup : (data.flags.all(RE::QUEST_STAGE_DATA::Flag::kShutDownStage) ? QuestStageType::Shutdown : QuestStageType::Default);
 
 				std::string logEntry;
 				if (inSerializer->Read<bool>())
@@ -153,7 +153,7 @@ namespace SQG
 					fragmentIndex = inSerializer->Read<int>();
 				}
 
-				SQG::AddQuestStage(quest, data.index, type, logEntry, fragmentIndex);
+				AddQuestStage(quest, data.index, type, logEntry, fragmentIndex);
 			}
 
 			const auto objectiveCount = inSerializer->Read<size_t>();
@@ -170,7 +170,7 @@ namespace SQG
 					questTargets.emplace_back(inSerializer->Read<uint8_t>());
 				}
 
-				SQG::AddObjective(quest, index, text, questTargets);
+				AddObjective(quest, index, text, questTargets);
 			}
 
 			const auto aliasesPackagesDataCount = inSerializer->Read<size_t>();
@@ -182,11 +182,11 @@ namespace SQG
 				{
 					auto* package = reinterpret_cast<RE::TESPackage*>(inSerializer->ReadFormRef());
 					auto* packageTemplate = reinterpret_cast<RE::TESPackage*>(inSerializer->ReadFormRef());
-					SQG::FillPackageWithTemplate(package, packageTemplate, quest);
+					FillPackageWithTemplate(package, packageTemplate, quest);
 
 					const auto fragmentName = inSerializer->ReadString();
 
-					SQG::DeserializePackageData(inSerializer, package);
+					DeserializePackageData(inSerializer, package);
 
 					dataManager->questsData[formId].aliasesPackagesData[aliasId].push_back({ package, fragmentName });
 				}
@@ -195,7 +195,7 @@ namespace SQG
 
 		void SerializeQuestData(DPF::FileWriter* inSerializer, const RE::FormID inQuestId, QuestData& inData)
 		{
-			auto* dataManager = SQG::DataManager::GetSingleton();
+			auto* dataManager = DataManager::GetSingleton();
 
 			inSerializer->Write<RE::FormID>(inQuestId);
 
@@ -244,7 +244,7 @@ namespace SQG
 					inSerializer->WriteFormRef(package);
 					inSerializer->WriteFormRef(reinterpret_cast<RE::TESCustomPackageData*>(package->data)->templateParent);
 					inSerializer->WriteString(fragmentScriptName.c_str());
-					SQG::SerializePackageData(inSerializer, package);
+					SerializePackageData(inSerializer, package);
 				}
 			}
 		}
@@ -460,7 +460,7 @@ namespace SQG
 		// =======================
 		void DeserializeScript(DPF::FileReader* inSerializer)
 		{
-			auto* dataManager = SQG::DataManager::GetSingleton();
+			auto* dataManager = DataManager::GetSingleton();
 
 			const auto scriptName = inSerializer->ReadString();
 			const auto node = dataManager->compiledScripts[scriptName] = new caprica::papyrus::PapyrusCompilationNode(nullptr, scriptName, "");
@@ -497,42 +497,42 @@ namespace SQG
 		const auto size = inSerializer->Read<size_t>();
 		for (size_t i = 0; i < size; ++i)
 		{
-			SQG::DeserializeQuestData(inSerializer);
+			DeserializeQuestData(inSerializer);
 		}
 
 		const auto scriptCount = inSerializer->Read<size_t>();
 		for (size_t i = 0; i < scriptCount; ++i)
 		{
-			SQG::DeserializeScript(inSerializer);
+			DeserializeScript(inSerializer);
 		}
 
 		const auto speakersCount = inSerializer->Read<size_t>();
 		for (size_t i = 0; i < speakersCount; ++i)
 		{
-			SQG::DeserializeDialog(inSerializer);
+			DeserializeDialog(inSerializer);
 		}
 	}
 
 	void Serialize(DPF::FileWriter* inSerializer)
 	{
-		auto* dataManager = SQG::DataManager::GetSingleton();
+		auto* dataManager = DataManager::GetSingleton();
 
 		inSerializer->Write<size_t>(dataManager->questsData.size());
 		for (auto& [formId, data] : dataManager->questsData)
 		{
-			SQG::SerializeQuestData(inSerializer, formId, data);
+			SerializeQuestData(inSerializer, formId, data);
 		}
 
 		inSerializer->Write<size_t>(dataManager->compiledScripts.size());
 		for (const auto& [scriptName, node] : dataManager->compiledScripts)
 		{
-			SQG::SerializeScript(inSerializer, scriptName, node);
+			SerializeScript(inSerializer, scriptName, node);
 		}
 
 		inSerializer->Write<size_t>(dataManager->dialogsData.size());
 		for (const auto& [speakerFormId, data] : dataManager->dialogsData)
 		{
-			SQG::SerializeDialog(inSerializer, speakerFormId, data);
+			SerializeDialog(inSerializer, speakerFormId, data);
 		}
 	}
 

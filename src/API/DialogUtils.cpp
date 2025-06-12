@@ -35,10 +35,10 @@ namespace SQG
 	{
 		const auto* dataManager = DataManager::GetSingleton();
 
-		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
-		packageDataMap["Topic"] = SQG::PackageData(dataManager->forceGreetTopic);
-		auto* customForceGreetPackage = SQG::CreatePackageFromTemplate(dataManager->forceGreetPackage, inQuest, packageDataMap, inConditions);
-		SQG::AddAliasPackage(inQuest, inSpeaker, customForceGreetPackage);
+		std::unordered_map<std::string, PackageData> packageDataMap;
+		packageDataMap["Topic"] = PackageData(dataManager->forceGreetTopic);
+		auto* customForceGreetPackage = CreatePackageFromTemplate(dataManager->forceGreetPackage, inQuest, packageDataMap, inConditions);
+		AddAliasPackage(inQuest, inSpeaker, customForceGreetPackage);
 
 		DataManager::GetSingleton()->dialogsData[inSpeaker->formID].forceGreetAnswer = {nullptr, inForceGreet, "", {}, -1, -1, false};
 	}
