@@ -120,6 +120,10 @@ namespace SQG
 
 	PackageData& PackageData::operator=(const PackageData& inOther)
 	{
+		if(this == &inOther)
+		{
+			return *this;
+		}
 		std::memcpy(this, &inOther, sizeof(PackageData));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
 		return *this;
 	}
