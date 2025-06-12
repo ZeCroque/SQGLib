@@ -1,7 +1,10 @@
 #include "Data.h"
 
+#include "DPF/API.h"
 #include "DPF/FileSystem.h"
 #include "SQG/API/ConditionUtils.h"
+#include "SQG/API/PackageUtils.h"
+#include "SQG/API/QuestUtils.h"
 
 namespace SQG
 {
@@ -82,6 +85,125 @@ namespace SQG
 			delete objective.targets[i];
 		}
 		delete[] objective.targets;
+	}
+
+	void DeserializeQuestData(DPF::FileReader* inSerializer, const RE::FormID inFormId)
+	{
+		auto* dataManager = SQG::DataManager::GetSingleton();
+
+		auto* quest = DPF::GetForm<RE::TESQuest>(inFormId);
+		dataManager->questsData[inFormId].quest = quest;
+
+		const auto stagesCount = inSerializer->Read<size_t>();
+		for (size_t j = 0; j < stagesCount; ++j)
+		{
+			const auto data = inSerializer->Read<RE::QUEST_STAGE_DATA>();
+			const auto type = data.flags.all(RE::QUEST_STAGE_DATA::Flag::kStartUpStage) ? SQG::QuestStageType::Startup : (data.flags.all(RE::QUEST_STAGE_DATA::Flag::kShutDownStage) ? SQG::QuestStageType::Shutdown : SQG::QuestStageType::Default);
+
+			std::string logEntry;
+			if (inSerializer->Read<bool>())
+			{
+				logEntry = inSerializer->ReadString();
+			}
+
+			int fragmentIndex = -1;
+			if (inSerializer->Read<bool>())
+			{
+				fragmentIndex = inSerializer->Read<int>();
+			}
+
+			SQG::AddQuestStage(quest, data.index, type, logEntry, fragmentIndex);
+		}
+
+		const auto objectiveCount = inSerializer->Read<size_t>();
+		for (size_t j = 0; j < objectiveCount; ++j)
+		{
+			const auto index = inSerializer->Read<uint16_t>();
+
+			const auto text = inSerializer->ReadString();
+
+			const auto numTargets = inSerializer->Read<uint32_t>();
+			std::list<uint8_t> questTargets;
+			for (uint32_t k = 0; k < numTargets; ++k)
+			{
+				questTargets.emplace_back(inSerializer->Read<uint8_t>());
+			}
+
+			SQG::AddObjective(quest, index, text, questTargets);
+		}
+
+		const auto aliasesPackagesDataCount = inSerializer->Read<size_t>();
+		for (size_t j = 0; j < aliasesPackagesDataCount; ++j)
+		{
+			auto aliasId = inSerializer->ReadFormId();
+			const auto aliasesPackagesDataListCount = inSerializer->Read<size_t>();
+			for (size_t k = 0; k < aliasesPackagesDataListCount; ++k)
+			{
+				auto* package = reinterpret_cast<RE::TESPackage*>(inSerializer->ReadFormRef());
+				auto* packageTemplate = reinterpret_cast<RE::TESPackage*>(inSerializer->ReadFormRef());
+				SQG::FillPackageWithTemplate(package, packageTemplate, quest);
+
+				const auto fragmentName = inSerializer->ReadString();
+
+				SQG::DeserializePackageData(inSerializer, package);
+
+				dataManager->questsData[inFormId].aliasesPackagesData[aliasId].push_back({ package, fragmentName });
+			}
+		}
+	}
+
+	void SerializeQuestData(DPF::FileWriter* inSerializer, QuestData& inData)
+	{
+		auto* dataManager = SQG::DataManager::GetSingleton();
+
+		inSerializer->Write<size_t>(inData.stages.size());
+		for (const auto& stage : inData.stages)
+		{
+			inSerializer->Write<RE::QUEST_STAGE_DATA>(stage->data);
+
+			const auto hasLogEntry = stage->questStageItem != nullptr;
+			inSerializer->Write<bool>(hasLogEntry);
+			if (hasLogEntry)
+			{
+				inSerializer->WriteString(inData.logEntries[stage->data.index].c_str());
+			}
+
+			if (auto it = dataManager->questsData[inData.quest->formID].stagesToFragmentIndex.find(stage->data.index); it != dataManager->questsData[inData.quest->formID].stagesToFragmentIndex.end())
+			{
+				inSerializer->Write<bool>(true);
+				inSerializer->Write<int>(it->second);
+			}
+			else
+			{
+				inSerializer->Write(false);
+			}
+		}
+
+		inSerializer->Write<size_t>(inData.objectives.size());
+		for (const auto& objective : inData.objectives)
+		{
+			inSerializer->Write<uint16_t>(objective->objective.index);
+			inSerializer->WriteString(objective->objective.displayText.c_str());
+			inSerializer->Write<uint32_t>(objective->objective.numTargets);
+			for (uint32_t i = 0; i < objective->objective.numTargets; ++i)
+			{
+				inSerializer->Write<uint8_t>(objective->objective.targets[i]->alias);
+			}
+		}
+
+		inSerializer->Write<size_t>(inData.aliasesPackagesData.size());
+		for (auto& [aliasId, aliasPackageDataList] : inData.aliasesPackagesData)
+		{
+			inSerializer->WriteFormId(aliasId);
+			inSerializer->Write<size_t>(aliasPackageDataList.size());
+			for (auto& [package, fragmentScriptName] : aliasPackageDataList)
+			{
+				inSerializer->WriteFormRef(package);
+				inSerializer->WriteFormRef(reinterpret_cast<RE::TESCustomPackageData*>(package->data)->templateParent);
+				inSerializer->WriteString(fragmentScriptName.c_str());
+				SQG::SerializePackageData(inSerializer, package);
+			}
+		}
 	}
 
 	// Package Manager

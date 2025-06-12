@@ -419,65 +419,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					for(size_t i = 0; i < size; ++i)
 					{
 						const auto formId = serializer->Read<RE::FormID>();
-						auto* quest = DPF::GetForm<RE::TESQuest>(formId);
-						dataManager->questsData[formId].quest = quest;
-
-						const auto stagesCount = serializer->Read<size_t>();
-						for(size_t j = 0; j < stagesCount; ++j)
-						{
-							const auto data = serializer->Read<RE::QUEST_STAGE_DATA>();
-							const auto type = data.flags.all(RE::QUEST_STAGE_DATA::Flag::kStartUpStage) ? SQG::QuestStageType::Startup : (data.flags.all(RE::QUEST_STAGE_DATA::Flag::kShutDownStage) ? SQG::QuestStageType::Shutdown : SQG::QuestStageType::Default);
-
-							std::string logEntry;
-							if(serializer->Read<bool>())
-							{
-								logEntry = serializer->ReadString();
-							}
-
-							int fragmentIndex = -1;
-							if(serializer->Read<bool>())
-							{
-								fragmentIndex = serializer->Read<int>();
-							}
-
-							SQG::AddQuestStage(quest, data.index, type, logEntry, fragmentIndex);
-						}
-
-						const auto objectiveCount = serializer->Read<size_t>();
-						for(size_t j = 0; j < objectiveCount; ++j)
-						{
-							const auto index = serializer->Read<uint16_t>();
-
-							const auto text = serializer->ReadString();
-
-							const auto numTargets = serializer->Read<uint32_t>();
-							std::list<uint8_t> questTargets;
-							for(uint32_t k = 0; k < numTargets; ++k)
-							{
-								questTargets.emplace_back(serializer->Read<uint8_t>());
-							}
-
-							SQG::AddObjective(quest, index, text, questTargets);
-						}
-
-						auto aliasesPackagesDataCount = serializer->Read<size_t>();
-						for(size_t j = 0; j < aliasesPackagesDataCount; ++j)
-						{
-							auto aliasId = serializer->ReadFormId();
-							auto aliasesPackagesDataListCount = serializer->Read<size_t>();
-							for(size_t k = 0; k < aliasesPackagesDataListCount; ++k)
-							{
-								auto* package = reinterpret_cast<RE::TESPackage*>(serializer->ReadFormRef());
-								auto* packageTemplate = reinterpret_cast<RE::TESPackage*>(serializer->ReadFormRef());
-								SQG::FillPackageWithTemplate(package, packageTemplate, quest);
-
-								const auto fragmentName = serializer->ReadString();
-
-								SQG::DeserializePackageData(serializer, package);
-
-								dataManager->questsData[formId].aliasesPackagesData[aliasId].push_back({package, fragmentName});
-							}
-						}
+						SQG::DeserializeQuestData(serializer, formId);
 					}
 
 					const auto scriptCount = serializer->Read<size_t>();
@@ -550,55 +492,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				for(auto& [formId, data] : dataManager->questsData)
 				{
 					serializer->Write<RE::FormID>(formId);
-
-					serializer->Write<size_t>(data.stages.size());
-					for(const auto& stage : data.stages)
-					{
-						serializer->Write<RE::QUEST_STAGE_DATA>(stage->data);
-
-						const auto hasLogEntry = stage->questStageItem != nullptr;
-						serializer->Write<bool>(hasLogEntry);
-						if(hasLogEntry)
-						{
-							serializer->WriteString(data.logEntries[stage->data.index].c_str());
-						}
-
-						if(auto it = dataManager->questsData[formId].stagesToFragmentIndex.find(stage->data.index); it != dataManager->questsData[formId].stagesToFragmentIndex.end())
-						{
-							serializer->Write<bool>(true);
-							serializer->Write<int>(it->second);
-						}
-						else
-						{
-							serializer->Write(false);
-						}
-					}
-
-					serializer->Write<size_t>(data.objectives.size());
-					for(const auto& objective : data.objectives)
-					{
-						serializer->Write<uint16_t>(objective->objective.index);
-						serializer->WriteString(objective->objective.displayText.c_str());
-						serializer->Write<uint32_t>(objective->objective.numTargets);
-						for(uint32_t i = 0; i < objective->objective.numTargets; ++i)
-						{
-							serializer->Write<uint8_t>(objective->objective.targets[i]->alias);
-						}
-					}
-
-					serializer->Write<size_t>(data.aliasesPackagesData.size());
-					for(auto& [aliasId, aliasPackageDataList] : data.aliasesPackagesData)
-					{
-						serializer->WriteFormId(aliasId);
-						serializer->Write<size_t>(aliasPackageDataList.size());
-						for(auto& [package, fragmentScriptName] : aliasPackageDataList)
-						{
-							serializer->WriteFormRef(package);
-							serializer->WriteFormRef(reinterpret_cast<RE::TESCustomPackageData*>(package->data)->templateParent);
-							serializer->WriteString(fragmentScriptName.c_str());
-							SQG::SerializePackageData(serializer, package);
-						}
-					}
+					SQG::SerializeQuestData(serializer, data);
 				}
 
 				serializer->Write<size_t>(dataManager->compiledScripts.size());

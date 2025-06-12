@@ -87,6 +87,9 @@ namespace SQG
 		std::map<uint16_t, int> stagesToFragmentIndex;
 	};
 
+	void DeserializeQuestData(DPF::FileReader* inSerializer, const RE::FormID inFormId);
+	void SerializeQuestData(DPF::FileWriter* inSerializer, QuestData& inData);
+
 	// Package Data
 	// =======================
 	union PackageData
