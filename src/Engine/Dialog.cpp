@@ -11,11 +11,11 @@ namespace SQG::Engine::Dialog
 	{
 		struct SpeakerData
 		{
-			std::map<RE::FormID, SQG::DialogTopicData::AnswerData*> topicsInfosBindings;
+			std::map<RE::FormID, SQG::TopicData::AnswerData*> topicsInfosBindings;
 			bool hasAnyValidEntry = false;
 		};
 		std::map<RE::FormID, SpeakerData> speakersData;
-		DialogTopicData::AnswerData* lastSelectedAnswer;
+		TopicData::AnswerData* lastSelectedAnswer;
 		RE::FormID lastSpeakerId;
 	}
 
@@ -56,7 +56,7 @@ namespace SQG::Engine::Dialog
 						{
 							if(const auto helloAnswer = dataManager->dialogsData.find(speaker->formID); helloAnswer != dataManager->dialogsData.end())
 							{
-								std::vector<DialogTopicData::AnswerData*> availableHello;
+								std::vector<TopicData::AnswerData*> availableHello;
 								availableHello.reserve(helloAnswer->second.helloAnswers.size());
 								for (auto& answer : helloAnswer->second.helloAnswers)
 								{
@@ -178,7 +178,7 @@ namespace SQG::Engine::Dialog
 		// ## TopicInfo sink
 		// =======================
 
-		bool ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, SQG::DialogTopicData& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
+		bool ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, SQG::TopicData& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
 		{
 			bool hasAnyValidAnswer = false;
 			for(auto& answerData : inDialogEntry.answers)
@@ -201,7 +201,7 @@ namespace SQG::Engine::Dialog
 			return hasAnyValidAnswer;
 		}
 
-		void ProcessDialogEntries(RE::TESObjectREFR* inSpeaker, const std::vector<std::unique_ptr<SQG::DialogTopicData>>& inEntries)
+		void ProcessDialogEntries(RE::TESObjectREFR* inSpeaker, const std::vector<std::unique_ptr<SQG::TopicData>>& inEntries)
 		{
 			speakersData[inSpeaker->formID].hasAnyValidEntry = false;
 			for(size_t i = 0; i < SUB_TOPIC_COUNT; ++i)
@@ -240,7 +240,7 @@ namespace SQG::Engine::Dialog
 					{
 						if(const auto topicInfoBinding = speakersData[inEvent->speakerRef->formID].topicsInfosBindings.find(inEvent->topicInfoFormID); topicInfoBinding != speakersData[inEvent->speakerRef->formID].topicsInfosBindings.end())
 						{
-							SQG::DialogTopicData::AnswerData* answer = topicInfoBinding->second;
+							SQG::TopicData::AnswerData* answer = topicInfoBinding->second;
 							answer->alreadySaid = true;
 							lastSelectedAnswer = answer;
 

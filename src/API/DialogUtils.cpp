@@ -5,7 +5,7 @@
 
 namespace SQG
 {
-	DialogTopicData* AddDialogTopic(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inPrompt, DialogTopicData* inParentTopic)
+	TopicData* AddDialogTopic(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inPrompt, TopicData* inParentTopic)
 	{
 		auto* parentTopic = !inParentTopic ? &DataManager::GetSingleton()->dialogsData[inSpeaker->formID].topLevelTopic : inParentTopic;
 
@@ -20,13 +20,13 @@ namespace SQG
 			return nullptr;
 		}
 
-		auto* topic = parentTopic->childEntries.emplace_back(std::make_unique<DialogTopicData>()).get();
+		auto* topic = parentTopic->childEntries.emplace_back(std::make_unique<TopicData>()).get();
 		topic->owningQuest = inQuest;
 		topic->prompt = inPrompt;
 		return topic;
 	}
 
-	void DialogTopicData::AddAnswer(const RE::BSString& inTopicInfoText, const RE::BSString& inTopicOverrideText, const std::list<RE::TESConditionItem*>& inConditions, const int inTargetStage, const int inFragmentId)
+	void TopicData::AddAnswer(const RE::BSString& inTopicInfoText, const RE::BSString& inTopicOverrideText, const std::list<RE::TESConditionItem*>& inConditions, const int inTargetStage, const int inFragmentId)
 	{
 		answers.emplace_back(this, inTopicInfoText, inTopicOverrideText, inConditions, inTargetStage ,inFragmentId, false);
 	}

@@ -20,11 +20,11 @@ namespace SQG
 	// =======================
 	constexpr int SUB_TOPIC_COUNT = 4;
 
-	struct DialogTopicData
+	struct TopicData
 	{
 		struct AnswerData
 		{
-			DialogTopicData* parentEntry;
+			TopicData* parentEntry;
 			RE::BSFixedString answer;
 			RE::BSFixedString promptOverride;
 			std::list<RE::TESConditionItem*> conditions;
@@ -38,14 +38,14 @@ namespace SQG
 		RE::TESQuest* owningQuest;
 		RE::BSFixedString prompt;
 		std::list<AnswerData> answers;
-		std::vector<std::unique_ptr<DialogTopicData>> childEntries;
+		std::vector<std::unique_ptr<TopicData>> childEntries;
 	};
 
 	struct DialogData
 	{
-		DialogTopicData topLevelTopic;
-		DialogTopicData::AnswerData forceGreetAnswer;
-		std::list<DialogTopicData::AnswerData> helloAnswers;
+		TopicData topLevelTopic;
+		TopicData::AnswerData forceGreetAnswer;
+		std::list<TopicData::AnswerData> helloAnswers;
 	};
 
 	// Quest Data

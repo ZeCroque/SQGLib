@@ -21,7 +21,7 @@ namespace SQG
 	{
 		// Dialogs data
 		// =======================
-		DialogTopicData::AnswerData DeserializeAnswer(DPF::FileReader* inSerializer, DialogTopicData* inParent)
+		TopicData::AnswerData DeserializeAnswer(DPF::FileReader* inSerializer, TopicData* inParent)
 		{
 			const auto targetStage = inSerializer->Read<int>();
 			const auto answer = inSerializer->ReadString();
@@ -35,10 +35,10 @@ namespace SQG
 				conditions.push_back(DeserializeCondition(inSerializer));
 			}
 
-			return DialogTopicData::AnswerData{ inParent, answer, promptOverride, conditions, targetStage , fragmentId, false };
+			return TopicData::AnswerData{ inParent, answer, promptOverride, conditions, targetStage , fragmentId, false };
 		}
 
-		void DeserializeDialogTopic(DPF::FileReader* inSerializer, DialogTopicData& outData)
+		void DeserializeDialogTopic(DPF::FileReader* inSerializer, TopicData& outData)
 		{
 			outData.owningQuest = reinterpret_cast<RE::TESQuest*>(inSerializer->ReadFormRef());
 			outData.prompt = inSerializer->ReadString();
@@ -53,7 +53,7 @@ namespace SQG
 			outData.childEntries.reserve(childCount);
 			for (size_t i = 0; i < childCount; ++i)
 			{
-				DeserializeDialogTopic(inSerializer, *outData.childEntries.emplace_back(std::make_unique<DialogTopicData>()));
+				DeserializeDialogTopic(inSerializer, *outData.childEntries.emplace_back(std::make_unique<TopicData>()));
 			}
 		}
 
@@ -71,7 +71,7 @@ namespace SQG
 			}
 		}
 
-		void SerializeAnswer(DPF::FileWriter* inSerializer, const DialogTopicData::AnswerData& inAnswerData)
+		void SerializeAnswer(DPF::FileWriter* inSerializer, const TopicData::AnswerData& inAnswerData)
 		{
 			inSerializer->Write<int>(inAnswerData.targetStage);
 			inSerializer->WriteString(inAnswerData.answer.c_str());
@@ -84,7 +84,7 @@ namespace SQG
 			}
 		}
 
-		void SerializeDialogTopic(DPF::FileWriter* inSerializer, const DialogTopicData& inData)
+		void SerializeDialogTopic(DPF::FileWriter* inSerializer, const TopicData& inData)
 		{
 			inSerializer->WriteFormRef(inData.owningQuest);
 			inSerializer->WriteString(inData.prompt.c_str());
