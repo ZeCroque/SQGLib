@@ -41,6 +41,13 @@ namespace SQG
 		std::vector<std::unique_ptr<DialogTopicData>> childEntries;
 	};
 
+	struct DialogData
+	{
+		DialogTopicData topLevelTopic;
+		DialogTopicData::AnswerData forceGreetAnswer;
+		std::list<DialogTopicData::AnswerData> helloAnswers;
+	};
+
 	DialogTopicData::AnswerData DeserializeAnswer(DPF::FileReader* inSerializer, DialogTopicData* inParent);
 	void DeserializeDialogTopic(DPF::FileReader* inSerializer, DialogTopicData& outData);
 	void SerializeAnswer(DPF::FileWriter* inSerializer, const DialogTopicData::AnswerData& inAnswerData);
@@ -151,14 +158,8 @@ namespace SQG
 		// Serialized data
 		// =======================
 		std::map<std::string, caprica::papyrus::PapyrusCompilationNode*> compiledScripts;
-
-		std::map<RE::FormID, DialogTopicData> dialogTopicsData;
-		std::map<RE::FormID, DialogTopicData::AnswerData> forceGreetAnswers;
-		std::map<RE::FormID, std::list<DialogTopicData::AnswerData>> helloAnswers;
-
+		std::map<RE::FormID, DialogData> dialogsData;
 		std::map<RE::FormID, std::string> packagesFragmentName;
-
-		//The first elem of the pair is the index of last added item
 		std::map<RE::FormID, QuestData> questsData;
 
 		void ClearSerializationData();

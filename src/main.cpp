@@ -432,24 +432,13 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					const auto speakersCount = serializer->Read<size_t>();
 					for(size_t i = 0; i < speakersCount; ++i)
 					{
-						SQG::DeserializeDialogTopic(serializer, dataManager->dialogTopicsData[serializer->ReadFormId()]);
-					}
-
-					auto forceGreetAnswersCount = serializer->Read<size_t>();
-					for(size_t i = 0; i < forceGreetAnswersCount; ++i)
-					{
 						auto speakerFormId = serializer->ReadFormId();
-						dataManager->forceGreetAnswers[speakerFormId] = SQG::DeserializeAnswer(serializer, nullptr);
-					}
-
-					auto helloAnswersCount = serializer->Read<size_t>();
-					for(size_t i = 0; i < helloAnswersCount; ++i)
-					{
-						auto speakerFormId = serializer->ReadFormId();
-						auto answersCount = serializer->Read<size_t>();
+						SQG::DeserializeDialogTopic(serializer, dataManager->dialogsData[speakerFormId].topLevelTopic);
+						dataManager->dialogsData[speakerFormId].forceGreetAnswer = SQG::DeserializeAnswer(serializer, nullptr);
+						const auto answersCount = serializer->Read<size_t>();
 						for(size_t j = 0; j < answersCount; ++j)
 						{
-							dataManager->helloAnswers[speakerFormId].emplace_back(SQG::DeserializeAnswer(serializer, nullptr));
+							dataManager->dialogsData[speakerFormId].helloAnswers.emplace_back(SQG::DeserializeAnswer(serializer, nullptr));
 						}
 					}
 				}
@@ -493,26 +482,14 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 					SQG::SerializeScript(serializer, node);
 				}
 
-				serializer->Write<size_t>(dataManager->dialogTopicsData.size());
-				for(const auto& [speakerFormId, data] : dataManager->dialogTopicsData)
+				serializer->Write<size_t>(dataManager->dialogsData.size());
+				for(const auto& [speakerFormId, data] : dataManager->dialogsData)
 				{
 					serializer->WriteFormId(speakerFormId);
-					SQG::SerializeDialogTopic(serializer, data);
-				}
-
-				serializer->Write<size_t>(dataManager->forceGreetAnswers.size());
-				for(auto& [speakerFormId, answer] : dataManager->forceGreetAnswers)
-				{
-					serializer->WriteFormId(speakerFormId);
-					SQG::SerializeAnswer(serializer, answer);
-				}
-
-				serializer->Write<size_t>(dataManager->helloAnswers.size());
-				for(auto& [speakerFormId, answers] : dataManager->helloAnswers)
-				{
-					serializer->WriteFormId(speakerFormId);
-					serializer->Write<size_t>(answers.size());
-					for(auto& answer : answers)
+					SQG::SerializeDialogTopic(serializer, data.topLevelTopic);
+					SQG::SerializeAnswer(serializer, data.forceGreetAnswer);
+					serializer->Write<size_t>(data.helloAnswers.size());
+					for(auto& answer : data.helloAnswers)
 					{
 						SQG::SerializeAnswer(serializer, answer);
 					}

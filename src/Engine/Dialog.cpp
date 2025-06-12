@@ -44,21 +44,21 @@ namespace SQG::Engine::Dialog
 				{
 					if(parentTopicInfo->formID == DataManager::GetSingleton()->forceGreetTopic->topicInfos[0]->formID)
 					{
-						if(const auto forceGreetAnswer = dataManager->forceGreetAnswers.find(speaker->formID); forceGreetAnswer != dataManager->forceGreetAnswers.end())
+						if(const auto forceGreetAnswer = dataManager->dialogsData.find(speaker->formID); forceGreetAnswer != dataManager->dialogsData.end())
 						{
-							generatedResponse->responseText = forceGreetAnswer->second.answer;
-							lastSelectedAnswer = &forceGreetAnswer->second;
+							generatedResponse->responseText = forceGreetAnswer->second.forceGreetAnswer.answer;
+							lastSelectedAnswer = &forceGreetAnswer->second.forceGreetAnswer;
 						}
 					}
 					else if(parentTopicInfo->parentTopic->data.subtype.all(RE::DIALOGUE_DATA::Subtype::kHello))
 					{
 						if(!lastSelectedAnswer || (lastSelectedAnswer->parentEntry && lastSelectedAnswer->parentEntry->childEntries.empty()))
 						{
-							if(const auto helloAnswer = dataManager->helloAnswers.find(speaker->formID); helloAnswer != dataManager->helloAnswers.end())
+							if(const auto helloAnswer = dataManager->dialogsData.find(speaker->formID); helloAnswer != dataManager->dialogsData.end())
 							{
 								std::vector<DialogTopicData::AnswerData*> availableHello;
-								availableHello.reserve(helloAnswer->second.size());
-								for (auto& answer : helloAnswer->second)
+								availableHello.reserve(helloAnswer->second.helloAnswers.size());
+								for (auto& answer : helloAnswer->second.helloAnswers)
 								{
 									if (CheckCondition(speaker, answer.conditions))
 									{
@@ -227,13 +227,13 @@ namespace SQG::Engine::Dialog
 		public:
 			RE::BSEventNotifyControl ProcessEvent(const RE::TESTopicInfoEvent* inEvent, RE::BSTEventSource<RE::TESTopicInfoEvent>*) override
 			{
-				if(auto* dataManager = DataManager::GetSingleton(); dataManager->dialogTopicsData.contains(inEvent->speakerRef->formID))
+				if(auto* dataManager = DataManager::GetSingleton(); dataManager->dialogsData.contains(inEvent->speakerRef->formID))
 				{
 					if(inEvent->type == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicBegin)
 					{
 						if(!speakersData.contains(inEvent->speakerRef->formID) || !speakersData[inEvent->speakerRef->formID].hasAnyValidEntry || lastSpeakerId != inEvent->speakerRef->formID)
 						{
-							ProcessDialogEntries(inEvent->speakerRef.get(), dataManager->dialogTopicsData[inEvent->speakerRef->formID].childEntries);
+							ProcessDialogEntries(inEvent->speakerRef.get(), dataManager->dialogsData[inEvent->speakerRef->formID].topLevelTopic.childEntries);
 						}
 					}
 					else
@@ -263,7 +263,7 @@ namespace SQG::Engine::Dialog
 							}
 
 							//Process following entries in tree  or root dialog entries if it was a leaf
-							ProcessDialogEntries(inEvent->speakerRef.get(), !answer->parentEntry->childEntries.empty() ? answer->parentEntry->childEntries : dataManager->dialogTopicsData[inEvent->speakerRef->formID].childEntries);
+							ProcessDialogEntries(inEvent->speakerRef.get(), !answer->parentEntry->childEntries.empty() ? answer->parentEntry->childEntries : dataManager->dialogsData[inEvent->speakerRef->formID].topLevelTopic.childEntries);
 						}
 					}
 					lastSpeakerId = inEvent->speakerRef->formID;

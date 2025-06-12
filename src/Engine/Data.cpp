@@ -467,9 +467,7 @@ namespace SQG
 	void DataManager::ClearSerializationData()
 	{
 		questsData.clear();
-		dialogTopicsData.clear();
-		forceGreetAnswers.clear();
-		helloAnswers.clear();
+		dialogsData.clear();
 		compiledScripts.clear();
 		packagesFragmentName.clear();
 	}

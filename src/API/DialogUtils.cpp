@@ -7,7 +7,7 @@ namespace SQG
 {
 	DialogTopicData* AddDialogTopic(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inPrompt, DialogTopicData* inParentTopic)
 	{
-		auto* parentTopic = !inParentTopic ? &DataManager::GetSingleton()->dialogTopicsData[inSpeaker->formID] : inParentTopic;
+		auto* parentTopic = !inParentTopic ? &DataManager::GetSingleton()->dialogsData[inSpeaker->formID].topLevelTopic : inParentTopic;
 
 		if(!parentTopic->childEntries.capacity())
 		{
@@ -40,11 +40,11 @@ namespace SQG
 		auto* customForceGreetPackage = SQG::CreatePackageFromTemplate(dataManager->forceGreetPackage, inQuest, packageDataMap, inConditions);
 		SQG::AddAliasPackage(inQuest, inSpeaker, customForceGreetPackage);
 
-		DataManager::GetSingleton()->forceGreetAnswers[inSpeaker->formID] = {nullptr, inForceGreet, "", {}, -1, -1, false};
+		DataManager::GetSingleton()->dialogsData[inSpeaker->formID].forceGreetAnswer = {nullptr, inForceGreet, "", {}, -1, -1, false};
 	}
 
 	void AddHelloTopic(const RE::TESObjectREFR* inSpeaker, const std::string& inHello, const std::list<RE::TESConditionItem*>& inConditions)
 	{
-		DataManager::GetSingleton()->helloAnswers[inSpeaker->formID].emplace_back(nullptr, inHello, "", inConditions, -1, -1, false);
+		DataManager::GetSingleton()->dialogsData[inSpeaker->formID].helloAnswers.emplace_back(nullptr, inHello, "", inConditions, -1, -1, false);
 	}
 }
