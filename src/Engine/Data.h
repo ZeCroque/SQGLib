@@ -48,13 +48,6 @@ namespace SQG
 		std::list<DialogTopicData::AnswerData> helloAnswers;
 	};
 
-	DialogTopicData::AnswerData DeserializeAnswer(DPF::FileReader* inSerializer, DialogTopicData* inParent);
-	void DeserializeDialogTopic(DPF::FileReader* inSerializer, DialogTopicData& outData);
-	void DeserializeDialog(DPF::FileReader* inSerializer);
-	void SerializeAnswer(DPF::FileWriter* inSerializer, const DialogTopicData::AnswerData& inAnswerData);
-	void SerializeDialogTopic(DPF::FileWriter* inSerializer, const DialogTopicData& inData);
-	void SerializeDialog(DPF::FileWriter* inSerializer, RE::FormID inSpeakerId, const DialogData& inData);
-
 	// Quest Data
 	// =======================
 	enum class QuestStageType : uint8_t
@@ -96,9 +89,6 @@ namespace SQG
 		std::map<uint16_t, int> stagesToFragmentIndex;
 	};
 
-	void DeserializeQuestData(DPF::FileReader* inSerializer);
-	void SerializeQuestData(DPF::FileWriter* inSerializer, RE::FormID inQuestId, QuestData& inData);
-
 	// Package Data
 	// =======================
 	union PackageData
@@ -119,20 +109,8 @@ namespace SQG
 		PackageNativeData nativeData{};
 	};
 
-	void DeserializePackageData(DPF::FileReader* inSerializer, RE::TESPackage* outPackage);
-	void SerializePackageData(DPF::FileWriter* inSerializer, const RE::TESPackage* inPackage);
-
-	// Condition Data
-	// =======================
-	RE::TESConditionItem* DeserializeCondition(DPF::FileReader* inSerializer);
-	void SerializeCondition(DPF::FileWriter* inSerializer, const RE::TESConditionItem* inCondition);
-
-	// Script Data
-	// =======================
-	void DeserializeScript(DPF::FileReader* inSerializer);
-	void SerializeScript(DPF::FileWriter* inSerializer, const std::string& inScriptName, const caprica::papyrus::PapyrusCompilationNode* inNode);
-
 	//Common
+	// =======================
 	void Deserialize(DPF::FileReader* inSerializer);
 	void Serialize(DPF::FileWriter* inSerializer);
 
