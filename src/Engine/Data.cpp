@@ -1,6 +1,5 @@
 #include "Data.h"
 
-#include "DPF/API.h"
 #include "DPF/FileSystem.h"
 #include "papyrus/PapyrusCompilationContext.h"
 #include "SQG/API/ConditionUtils.h"
@@ -131,9 +130,8 @@ namespace SQG
 		{
 			auto* dataManager = DataManager::GetSingleton();
 
-			const auto formId = inSerializer->Read<RE::FormID>();
-			auto* quest = DPF::GetForm<RE::TESQuest>(formId);
-			dataManager->questsData[formId].quest = quest;
+			auto* quest = reinterpret_cast<RE::TESQuest*>(inSerializer->ReadFormRef());
+			dataManager->questsData[quest->formID].quest = quest;
 
 			const auto stagesCount = inSerializer->Read<size_t>();
 			for (size_t j = 0; j < stagesCount; ++j)
@@ -188,16 +186,16 @@ namespace SQG
 
 					DeserializePackageData(inSerializer, package);
 
-					dataManager->questsData[formId].aliasesPackagesData[aliasId].push_back({ package, fragmentName });
+					dataManager->questsData[quest->formID].aliasesPackagesData[aliasId].push_back({ package, fragmentName });
 				}
 			}
 		}
 
-		void SerializeQuestData(DPF::FileWriter* inSerializer, const RE::FormID inQuestId, QuestData& inData)
+		void SerializeQuestData(DPF::FileWriter* inSerializer, RE::TESQuest* inQuest, QuestData& inData)
 		{
 			auto* dataManager = DataManager::GetSingleton();
 
-			inSerializer->Write<RE::FormID>(inQuestId);
+			inSerializer->WriteFormRef(inQuest);
 
 			inSerializer->Write<size_t>(inData.stages.size());
 			for (const auto& stage : inData.stages)
@@ -518,9 +516,9 @@ namespace SQG
 		auto* dataManager = DataManager::GetSingleton();
 
 		inSerializer->Write<size_t>(dataManager->questsData.size());
-		for (auto& [formId, data] : dataManager->questsData)
+		for (auto& data : dataManager->questsData | std::views::values)
 		{
-			SerializeQuestData(inSerializer, formId, data);
+			SerializeQuestData(inSerializer, data.quest, data);
 		}
 
 		inSerializer->Write<size_t>(dataManager->compiledScripts.size());

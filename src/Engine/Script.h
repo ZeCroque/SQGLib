@@ -1,4 +1,5 @@
 #pragma once
+
 #include "common/allocators/ChainedPool.h"
 #include "papyrus/PapyrusCompilationContext.h"
 
