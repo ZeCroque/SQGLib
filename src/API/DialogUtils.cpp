@@ -1,21 +1,15 @@
 #include "SQG/API/DialogUtils.h"
 
 #include "DPF/FileSystem.h"
-#include "Engine/Dialog.h"
-#include "Engine/Package.h"
 #include "SQG/API/ConditionUtils.h"
 #include "SQG/API/PackageUtils.h"
 #include "SQG/API/QuestUtils.h"
 
 namespace SQG
 {
-	std::map<RE::FormID, DialogTopicData> dialogTopicsData;
-	std::map<RE::FormID, DialogTopicData::AnswerData> forceGreetAnswers;
-	std::map<RE::FormID, std::list<DialogTopicData::AnswerData>> helloAnswers;
-
 	DialogTopicData* AddDialogTopic(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inPrompt, DialogTopicData* inParentTopic)
 	{
-		auto* parentTopic = !inParentTopic ? &dialogTopicsData[inSpeaker->formID] : inParentTopic;
+		auto* parentTopic = !inParentTopic ? &DataManager::GetSingleton()->dialogTopicsData[inSpeaker->formID] : inParentTopic;
 
 		if(!parentTopic->childEntries.capacity())
 		{
@@ -41,17 +35,19 @@ namespace SQG
 
 	void AddForceGreet(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inForceGreet, const std::list<RE::TESConditionItem*>& inConditions)
 	{
+		const auto* dataManager = DataManager::GetSingleton();
+
 		std::unordered_map<std::string, SQG::PackageData> packageDataMap;
-		packageDataMap["Topic"] = SQG::PackageData(SQG::Engine::Dialog::forceGreetTopic);
-		auto* customForceGreetPackage = SQG::CreatePackageFromTemplate(SQG::Engine::Package::forceGreetPackage, inQuest, packageDataMap, inConditions);
+		packageDataMap["Topic"] = SQG::PackageData(dataManager->forceGreetTopic);
+		auto* customForceGreetPackage = SQG::CreatePackageFromTemplate(dataManager->forceGreetPackage, inQuest, packageDataMap, inConditions);
 		SQG::AddAliasPackage(inQuest, inSpeaker, customForceGreetPackage);
 
-		SQG::forceGreetAnswers[inSpeaker->formID] = {nullptr, inForceGreet, "", {}, -1, -1, false};
+		DataManager::GetSingleton()->forceGreetAnswers[inSpeaker->formID] = {nullptr, inForceGreet, "", {}, -1, -1, false};
 	}
 
 	void AddHelloTopic(const RE::TESObjectREFR* inSpeaker, const std::string& inHello, const std::list<RE::TESConditionItem*>& inConditions)
 	{
-		SQG::helloAnswers[inSpeaker->formID].emplace_back(nullptr, inHello, "", inConditions, -1, -1, false);
+		DataManager::GetSingleton()->helloAnswers[inSpeaker->formID].emplace_back(nullptr, inHello, "", inConditions, -1, -1, false);
 	}
 
 	DialogTopicData::AnswerData DeserializeAnswer(DPF::FileReader* inSerializer, DialogTopicData* inParent)

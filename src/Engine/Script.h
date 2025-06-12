@@ -4,10 +4,6 @@
 
 namespace SQG::Engine::Script
 {
-	// # Common
-	// =======================
-	extern std::map<std::string, caprica::papyrus::PapyrusCompilationNode*> compiledScripts;
-
 	// # Script Store
 	// =======================
 	class Store final : public RE::BSScript::IStore

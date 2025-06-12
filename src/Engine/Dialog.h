@@ -8,11 +8,5 @@ namespace SQG::Engine::Dialog
 
 	// # Sinks
 	// =======================
-	extern RE::TESTopic* forceGreetTopic;
-
 	void RegisterSinks();
-
-	// # Data
-	// =======================
-	void LoadData(RE::TESDataHandler* inDataHandler);
 }

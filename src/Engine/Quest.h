@@ -2,10 +2,6 @@
 
 namespace SQG::Engine::Quest
 {
-	// # Common
-	// =======================
-	extern RE::TESQuest* referenceQuest;
-
 	// # Hooks
 	// =======================
 	void RegisterHooks(SKSE::Trampoline& inTrampoline);
@@ -13,8 +9,4 @@ namespace SQG::Engine::Quest
 	// # Sinks
 	// =======================
 	void RegisterSinks();
-
-	// # Data
-	// =======================
-	void LoadData(RE::TESDataHandler* inDataHandler);
 }

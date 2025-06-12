@@ -1,120 +1,86 @@
 #include "SQG/API/PackageUtils.h"
 
 #include "DPF/API.h"
+#include "Engine/Data.h"
 #include "SQG/API/ConditionUtils.h"
 
 namespace SQG
 {
-	PackageData::PackageData()
+	namespace
 	{
-		std::memset(this, 0, sizeof(PackageData));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
-	}
-
-	PackageData::PackageData(const RE::PackageLocation::Type inType, const RE::PackageLocation::Data& inData, std::uint32_t inRadius) : PackageData()
-	{
-		locationData.locType = inType;
-		locationData.data = inData;
-		locationData.rad = inRadius;
-	}
-
-	PackageData::PackageData(const RE::PackageTarget::Type inType, const RE::PackageTarget::Target& inData) : PackageData()
-	{
-		targetData.targType = inType;
-		targetData.target = inData;
-	}
-
-	PackageData::PackageData(const RE::BGSNamedPackageData<RE::IPackageData>::Data& inData) : PackageData()
-	{
-		nativeData = inData;
-	}
-
-	PackageData::PackageData(RE::TESTopic* inTopic) : PackageData()
-	{
-		topicData = inTopic;
-	}
-
-	PackageData::~PackageData()  // NOLINT(modernize-use-equals-default)
-	{
-	}
-
-	PackageData& PackageData::operator=(const PackageData& inOther)
-	{
-		std::memcpy(this, &inOther, sizeof(PackageData));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
-		return *this;
-	}
-
-	void FillPackageData(RE::TESPackage* outPackage, const std::unordered_map<std::string, PackageData>& inPackageDataMap, const std::list<RE::TESConditionItem*>& inConditions)
-	{
-		const auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(outPackage->data);
-		for(const auto& [name, packageData] : inPackageDataMap)
+		void FillPackageData(RE::TESPackage* outPackage, const std::unordered_map<std::string, PackageData>& inPackageDataMap, const std::list<RE::TESConditionItem*>& inConditions)
 		{
-			for(auto& nameMapData : customPackageData->nameMap->nameMap)
+			const auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(outPackage->data);
+			for (const auto& [name, packageData] : inPackageDataMap)
 			{
-				if(nameMapData.name.c_str() == name)
+				for (auto& nameMapData : customPackageData->nameMap->nameMap)
 				{
-					for(uint16_t i = 0; i < customPackageData->data.dataSize; ++i)
+					if (nameMapData.name.c_str() == name)
 					{
-						if(customPackageData->data.uids[i] == nameMapData.uid)
+						for (uint16_t i = 0; i < customPackageData->data.dataSize; ++i)
 						{
-							if(const auto packageDataTypeName = customPackageData->data.data[i]->GetTypeName(); packageDataTypeName == "Location")
+							if (customPackageData->data.uids[i] == nameMapData.uid)
 							{
-								const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[i] - 1);  // NOLINT(clang-diagnostic-reinterpret-base-class, bugprone-pointer-arithmetic-on-polymorphic-object)
-								bgsPackageDataLocation->pointer->locType = packageData.locationData.locType;
-								bgsPackageDataLocation->pointer->rad = packageData.locationData.rad;
-								if(packageData.locationData.locType == RE::PackageLocation::Type::kNearReference)
+								if (const auto packageDataTypeName = customPackageData->data.data[i]->GetTypeName(); packageDataTypeName == "Location")
 								{
-									bgsPackageDataLocation->pointer->data = packageData.locationData.data;
+									const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[i] - 1);  // NOLINT(clang-diagnostic-reinterpret-base-class, bugprone-pointer-arithmetic-on-polymorphic-object)
+									bgsPackageDataLocation->pointer->locType = packageData.locationData.locType;
+									bgsPackageDataLocation->pointer->rad = packageData.locationData.rad;
+									if (packageData.locationData.locType == RE::PackageLocation::Type::kNearReference)
+									{
+										bgsPackageDataLocation->pointer->data = packageData.locationData.data;
+									}
+									//TODO other types
 								}
-								//TODO other types
+								else if (packageDataTypeName == "Topic")
+								{
+									const auto bgsPackageTopicData = reinterpret_cast<RE::BGSPackageDataTopic*>(customPackageData->data.data[i]);
+									bgsPackageTopicData->unk00 = 0;
+									bgsPackageTopicData->unk08 = 0;
+									bgsPackageTopicData->topic = packageData.topicData;
+								}
+								else
+								{
+									if (packageDataTypeName == "SingleRef")
+									{
+										const auto* bgsPackageDataSingleRef = reinterpret_cast<RE::BGSPackageDataSingleRef*>(customPackageData->data.data[i]);
+										bgsPackageDataSingleRef->pointer->targType = packageData.targetData.targType;
+										bgsPackageDataSingleRef->pointer->target = packageData.targetData.target;
+									}
+									else if (packageDataTypeName == "TargetSelector")
+									{
+										const auto* bgsPackageDataTargetSelector = reinterpret_cast<RE::BGSPackageDataTargetSelector*>(customPackageData->data.data[i]);
+										bgsPackageDataTargetSelector->pointer->targType = packageData.targetData.targType;
+										bgsPackageDataTargetSelector->pointer->target = packageData.targetData.target;
+									}
+									else if (packageDataTypeName == "Bool")
+									{
+										const auto bgsPackageDataBool = reinterpret_cast<RE::BGSPackageDataBool*>(customPackageData->data.data[i]);
+										bgsPackageDataBool->data.i = packageData.nativeData.b ? 2 : 0;
+									}
+									else if (packageDataTypeName == "Int")
+									{
+										const auto bgsPackageDataInt = reinterpret_cast<RE::BGSPackageDataInt*>(customPackageData->data.data[i]);
+										bgsPackageDataInt->data.i = packageData.nativeData.i;
+									}
+									else if (packageDataTypeName == "Float")
+									{
+										const auto bgsPackageDataFloat = reinterpret_cast<RE::BGSPackageDataFloat*>(customPackageData->data.data[i]);
+										bgsPackageDataFloat->data.f = packageData.nativeData.f;
+									}
+								}
+								break;
 							}
-							else if (packageDataTypeName == "Topic")
-							{
-								const auto bgsPackageTopicData = reinterpret_cast<RE::BGSPackageDataTopic*>(customPackageData->data.data[i]);
-								bgsPackageTopicData->unk00 = 0;
-								bgsPackageTopicData->unk08 = 0;
-								bgsPackageTopicData->topic = packageData.topicData;
-							}
-							else
-							{
-								if(packageDataTypeName == "SingleRef")
-								{
-									const auto* bgsPackageDataSingleRef = reinterpret_cast<RE::BGSPackageDataSingleRef*>(customPackageData->data.data[i]);
-									bgsPackageDataSingleRef->pointer->targType = packageData.targetData.targType;
-									bgsPackageDataSingleRef->pointer->target = packageData.targetData.target;
-								}
-								else if(packageDataTypeName == "TargetSelector")
-								{
-									const auto* bgsPackageDataTargetSelector = reinterpret_cast<RE::BGSPackageDataTargetSelector*>(customPackageData->data.data[i]);
-									bgsPackageDataTargetSelector->pointer->targType = packageData.targetData.targType;
-									bgsPackageDataTargetSelector->pointer->target = packageData.targetData.target;
-								}
-								else if(packageDataTypeName == "Bool")
-								{
-									const auto bgsPackageDataBool = reinterpret_cast<RE::BGSPackageDataBool*>(customPackageData->data.data[i]);
-									bgsPackageDataBool->data.i = packageData.nativeData.b ? 2 : 0;
-								}
-								else if(packageDataTypeName == "Int")
-								{
-									const auto bgsPackageDataInt = reinterpret_cast<RE::BGSPackageDataInt*>(customPackageData->data.data[i]);
-									bgsPackageDataInt->data.i = packageData.nativeData.i;
-								}
-								else if(packageDataTypeName == "Float")
-								{
-									const auto bgsPackageDataFloat = reinterpret_cast<RE::BGSPackageDataFloat*>(customPackageData->data.data[i]);
-									bgsPackageDataFloat->data.f = packageData.nativeData.f;
-								}
-							}
-							break;
 						}
 					}
 				}
 			}
-		}
-		RE::TESConditionItem** conditionItemHolder = &outPackage->packConditions.head;
-		for(const auto inCondition : inConditions)
-		{
-			const auto conditionItem = *conditionItemHolder = inCondition;
-			conditionItemHolder = &conditionItem->next;
+			RE::TESConditionItem** conditionItemHolder = &outPackage->packConditions.head;
+			for (const auto inCondition : inConditions)
+			{
+				const auto conditionItem = *conditionItemHolder = inCondition;
+				conditionItemHolder = &conditionItem->next;
+			}
 		}
 	}
 
@@ -132,7 +98,7 @@ namespace SQG
 		customPackageData->templateParent = inPackageTemplate;
 	}
 
-	RE::TESPackage* CreatePackageFromTemplate(RE::TESPackage* inPackageTemplate, RE::TESQuest* inOwnerQuest, const std::unordered_map<std::string, PackageData>& inPackageDataMap, const std::list<RE::TESConditionItem*>& inConditions)
+	RE::TESPackage* CreatePackageFromTemplate(RE::TESPackage* inPackageTemplate, RE::TESQuest* inOwnerQuest, const std::unordered_map<std::string, PackageData>& inPackageDataMap, const std::list<RE::TESConditionItem*>& inConditions)  // NOLINT(misc-use-internal-linkage)
 	{
 		auto* package = DPF::CreateForm(inPackageTemplate);
 		FillPackageWithTemplate(package, inPackageTemplate, inOwnerQuest);
@@ -152,9 +118,7 @@ namespace SQG
 			{
 				if(dataUid == customPackageData->data.uids[j])
 				{
-					const auto packageDataTypeName = inSerializer->ReadString();
-
-					if(packageDataTypeName == "Location")
+					if(const auto packageDataTypeName = inSerializer->ReadString(); packageDataTypeName == "Location")
 					{
 						const auto* bgsPackageDataLocation = reinterpret_cast<RE::BGSPackageDataLocation*>(customPackageData->data.data[i] - 1);  // NOLINT(clang-diagnostic-reinterpret-base-class, bugprone-pointer-arithmetic-on-polymorphic-object)
 						bgsPackageDataLocation->pointer->rad = inSerializer->Read<uint32_t>();
@@ -234,7 +198,7 @@ namespace SQG
 				}
 				//TODO other types
 			}
-			else if (packageDataTypeName == "Topic")
+			else if(packageDataTypeName == "Topic")
 			{
 				const auto bgsPackageTopicData = reinterpret_cast<RE::BGSPackageDataTopic*>(customPackageData->data.data[i]);
 				inSerializer->WriteFormRef(bgsPackageTopicData->topic);

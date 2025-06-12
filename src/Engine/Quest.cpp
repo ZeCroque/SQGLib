@@ -4,71 +4,69 @@
 
 namespace SQG::Engine::Quest
 {
-	// # Common
-	// =======================
-	RE::TESQuest* referenceQuest = nullptr;
-
 	// # Hooks
 	// =======================
 
 	// ## Log Entries
 	// =======================
-	std::map<RE::FormID, std::uint16_t> lastValidLogEntryIndexes;
-	char* targetLogEntry = nullptr;
-
-	bool FillLogEntryHook(const RE::TESQuestStageItem* inQuestStageItem)
+	namespace
 	{
-		bool isHandledQuest = false;
-		if(const auto questData = SQG::questsData.find(inQuestStageItem->owner->formID); questData != SQG::questsData.end())
+		std::map<RE::FormID, std::uint16_t> lastValidLogEntryIndexes;
+		char* targetLogEntry = nullptr;
+
+		bool FillLogEntryHook(const RE::TESQuestStageItem* inQuestStageItem)
 		{
-			isHandledQuest = true;
-			if(const auto logEntry = questData->second.logEntries.find(inQuestStageItem->owner->currentStage); logEntry != questData->second.logEntries.end())
+			auto* dataManager = DataManager::GetSingleton();
+			bool isHandledQuest = false;
+			if(const auto questData = dataManager->questsData.find(inQuestStageItem->owner->formID); questData != dataManager->questsData.end())
 			{
-				targetLogEntry = logEntry->second.data();
-				lastValidLogEntryIndexes[inQuestStageItem->owner->formID] = inQuestStageItem->owner->currentStage;
+				isHandledQuest = true;
+				if(const auto logEntry = questData->second.logEntries.find(inQuestStageItem->owner->currentStage); logEntry != questData->second.logEntries.end())
+				{
+					targetLogEntry = logEntry->second.data();
+					lastValidLogEntryIndexes[inQuestStageItem->owner->formID] = inQuestStageItem->owner->currentStage;
+				}
+				else
+				{
+					targetLogEntry = dataManager->questsData[inQuestStageItem->owner->formID].logEntries[lastValidLogEntryIndexes[inQuestStageItem->owner->formID]].data();
+				}
 			}
-			else
-			{
-				targetLogEntry = SQG::questsData[inQuestStageItem->owner->formID].logEntries[lastValidLogEntryIndexes[inQuestStageItem->owner->formID]].data();
-			}
+			return isHandledQuest;
 		}
-		return isHandledQuest;
+
+		struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
+		{
+			explicit FillLogEntryHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeStandardExecutionAddress, const uintptr_t inBypassAddress, const uintptr_t inStringAdr)
+			{
+				// ReSharper disable once CppInconsistentNaming
+				Xbyak::Label BYPASS_STRING_LOAD;
+
+				mov(rax, inHijackedMethodAddress); //Calling the method we hijacked (that is setting in RCX TESQuestStageItem*)
+				call(rax);
+
+				push(rax);
+				mov(rax, inHookAddress);	//Calling hook
+				call(rax);
+				test(al, al); //If the quest for which we're trying to fill the log entry is in one of ours
+				jnz(BYPASS_STRING_LOAD); //Then bypass the classic log entry loading process
+				//Else
+				pop(rax);
+				mov(r15, inResumeStandardExecutionAddress); //Resume standard execution
+				jmp(r15);
+
+				L(BYPASS_STRING_LOAD);
+				pop(rax);	//Removing unnecessary data from the stack
+				mov(rax, ptr[inStringAdr]); //Manually move our string
+				mov(r15, inBypassAddress); //Resume execution after the normal string loading process we bypassed
+				jmp(r15);
+			}
+		};
 	}
 
-	struct FillLogEntryHookedPatch final : Xbyak::CodeGenerator
-	{
-		explicit FillLogEntryHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeStandardExecutionAddress, const uintptr_t inBypassAddress, const uintptr_t inStringAdr)
-		{
-			// ReSharper disable once CppInconsistentNaming
-			Xbyak::Label BYPASS_STRING_LOAD;
-
-			mov(rax, inHijackedMethodAddress); //Calling the method we hijacked (that is setting in RCX TESQuestStageItem*)
-			call(rax);
-
-			push(rax);
-			mov(rax, inHookAddress);	//Calling hook
-			call(rax);
-			test(al, al); //If the quest for which we're trying to fill the log entry is in one of ours
-			jnz(BYPASS_STRING_LOAD); //Then bypass the classic log entry loading process
-			//Else
-			pop(rax);
-			mov(r15, inResumeStandardExecutionAddress); //Resume standard execution
-			jmp(r15);
-
-			L(BYPASS_STRING_LOAD);
-			pop(rax);	//Removing unecessary data from the stack
-			mov(rax, ptr[inStringAdr]); //Manually move our string
-			mov(r15, inBypassAddress); //Resume execution after the normal string loading process we bypassed
-			jmp(r15);
-		}
-	};
-
-	// ## Base
-	// =======================
 	void RegisterHooks(SKSE::Trampoline& inTrampoline)
 	{
 		const auto fillLogEntryHook = REL::Offset(0x378F6C).address();
-		FillLogEntryHookedPatch fleh{reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry)};
+		FillLogEntryHookedPatch fleh{ reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry) };
 		const auto fillLogEntryHooked = inTrampoline.allocate(fleh);
 		inTrampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
 	}
@@ -78,43 +76,38 @@ namespace SQG::Engine::Quest
 
 	// ## Quest stage end callbacks
 	// =======================
-	class QuestStageEventSink final : public RE::BSTEventSink<RE::TESQuestStageEvent>
+	namespace 
 	{
-	public:
-		RE::BSEventNotifyControl ProcessEvent(const RE::TESQuestStageEvent* inEvent, RE::BSTEventSource<RE::TESQuestStageEvent>*) override
+		class QuestStageEventSink final : public RE::BSTEventSink<RE::TESQuestStageEvent>
 		{
-			if(const auto questData = questsData.find(inEvent->formID); questData != questsData.end() && questData->second.script)
+		public:
+			RE::BSEventNotifyControl ProcessEvent(const RE::TESQuestStageEvent* inEvent, RE::BSTEventSource<RE::TESQuestStageEvent>*) override
 			{
-				auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-				auto* policy = scriptMachine->GetObjectHandlePolicy();
-				const auto* updatedQuest = RE::TESForm::LookupByID<RE::TESQuest>(inEvent->formID);
-				const auto updatedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, updatedQuest);
-
-				if (const auto stageToFragmentIndex = questData->second.stagesToFragmentIndex.find(inEvent->stage); stageToFragmentIndex != questData->second.stagesToFragmentIndex.end())
+				const auto* dataManager = DataManager::GetSingleton();
+				if(const auto questData = dataManager->questsData.find(inEvent->formID); questData != dataManager->questsData.end() && questData->second.script)
 				{
-					const auto* methodInfo = questData->second.script->type->GetMemberFuncIter() + stageToFragmentIndex->second;
-					RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
-					scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
-				}
-				return RE::BSEventNotifyControl::kStop;
-			}
-			return RE::BSEventNotifyControl::kContinue;
-		}
-	};
-	std::unique_ptr<QuestStageEventSink> questStageEventSink;
+					auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+					auto* policy = scriptMachine->GetObjectHandlePolicy();
+					const auto* updatedQuest = RE::TESForm::LookupByID<RE::TESQuest>(inEvent->formID);
+					const auto updatedQuestHandle = policy->GetHandleForObject(RE::FormType::Quest, updatedQuest);
 
-	// ## Common
-	// =======================
+					if(const auto stageToFragmentIndex = questData->second.stagesToFragmentIndex.find(inEvent->stage); stageToFragmentIndex != questData->second.stagesToFragmentIndex.end())
+					{
+						const auto* methodInfo = questData->second.script->type->GetMemberFuncIter() + stageToFragmentIndex->second;
+						RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> stackCallbackFunctor;
+						scriptMachine->DispatchMethodCall(updatedQuestHandle, methodInfo->func->GetObjectTypeName(), methodInfo->func->GetName(), RE::MakeFunctionArguments(), stackCallbackFunctor);
+					}
+					return RE::BSEventNotifyControl::kStop;
+				}
+				return RE::BSEventNotifyControl::kContinue;
+			}
+		};
+		std::unique_ptr<QuestStageEventSink> questStageEventSink;
+	}
+
 	void RegisterSinks()
 	{
 		questStageEventSink = std::make_unique<QuestStageEventSink>();
 		RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(questStageEventSink.get());
-	}
-
-	// # Data
-	// =======================
-	void LoadData(RE::TESDataHandler* inDataHandler)
-	{
-		referenceQuest = reinterpret_cast<RE::TESQuest*>(inDataHandler->LookupForm(RE::FormID{0x003371}, "SQGLib.esp"));
 	}
 }

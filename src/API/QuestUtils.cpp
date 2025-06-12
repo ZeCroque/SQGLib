@@ -1,31 +1,21 @@
 #include "SQG/API/QuestUtils.h"
 
 #include "DPF/API.h"
-#include "Engine/Quest.h"
 
 namespace SQG
 {
-	std::map<RE::FormID, QuestData> questsData;
-
-	QuestData::Objective::~Objective()
-	{
-		for(uint32_t i = 0; i < objective.numTargets; ++i)
-		{
-			delete objective.targets[i];	
-		}
-		delete[] objective.targets;
-	}
-
 	RE::TESQuest* CreateQuest()
 	{
-		const auto result = DPF::CreateForm(Engine::Quest::referenceQuest);
-		questsData[result->formID].quest = result;
+		auto* dataManager = DataManager::GetSingleton();
+		const auto result = DPF::CreateForm(dataManager->referenceQuest);
+		dataManager->questsData[result->formID].quest = result;
 		return result;
 	}
 
 	void AddQuestStage(RE::TESQuest* inQuest, const std::uint16_t inIndex, const QuestStageType inQuestStageType, const std::string& inLogEntry, const int inScriptFragmentIndex)
 	{
-		const auto& stage = questsData[inQuest->formID].stages.emplace_back(std::make_unique<RE::TESQuestStage>());
+		auto* dataManager = DataManager::GetSingleton();
+		const auto& stage = dataManager->questsData[inQuest->formID].stages.emplace_back(std::make_unique<RE::TESQuestStage>());
 		switch(inQuestStageType)
 		{
 
@@ -49,11 +39,11 @@ namespace SQG
 
 		if(!inLogEntry.empty())
 		{
-			if(const auto index = questsData[inQuest->formID].lastStageItemIndex; index < QuestData::QUEST_STAGE_ITEMS_CHUNK_SIZE)
+			if(const auto index = dataManager->questsData[inQuest->formID].lastStageItemIndex; index < QuestData::QUEST_STAGE_ITEMS_CHUNK_SIZE)
 			{
-				++questsData[inQuest->formID].lastStageItemIndex;
+				++dataManager->questsData[inQuest->formID].lastStageItemIndex;
 
-				stage->questStageItem = &questsData[inQuest->formID].stageItems[index];
+				stage->questStageItem = &dataManager->questsData[inQuest->formID].stageItems[index];
 				stage->questStageItem->hasLogEntry = true;
 				stage->questStageItem->owner = inQuest;
 				stage->questStageItem->owningStage = stage.get();
@@ -61,7 +51,7 @@ namespace SQG
 				{
 					stage->questStageItem->data = 1; //Means "Last stage"
 				}
-				questsData[inQuest->formID].logEntries[inIndex] = inLogEntry;
+				dataManager->questsData[inQuest->formID].logEntries[inIndex] = inLogEntry;
 			}
 			else
 			{
@@ -69,15 +59,15 @@ namespace SQG
 			}
 		}
 
-		if (inScriptFragmentIndex > -1)
+		if(inScriptFragmentIndex > -1)
 		{
-			questsData[inQuest->formID].stagesToFragmentIndex[inIndex] = inScriptFragmentIndex;
+			dataManager->questsData[inQuest->formID].stagesToFragmentIndex[inIndex] = inScriptFragmentIndex;
 		}
 	}
 
 	void AddObjective(RE::TESQuest* inQuest, const std::uint16_t inIndex, const std::string& inText, const std::list<uint8_t>& inQuestTargetsAliasIndexes)
 	{
-		const auto& objectiveData = questsData[inQuest->formID].objectives.emplace_back(std::make_unique<QuestData::Objective>());
+		const auto& objectiveData = DataManager::GetSingleton()->questsData[inQuest->formID].objectives.emplace_back(std::make_unique<QuestData::Objective>());
 		objectiveData->objective.index = inIndex;
 		objectiveData->objective.displayText = inText;
 		objectiveData->objective.ownerQuest = inQuest;
@@ -113,6 +103,6 @@ namespace SQG
 
 	void AddAliasPackage(const RE::TESQuest* inQuest, const RE::TESObjectREFR* inRef, RE::TESPackage* inPackage, const std::string& inFragmentScriptName)
 	{
-		questsData[inQuest->formID].aliasesPackagesData[inRef->formID].push_back({inPackage, inFragmentScriptName});
+		DataManager::GetSingleton()->questsData[inQuest->formID].aliasesPackagesData[inRef->formID].push_back({inPackage, inFragmentScriptName});
 	}
 }
