@@ -8,3 +8,5 @@ meta.ini
 Release
 *.dll
 *.pdb
+*.code-workspace
+*.ppj
