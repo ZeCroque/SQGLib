@@ -26,11 +26,6 @@ namespace SQG
 		return topic;
 	}
 
-	void TopicData::AddAnswer(const RE::BSString& inTopicInfoText, const RE::BSString& inTopicOverrideText, const std::list<RE::TESConditionItem*>& inConditions, const int inTargetStage, const int inFragmentId)
-	{
-		answers.emplace_back(this, inTopicInfoText, inTopicOverrideText, inConditions, inTargetStage ,inFragmentId, false);
-	}
-
 	void AddForceGreet(RE::TESQuest* inQuest, const RE::TESObjectREFR* inSpeaker, const std::string& inForceGreet, const std::list<RE::TESConditionItem*>& inConditions)
 	{
 		const auto* dataManager = DataManager::GetSingleton();

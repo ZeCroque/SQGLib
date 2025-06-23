@@ -1,6 +1,6 @@
 #include "Script.h"
 
-#include "Data.h"
+#include "SQG/API/Data.h"
 #include "common/FakeScripts.h"
 #include "common/parser/CapricaUserFlagsParser.h"
 

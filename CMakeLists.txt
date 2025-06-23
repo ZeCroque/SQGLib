@@ -62,7 +62,9 @@ configure_file(
 )
 
 set(PUBLIC_HEADERS
+	${PUBLIC_HEADER_DIR}/API/API.h
 	${PUBLIC_HEADER_DIR}/API/ConditionUtils.h
+	${PUBLIC_HEADER_DIR}/API/Data.h
 	${PUBLIC_HEADER_DIR}/API/DialogUtils.h
 	${PUBLIC_HEADER_DIR}/API/QuestUtils.h
 	${PUBLIC_HEADER_DIR}/API/PackageUtils.h
@@ -71,7 +73,6 @@ set(PUBLIC_HEADERS
 
 set(PRIVATE_HEADERS
 	${SOURCE_DIR}/PCH.h
-	${SOURCE_DIR}/Engine/Data.h
 	${SOURCE_DIR}/Engine/Dialog.h
 	${SOURCE_DIR}/Engine/Package.h
 	${SOURCE_DIR}/Engine/Quest.h
@@ -84,11 +85,11 @@ set(HPP
 set(CPP
 	${SOURCE_DIR}/main.cpp
 	${SOURCE_DIR}/API/ConditionUtils.cpp
+	${SOURCE_DIR}/API/Data.cpp
 	${SOURCE_DIR}/API/DialogUtils.cpp
 	${SOURCE_DIR}/API/PackageUtils.cpp
 	${SOURCE_DIR}/API/QuestUtils.cpp
 	${SOURCE_DIR}/API/ScriptUtils.cpp
-	${SOURCE_DIR}/Engine/Data.cpp
 	${SOURCE_DIR}/Engine/Dialog.cpp
 	${SOURCE_DIR}/Engine/Package.cpp
 	${SOURCE_DIR}/Engine/Quest.cpp
@@ -227,8 +228,8 @@ install(
 add_custom_command(
 	TARGET "${PROJECT_NAME}"
 	POST_BUILD
-	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/Data/SKSE/Plugins/"
-	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/Data/SKSE/Plugins/"
+	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_SOURCE_DIR}/Data/SKSE/Plugins/"
+	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${CMAKE_SOURCE_DIR}/Data/SKSE/Plugins/"
 	VERBATIM
 )
 

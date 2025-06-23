@@ -1,5 +1,6 @@
 #pragma once
 
+#include "API.h"
 #include "REX/REX/Singleton.h"
 
 namespace DPF
@@ -20,10 +21,13 @@ namespace SQG
 	// =======================
 	constexpr int SUB_TOPIC_COUNT = 4;
 
-	struct TopicData
+	struct SQG_API TopicData
 	{
 		struct AnswerData
 		{
+			AnswerData();
+			AnswerData(TopicData* inParentEntry, const RE::BSFixedString& inAnswer, const RE::BSFixedString& inPromptOverride, const std::list<RE::TESConditionItem*>& inConditions, int inTargetStage, int inFragmentId, bool inAlreadySaid = false);
+
 			TopicData* parentEntry;
 			RE::BSFixedString answer;
 			RE::BSFixedString promptOverride;
@@ -33,6 +37,13 @@ namespace SQG
 			bool alreadySaid{ false };
 		};
 
+		TopicData();
+		TopicData(TopicData const&) = delete;
+		TopicData(TopicData const&&) = delete;
+		~TopicData() = default;
+		TopicData& operator=(TopicData const&&) = delete;
+		TopicData& operator=(TopicData const&) = delete;
+
 		void AddAnswer(const RE::BSString& inTopicInfoText, const RE::BSString& inTopicOverrideText, const std::list<RE::TESConditionItem*>& inConditions, int inTargetStage = -1, int inFragmentId = -1);
 
 		RE::TESQuest* owningQuest;
@@ -41,8 +52,15 @@ namespace SQG
 		std::vector<std::unique_ptr<TopicData>> childEntries;
 	};
 
-	struct DialogData
+	struct SQG_API DialogData
 	{
+		DialogData();
+		DialogData(DialogData const&) = delete;
+		DialogData(DialogData const&&) = delete;
+		~DialogData() = default;
+		DialogData& operator=(DialogData const&&) = delete;
+		DialogData& operator=(DialogData const&) = delete;
+
 		TopicData topLevelTopic;
 		TopicData::AnswerData forceGreetAnswer;
 		std::list<TopicData::AnswerData> helloAnswers;
@@ -50,16 +68,23 @@ namespace SQG
 
 	// Quest Data
 	// =======================
-	enum class QuestStageType : uint8_t
+	enum class SQG_API QuestStageType : uint8_t
 	{
 		Default = 0,
 		Startup = 1,
 		Shutdown = 2
 	};
 
-	struct QuestData
+	struct SQG_API QuestData
 	{
 		static constexpr int QUEST_STAGE_ITEMS_CHUNK_SIZE = 50;
+
+		QuestData();
+		QuestData(QuestData const&) = delete;
+		QuestData(QuestData const&&) = delete;
+		~QuestData() = default;
+		QuestData& operator=(QuestData const&&) = delete;
+		QuestData& operator=(QuestData const&) = delete;
 
 		RE::TESQuest* quest;
 
@@ -91,7 +116,7 @@ namespace SQG
 
 	// Package Data
 	// =======================
-	union PackageData
+	union SQG_API PackageData
 	{
 		using PackageNativeData = RE::BGSNamedPackageData<RE::IPackageData>::Data;
 
@@ -111,12 +136,12 @@ namespace SQG
 
 	//Common
 	// =======================
-	void Deserialize(DPF::FileReader* inSerializer);
-	void Serialize(DPF::FileWriter* inSerializer);
+	SQG_API void Deserialize(DPF::FileReader* inSerializer);
+	SQG_API void Serialize(DPF::FileWriter* inSerializer);
 
 	// Data Manager
 	// =======================
-	class DataManager : public REX::Singleton<DataManager>
+	class SQG_API DataManager : public REX::Singleton<DataManager>
 	{
 	public:
 		// Resources

@@ -1,6 +1,6 @@
 #include "Dialog.h"
 
-#include "Data.h"
+#include "SQG/API/Data.h"
 #include "SQG/API/ConditionUtils.h"
 
 namespace SQG::Engine::Dialog

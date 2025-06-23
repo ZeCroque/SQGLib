@@ -1,6 +1,8 @@
 #pragma once
 
+#include "API.h"
+
 namespace SQG
 {
-	void AddScript(const std::string& inStringName, const std::string_view& inData);
+	SQG_API void AddScript(const std::string& inStringName, const std::string_view& inData);
 }

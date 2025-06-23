@@ -1,4 +1,4 @@
-#include "Data.h"
+#include "SQG/API/Data.h"
 
 #include "DPF/FileSystem.h"
 #include "papyrus/PapyrusCompilationContext.h"
@@ -16,10 +16,42 @@ namespace SQG
 		void SerializePackageData(DPF::FileWriter* inSerializer, const RE::TESPackage* inPackage);
 	}
 
+	TopicData::AnswerData::AnswerData(): parentEntry(nullptr), targetStage(0), fragmentId(0)
+	{
+	}
+
+	TopicData::AnswerData::AnswerData(TopicData* inParentEntry, const RE::BSFixedString& inAnswer, const RE::BSFixedString& inPromptOverride, const std::list<RE::TESConditionItem*>& inConditions, const int inTargetStage, const int inFragmentId, const bool inAlreadySaid) :
+		parentEntry(inParentEntry),
+		answer(inAnswer),
+		promptOverride(inPromptOverride),
+		conditions(inConditions),
+		targetStage(inTargetStage),
+		fragmentId(inFragmentId),
+		alreadySaid(inAlreadySaid)
+	{
+	}
+
+	// Dialogs data
+	// =======================
+	TopicData::TopicData() : owningQuest(nullptr)
+	{
+	}
+
+	void TopicData::AddAnswer(const RE::BSString& inTopicInfoText, const RE::BSString& inTopicOverrideText, const std::list<RE::TESConditionItem*>& inConditions, const int inTargetStage, const int inFragmentId)
+	{
+		answers.emplace_back(this, inTopicInfoText, inTopicOverrideText, inConditions, inTargetStage, inFragmentId, false);
+	}
+
+	DialogData::DialogData()
+	{
+	}
+
+	QuestData::QuestData(): quest(nullptr), stageItems{}, lastStageItemIndex(0)
+	{
+	}
+
 	namespace
 	{
-		// Dialogs data
-		// =======================
 		TopicData::AnswerData DeserializeAnswer(DPF::FileReader* inSerializer, TopicData* inParent)
 		{
 			const auto targetStage = inSerializer->Read<int>();
