@@ -8,7 +8,7 @@
     Final="false">
     <Imports>
         <Import>.\Data\Scripts\Source\</Import>
-        <Import>H:\Games\SkyrimSE\Data\Scripts\Source</Import>
+        <Import>@Skyrim64Path@\Data\@SCRIPT_FOLDER@</Import>
     </Imports>
     <Folders>
         <Folder>.\Data\Scripts\Source\</Folder>

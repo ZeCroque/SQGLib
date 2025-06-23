@@ -20,7 +20,33 @@ endmacro()
 set_from_environment(Skyrim64Path)
 if(NOT DEFINED Skyrim64Path)
 	message(FATAL_ERROR "Skyrim64Path is not set")
+else()
+	cmake_path(CONVERT ${Skyrim64Path} TO_CMAKE_PATH_LIST Skyrim64PathConverted)
 endif()
+
+option(LEGACY_SCRIPT_PATH "Configure project to use Scripts/Source instead of the new (and stupid) Source/Scripts path")
+if(${LEGACY_SCRIPT_PATH})
+	set(SCRIPT_FOLDER "Scripts/Source")
+else()
+	set(SCRIPT_FOLDER "Source/Scripts")
+endif()
+
+option(NOTES_FOLDER_PATH "If you version notes/TODOs etc.. outside git and want to have them appear in VSC, you can specify this path")
+if(NOT ${NOTES_FOLDER_PATH} STREQUAL "OFF")
+	set(NOTES_JSON ",\n\t\t{\n\t\t\t\"name\": \"Notes\",\n\t\t\t\"path\": \"${NOTES_FOLDER_PATH}\"\n\t\t}")
+endif()
+
+configure_file(
+	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/Template.code-workspace.in" 
+	"${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}.code-workspace"
+	@ONLY
+)
+
+configure_file(
+	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/Template.ppj.in" 
+	"${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}.ppj"
+	@ONLY
+)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
@@ -82,8 +108,6 @@ configure_file(
 	@ONLY
 )
 
-file(COPY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Template.ChildProcessDbgSettings ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.ChildProcessDbgSettings)
-
 source_group("Private/Includes" REGULAR_EXPRESSION  ${CMAKE_CURRENT_BINARY_DIR}/includes/*)
 source_group(TREE ${SOURCE_DIR} PREFIX "Private/Includes" FILES ${PRIVATE_HEADERS})
 source_group(TREE ${SOURCE_DIR} PREFIX "Private/Sources" FILES ${SOURCES})
@@ -103,11 +127,20 @@ set_property(DIRECTORY
 	PROPERTY VS_STARTUP_PROJECT "${PROJECT_NAME}"
 )
 
-set_target_properties("${PROJECT_NAME}"
-    PROPERTIES
-		VS_DEBUGGER_COMMAND J:/100Install/mo2/ModOrganizer.exe
-		VS_DEBUGGER_COMMAND_ARGUMENTS  "-p \"SQGLib\" \"moshortcut://SkyrimSE:Skyrim Special Edition\""
-)
+option(MO2_INSTANCE "Name of the instance of MO2 to run")
+option(MO2_PROFILE "Name of the MO2 profile required (useful to have MO2 write to mod folder instead of overwrite in this profile)")
+option(MO2_TARGET "Name of the MO2 target that will be run (expected to point toward SkyrimSE.exe with extra dll loaded)")
+set_from_environment(MO2Path)
+if(NOT DEFINED MO2Path)
+	message("MO2Path is not set")
+else()
+	set_target_properties("${PROJECT_NAME}"
+		PROPERTIES
+			VS_DEBUGGER_COMMAND ${MO2Path}/ModOrganizer.exe
+			VS_DEBUGGER_COMMAND_ARGUMENTS  "$<IF:$<BOOL:${MO2_PROFILE}>,-p \"${MO2_PROFILE}\",>  \"moshortcut://$<IF:$<BOOL:${MO2_INSTANCE}>,${MO2_INSTANCE},Skyrim Special Edition>:$<IF:$<BOOL:${MO2_TARGET}>,${MO2_TARGET},Skyrim Special Edition>\""
+	)
+	file(COPY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Template.ChildProcessDbgSettings ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.ChildProcessDbgSettings)
+endif()
 
 target_compile_features(
 	"${PROJECT_NAME}"
