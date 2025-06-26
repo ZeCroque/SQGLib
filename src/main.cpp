@@ -9,6 +9,11 @@
 // # SKSE
 // =======================
 
+namespace SQG
+{
+	extern void Deserialize(DPF::FileReader* inSerializer);
+	extern void Serialize(DPF::FileWriter* inSerializer);
+}
 void InitializeLog()
 {
 #ifndef NDEBUG

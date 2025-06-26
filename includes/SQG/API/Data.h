@@ -137,11 +137,6 @@ namespace SQG
 		PackageNativeData nativeData{};
 	};
 
-	//Common
-	// =======================
-	SQG_API void Deserialize(DPF::FileReader* inSerializer);
-	SQG_API void Serialize(DPF::FileWriter* inSerializer);
-
 	// Data Manager
 	// =======================
 	class SQG_API DataManager : public REX::Singleton<DataManager>
