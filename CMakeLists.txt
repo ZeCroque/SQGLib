@@ -51,6 +51,12 @@ configure_file(
 	@ONLY
 )
 
+configure_file(
+	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/tasks.json.in" 
+	"${CMAKE_CURRENT_SOURCE_DIR}/.vscode/tasks.json"
+	@ONLY
+)
+
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)

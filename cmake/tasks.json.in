@@ -7,7 +7,7 @@
             "command": "${config:papyrus.skyrimSpecialEdition.installPath}\\Papyrus Compiler\\PapyrusCompiler.exe",
             "args": [ 
                 "Data\\Scripts\\Source\\",
-                "-i=Data\\Scripts\\Source;${config:papyrus.skyrimSpecialEdition.installPath}\\Data\\Scripts\\Source",
+                "-i=Data\\Scripts\\Source;${config:papyrus.skyrimSpecialEdition.installPath}\\Data\\@SCRIPT_FOLDER@",
                 "-o=Data\\Scripts",
                 "-f=TESV_Papyrus_Flags.flg",
                 "-all",
