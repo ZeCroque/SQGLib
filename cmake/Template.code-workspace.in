@@ -9,7 +9,7 @@
 			"path": "@Skyrim64PathConverted@/Data/@SCRIPT_FOLDER@"
 		},
         {
-			"path": "@Skyrim64PathConverted@/Logs"
+			"path": "@LOG_FOLDER@"
 		}@NOTES_JSON@
     ],
     "settings": {
