@@ -137,7 +137,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 	    return false;
 	}
 
-	SKSE::AllocTrampoline(1<<10);
+	SKSE::AllocTrampoline(200);
 	auto& trampoline = SKSE::GetTrampoline();
 	SQG::Engine::Quest::RegisterHooks(trampoline);
 	SQG::Engine::Dialog::RegisterHooks(trampoline);
