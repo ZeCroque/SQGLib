@@ -23,11 +23,10 @@ namespace SQG::Engine::Script
 		void Unk_0B() override;
 
 		static void Init();
-		static Store* GetCustomStore();
 
 	private:
-		static RE::BSTSmartPointer<Store> store;
-		static RE::BSTSmartPointer<RE::BSScript::IStore> baseStore;
+		static Store* store;
+		static IStore* baseStore;
 		bool readingCustomScript = false;
 		std::string scriptName;
 		RE::BSFixedString fakePath;

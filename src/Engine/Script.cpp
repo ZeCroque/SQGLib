@@ -8,8 +8,8 @@ namespace SQG::Engine::Script
 {
 	// # Script Store
 	// =======================
-	RE::BSTSmartPointer<Store> Store::store;
-	RE::BSTSmartPointer<RE::BSScript::IStore> Store::baseStore;
+	Store* Store::store;
+	RE::BSScript::IStore* Store::baseStore;
 
 	std::size_t Store::GetSize() const
 	{
@@ -137,19 +137,11 @@ namespace SQG::Engine::Script
 	{
 		if(const auto vm = RE::SkyrimVM::GetSingleton(); vm && vm->scriptStore)
 		{
-			baseStore = vm->scriptStore;
-			GetCustomStore();
-			vm->scriptLoader.SetScriptStore(store);
+			baseStore = vm->scriptStore.get();
+			const auto customStore = RE::make_smart<Store>();
+			vm->scriptLoader.SetScriptStore(customStore);
+			store = customStore.get();
 		}
-	}
-
-	Store* Store::GetCustomStore()
-	{
-		if(!store)
-		{
-			store = RE::make_smart<Store>();
-		}
-		return store.get();
 	}
 
 	// # Caprica
