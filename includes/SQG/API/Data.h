@@ -15,6 +15,9 @@ namespace caprica::papyrus
 	struct PapyrusCompilationNode;
 }
 
+#pragma warning( push )
+#pragma warning( disable : 4251)
+
 namespace SQG
 {
 	// Dialogs data
@@ -174,3 +177,5 @@ namespace SQG
 		void ClearSerializationData();
 	};
 }
+
+#pragma warning( pop ) 
