@@ -7,6 +7,8 @@ project(
 )
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(AUTHOR "Unspecified" CACHE STRING "Name of the author of the plugin")
+
 if("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
 	message(FATAL_ERROR "in-source builds are not allowed")
 endif()

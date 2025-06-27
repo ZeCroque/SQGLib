@@ -48,6 +48,7 @@ void InitializeLog()
 }
 
 // ReSharper disable once CppInconsistentNaming
+#ifndef SKYRIM_SUPPORT_AE
 extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryInterface, SKSE::PluginInfo* outPluginInfo)
 {
 	if (inQueryInterface->IsEditor()) 
@@ -68,6 +69,21 @@ extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryIn
 
 	return true;
 }
+#else
+// ReSharper disable once CppInconsistentNaming
+extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []()
+{
+	SKSE::PluginVersionData v;
+	v.PluginVersion(Plugin::VERSION);
+	v.PluginName(Plugin::NAME);
+	v.AuthorName(Plugin::AUTHOR);
+	v.UsesAddressLibrary();
+	v.UsesUpdatedStructs();
+	v.CompatibleVersions({ SKSE::RUNTIME_LATEST });
+
+	return v;
+}();
+#endif
 
 // ReSharper disable once CppInconsistentNaming
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
