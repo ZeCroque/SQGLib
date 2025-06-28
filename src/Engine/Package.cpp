@@ -6,6 +6,10 @@ namespace SQG::Engine::Package
 {
 	// # Common
 	// =======================
+
+	// This methods will add the custom packages we want to a given quest alias. We have to wait for the game to create the ExtraAliasInstanceArray inside our quest alias to be able to do it so it's called in two situations:
+	//	- When the quest has just been generated and goes through its init process
+	//  - After a savegame has been successfully loaded
 	void InitAliasPackages(const RE::FormID inQuestId)
 	{
 		const auto* dataManager = DataManager::GetSingleton();
@@ -58,6 +62,8 @@ namespace SQG::Engine::Package
 
 		// ## Package end sink
 		// =======================
+
+		// The fragment system can't be manipulated easily in current version of CommonLibSSE (AFAIK) so we're just faking one by reacting to PackageEvents
 		class PackageEventSink final : public RE::BSTEventSink<RE::TESPackageEvent>
 		{
 		public:

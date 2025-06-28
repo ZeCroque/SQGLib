@@ -25,6 +25,10 @@ namespace SQG::Engine::Dialog
 	{
 		// ## Populate response
 		// =======================
+
+		// We hooked this method that provides the response text to the UI in order to intercept the template topics from the SQGDialogQuest and fill their "responseText" field with either:
+		//	- Data read from DataManager for hellos and force greets
+		//	- Data set by our custom TopicInfoEventSink (see below)
 		void PopulateResponseTextHook(RE::TESTopicInfo::ResponseData* generatedResponse, const RE::TESTopicInfo* parentTopicInfo)
 		{
 			auto* dataManager = DataManager::GetSingleton();
@@ -113,6 +117,8 @@ namespace SQG::Engine::Dialog
 
 		// ## On respond said
 		// =======================
+
+		// We hooked this method that triggers after a response is spoken by an NPC in order to fake the said/unsaid topic feature based on our own data, thus preventing our custom unsaid dialogs to appear as the opposite because they are replacing a template topic that has yet been used
 		void OnResponseSaidHook()
 		{
 			if (const auto* topicManager = RE::MenuTopicManager::GetSingleton(); topicManager && topicManager->dialogueList)
@@ -178,6 +184,7 @@ namespace SQG::Engine::Dialog
 		// ## TopicInfo sink
 		// =======================
 
+		// Checks if the condition for our custom topic is true and if so make the template topic (dis)appear by adding/removing an impossible condition (IsXbox, obviously impossible due to SKSE)
 		bool ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, TopicData& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
 		{
 			bool hasAnyValidAnswer = false;
@@ -201,6 +208,7 @@ namespace SQG::Engine::Dialog
 			return hasAnyValidAnswer;
 		}
 
+		// Checks, enables and updates if needed the given subtopics
 		void ProcessDialogEntries(RE::TESObjectREFR* inSpeaker, const std::vector<std::unique_ptr<TopicData>>& inEntries)
 		{
 			speakersData[inSpeaker->formID].hasAnyValidEntry = false;
@@ -222,6 +230,8 @@ namespace SQG::Engine::Dialog
 			}
 		}
 
+		// Update the dialog topics based on our custom dialog tree data, either at dialog start or after a topic has been picked
+		// Also triggers quest events and papyrus fragments when custom topics are said
 		class TopicInfoEventSink final : public RE::BSTEventSink<RE::TESTopicInfoEvent>
 		{
 		public:

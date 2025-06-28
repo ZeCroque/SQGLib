@@ -275,6 +275,9 @@ namespace SQG::Engine::Script
 		caprica::CapricaJobManager jobManager{};
 	}
 
+	// Initializes Caprica compiler with vanilla data and replaces the vanilla script store by our custom one that will either :
+	//	- Fallback to the vanilla store if a vanilla script is required
+	//	- Provide custom compiled data from the DataManager else-wise
 	void Init()
 	{
 		constexpr std::string_view flagsName = "TESV_Papyrus_Flags.flg";
@@ -302,6 +305,8 @@ namespace SQG::Engine::Script
 		Store::Init();
 	}
 
+	// Compiles the script with the given name and the given source code and adds the compiled data to the DataManager
+	// Compiled script are not kept in the namespace to prevent multiple compilations, note that it also removes the ability to make dependant scripts
 	void AddScript(const std::string& inStringName, const std::string_view& inData)
 	{
 		auto node = new caprica::papyrus::PapyrusCompilationNode

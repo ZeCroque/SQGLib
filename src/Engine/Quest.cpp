@@ -14,6 +14,7 @@ namespace SQG::Engine::Quest
 		std::map<RE::FormID, std::uint16_t> lastValidLogEntryIndexes;
 		char* targetLogEntry = nullptr;
 
+		// We hooked this method that provides the log entry to the UI on mouse hover in order to replace it with custom data read from the DataManager
 		bool FillLogEntryHook(const RE::TESQuestStageItem* inQuestStageItem)
 		{
 			auto* dataManager = DataManager::GetSingleton();
@@ -78,6 +79,7 @@ namespace SQG::Engine::Quest
 	// =======================
 	namespace 
 	{
+		// The fragment system can't be manipulated easily in current version of CommonLibSSE (AFAIK) so we're just faking one by reacting to QuestStageEvents
 		class QuestStageEventSink final : public RE::BSTEventSink<RE::TESQuestStageEvent>
 		{
 		public:

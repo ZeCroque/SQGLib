@@ -113,6 +113,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 			}
 			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
 			{
+				//After data has been loaded from the savegame we gather the "quest fragment" scripts for our custom fragment logic and initialize again all aliases packages 
+
 				auto* dataManager = SQG::DataManager::GetSingleton();
 				auto* scriptMachine = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 				auto* policy = scriptMachine->GetObjectHandlePolicy();
