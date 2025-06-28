@@ -572,11 +572,11 @@ namespace SQG
 	{
 		const auto dataHandler = RE::TESDataHandler::GetSingleton();
 
-		forceGreetTopic = reinterpret_cast<RE::TESTopic*>(dataHandler->LookupForm(RE::FormID{ 0x00EAB4 }, "SQGLib.esp"));
-		subTopicsInfos[0] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x00BF96 }, "SQGLib.esp"));
-		subTopicsInfos[1] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x00BF99 }, "SQGLib.esp"));
-		subTopicsInfos[2] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x00BF9C }, "SQGLib.esp"));
-		subTopicsInfos[3] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x00BF9F }, "SQGLib.esp"));
+		forceGreetTopic = reinterpret_cast<RE::TESTopic*>(dataHandler->LookupForm(RE::FormID{ 0x00080B }, "SQGLib.esp"));
+		subTopicsInfos[0] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x000802 }, "SQGLib.esp"));
+		subTopicsInfos[1] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x000804 }, "SQGLib.esp"));
+		subTopicsInfos[2] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x000806 }, "SQGLib.esp"));
+		subTopicsInfos[3] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x000808 }, "SQGLib.esp"));
 
 		impossibleCondition = new RE::TESConditionItem();
 		impossibleCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
@@ -591,7 +591,7 @@ namespace SQG
 		travelPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{ 0x0016FAA });
 		forceGreetPackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{ 0x003C1C4 });
 
-		referenceQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{ 0x003371 }, "SQGLib.esp"));
+		referenceQuest = reinterpret_cast<RE::TESQuest*>(dataHandler->LookupForm(RE::FormID{ 0x000800 }, "SQGLib.esp"));
 	}
 
 	void DataManager::ClearSerializationData()

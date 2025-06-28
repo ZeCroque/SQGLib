@@ -86,7 +86,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inL
 		{
 			if(message->type == SKSE::MessagingInterface::kDataLoaded)
 			{
-				if(DPF::Init(0x800, "SQGLib.esp", "sqg"))
+				if(DPF::Init(0x880, "SQGLib.esp", "sqg"))
 				{
 					SQG::DataManager::GetSingleton()->InitData();
 
