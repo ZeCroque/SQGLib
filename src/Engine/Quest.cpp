@@ -45,18 +45,15 @@ namespace SQG::Engine::Quest
 				mov(rax, inHijackedMethodAddress); //Calling the method we hijacked (that is setting in RCX TESQuestStageItem*)
 				call(rax);
 
-				push(rax);
 				mov(rax, inHookAddress);	//Calling hook
 				call(rax);
 				test(al, al); //If the quest for which we're trying to fill the log entry is in one of ours
 				jnz(BYPASS_STRING_LOAD); //Then bypass the classic log entry loading process
 				//Else
-				pop(rax);
 				mov(r15, inResumeStandardExecutionAddress); //Resume standard execution
 				jmp(r15);
 
 				L(BYPASS_STRING_LOAD);
-				pop(rax);	//Removing unnecessary data from the stack
 				mov(rax, ptr[inStringAdr]); //Manually move our string
 				mov(r15, inBypassAddress); //Resume execution after the normal string loading process we bypassed
 				jmp(r15);
