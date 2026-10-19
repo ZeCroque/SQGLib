@@ -169,7 +169,7 @@ namespace SQG::Engine::Dialog
 	{
 		const auto hookAddress =
 #ifndef ENABLE_SKYRIM_AE
-			REL::ID(25083).address() + 0x2B2)
+			REL::ID(25083).address() + 0x2B2;
 #else
 			REL::ID(25626).address() + 0x3B5;
 #endif
