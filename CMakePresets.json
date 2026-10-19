@@ -50,6 +50,8 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "/EHsc /MP /W4",
         "SKSE_SUPPORT_XBYAK": "ON",
+        "ENABLE_SKYRIM_VR": "OFF",
+        "ENABLE_SKYRIM_AE": "OFF",
         "AUTHOR": "ZeCroque"
       },
       "generator": "Visual Studio 17 2022",
