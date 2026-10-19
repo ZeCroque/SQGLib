@@ -63,8 +63,8 @@ namespace SQG::Engine::Quest
 
 	void RegisterHooks(SKSE::Trampoline& inTrampoline)
 	{
-		const auto fillLogEntryHook = REL::Offset(0x378F6C).address();
-		FillLogEntryHookedPatch fleh{ reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::Offset(0x382050).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry) };
+		const auto fillLogEntryHook = REL::ID(24551).address();
+		FillLogEntryHookedPatch fleh{ reinterpret_cast<uintptr_t>(FillLogEntryHook), REL::ID(24766).address(), fillLogEntryHook + 0x5, fillLogEntryHook + 0x1B, reinterpret_cast<uintptr_t>(&targetLogEntry) };
 		const auto fillLogEntryHooked = inTrampoline.allocate(fleh);
 		inTrampoline.write_branch<5>(fillLogEntryHook, fillLogEntryHooked);
 	}

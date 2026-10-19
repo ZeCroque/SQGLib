@@ -167,12 +167,12 @@ namespace SQG::Engine::Dialog
 	// =======================
 	void RegisterHooks(SKSE::Trampoline& inTrampoline)
 	{
-		const auto hookAddress = REL::Offset(0x393A32).address();
+		const auto hookAddress = REL::ID(25084).address() - 0x5E;
 		PopulateResponseTextHookedPatch tsh{ reinterpret_cast<uintptr_t>(PopulateResponseTextHook), REL::ID(24985).address(), hookAddress + 0x5 };
 		inTrampoline.write_branch<5>(hookAddress, inTrampoline.allocate(tsh));
 
-		const auto onResponseSaidHook = REL::Offset(0x5E869D).address();
-		OnResponseSaidHookedPatch dsh{ reinterpret_cast<uintptr_t>(OnResponseSaidHook), REL::Offset(0x64F360).address(), onResponseSaidHook + 0x7 };
+		const auto onResponseSaidHook = REL::ID(36541).address() - 0x63;
+		OnResponseSaidHookedPatch dsh{ reinterpret_cast<uintptr_t>(OnResponseSaidHook), REL::ID(38357).address(), onResponseSaidHook + 0x7 };
 		const auto onDialogueSayHooked = inTrampoline.allocate(dsh);
 		inTrampoline.write_branch<5>(onResponseSaidHook, onDialogueSayHooked);
 	}
