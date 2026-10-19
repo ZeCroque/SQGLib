@@ -167,8 +167,14 @@ namespace SQG::Engine::Dialog
 	// =======================
 	void RegisterHooks(SKSE::Trampoline& inTrampoline)
 	{
-		const auto hookAddress = REL::ID(25084).address() - 0x5E;
-		PopulateResponseTextHookedPatch tsh{ reinterpret_cast<uintptr_t>(PopulateResponseTextHook), REL::ID(24985).address(), hookAddress + 0x5 };
+		const auto hookAddress =
+#ifndef ENABLE_SKYRIM_AE
+			REL::ID(25083).address() + 0x2B2)
+#else
+			REL::ID(25626).address() + 0x3B5;
+#endif
+
+		PopulateResponseTextHookedPatch tsh{ reinterpret_cast<uintptr_t>(PopulateResponseTextHook), RELOCATION_ID(24985, 25491).address(), hookAddress + 0x5 };
 		inTrampoline.write_branch<5>(hookAddress, inTrampoline.allocate(tsh));
 
 		const auto onResponseSaidHook = REL::ID(36541).address() - 0x63;
