@@ -48,7 +48,7 @@ void InitializeLog()
 }
 
 // ReSharper disable once CppInconsistentNaming
-#ifndef SKYRIM_SUPPORT_AE
+#ifndef ENABLE_SKYRIM_AE
 extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryInterface, SKSE::PluginInfo* outPluginInfo)
 {
 	if (inQueryInterface->IsEditor()) 
@@ -57,7 +57,7 @@ extern "C" DLLEXPORT bool SKSEPlugin_Query(const SKSE::QueryInterface* inQueryIn
 		return false;
 	}
 
-	if (const auto runtimeVersion = inQueryInterface->RuntimeVersion(); runtimeVersion < SKSE::RUNTIME_1_5_97) 
+	if (const auto runtimeVersion = inQueryInterface->RuntimeVersion(); runtimeVersion < SKSE::RUNTIME_SSE_1_5_97) 
 	{
 		SKSE::log::critical("Unsupported runtime version %s!\n"sv, runtimeVersion.string());
 		return false;
@@ -86,7 +86,7 @@ extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []()
 #endif
 
 // ReSharper disable once CppInconsistentNaming
-extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
+extern "C" DLLEXPORT bool __cdecl SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
 {
 #ifndef NDEBUG
 	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );

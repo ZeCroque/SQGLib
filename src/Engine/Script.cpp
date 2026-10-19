@@ -135,11 +135,11 @@ namespace SQG::Engine::Script
 
 	void Store::Init()
 	{
-		if(const auto vm = RE::SkyrimVM::GetSingleton(); vm && vm->scriptStore)
+		if(const auto vm = RE::SkyrimVM::GetSingleton(); vm && vm->GetVMRuntimeData().scriptStore)
 		{
-			baseStore = vm->scriptStore.get();
+			baseStore = vm->GetVMRuntimeData().scriptStore.get();
 			const auto customStore = RE::make_smart<Store>();
-			vm->scriptLoader.SetScriptStore(customStore);
+			vm->GetVMRuntimeData().scriptLoader.SetScriptStore(customStore);
 			store = customStore.get();
 		}
 	}

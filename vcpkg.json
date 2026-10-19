@@ -8,6 +8,13 @@
     "xbyak",
     "boost-property-tree",
     "fmt",
-    "pugixml"
+    "pugixml",
+    "directxmath",
+    "directxtk",
+    "rapidcsv",
+    "simpleini",
+    "toml11",
+    "nlohmann-json",
+    "catch2"
   ]
 }

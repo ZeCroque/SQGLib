@@ -29,7 +29,7 @@ namespace SQG::Engine::Dialog
 		// We hooked this method that provides the response text to the UI in order to intercept the template topics from the SQGDialogQuest and fill their "responseText" field with either:
 		//	- Data read from DataManager for hellos and force greets
 		//	- Data set by our custom TopicInfoEventSink (see below)
-		void PopulateResponseTextHook(RE::TESTopicInfo::ResponseData* generatedResponse, const RE::TESTopicInfo* parentTopicInfo)
+		void PopulateResponseTextHook(RE::TESTopicInfo::TESResponse* generatedResponse, const RE::TESTopicInfo* parentTopicInfo)
 		{
 			auto* dataManager = DataManager::GetSingleton();
 			if(const auto* topicManager = RE::MenuTopicManager::GetSingleton(); topicManager && topicManager->dialogueList)
