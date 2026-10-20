@@ -91,27 +91,27 @@ namespace SQG::Engine::Dialog
 		{
 			explicit PopulateResponseTextHookedPatch(const uintptr_t inHookAddress, const uintptr_t inPopulateResponseTextAddress, const uintptr_t inResumeAddress)
 			{
-				mov(r13, rcx);	//Saving RCX value at it is overwritten by PopulateResponseText
-
-				mov(rax, inPopulateResponseTextAddress); //Calling PopulateResponseText as usual
-				call(rax);
-
-				push(rax); //Saving state
-				push(rcx);
+				// Only volatile registers are used: callee-saved ones (R13, R15...) may be live at the hook site depending on the runtime.
+				// The stack is 16-byte aligned on entry, and is kept aligned with 32 bytes of shadow space for each call.
+				push(rcx);	//Saving the response pointer as RCX is overwritten by PopulateResponseText
 				push(rdx);
 
-				mov(rcx, r13); //Moving data to function arguments (see: https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170)
+				sub(rsp, 0x20);
+				mov(rax, inPopulateResponseTextAddress); //Calling PopulateResponseText as usual
+				call(rax);
+				add(rsp, 0x20);
+
+				pop(rdx);
+				pop(rcx);	//Moving data to function arguments (see: https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170)
 				mov(rdx, rbp);
 
+				sub(rsp, 0x20);
 				mov(rax, inHookAddress); //Calling hook
 				call(rax);
+				add(rsp, 0x20);
 
-				pop(rax); //Restoring state
-				pop(rcx);
-				pop(rdx);
-
-				mov(r15, inResumeAddress); //Resuming standard execution
-				jmp(r15);
+				mov(rax, inResumeAddress); //Resuming standard execution
+				jmp(rax);
 			}
 		};
 
@@ -151,14 +151,23 @@ namespace SQG::Engine::Dialog
 		{
 			explicit OnResponseSaidHookedPatch(const uintptr_t inHookAddress, const uintptr_t inHijackedMethodAddress, const uintptr_t inResumeAddress)
 			{
-				mov(r14, inHijackedMethodAddress); //Calling the method we hijacked (didn't bother to check what it does, it's just at a convenient place for our hook)
-				call(r14);
+				// Only volatile registers are used: callee-saved ones (R14...) may be live at the hook site depending on the runtime.
+				// The hijacked call is directly followed by a test on its result (AL), so it has to survive the hook.
+				// The stack is 16-byte aligned on entry, and is kept aligned with 32 bytes of shadow space + 16 bytes for the saved result.
+				sub(rsp, 0x30);
 
-				mov(r14, inHookAddress);	//Calling hook
-				call(r14);
+				mov(rax, inHijackedMethodAddress); //Calling the method we hijacked (didn't bother to check what it does, it's just at a convenient place for our hook)
+				call(rax);
+				mov(qword[rsp + 0x20], rax);
 
-				mov(r14, inResumeAddress); //Resuming standard execution
-				jmp(r14);
+				mov(rax, inHookAddress);	//Calling hook
+				call(rax);
+
+				mov(rax, qword[rsp + 0x20]);
+				add(rsp, 0x30);
+
+				mov(r11, inResumeAddress); //Resuming standard execution
+				jmp(r11);
 			}
 		};
 	}
@@ -177,8 +186,14 @@ namespace SQG::Engine::Dialog
 		PopulateResponseTextHookedPatch tsh{ reinterpret_cast<uintptr_t>(PopulateResponseTextHook), RELOCATION_ID(24985, 25491).address(), hookAddress + 0x5 };
 		inTrampoline.write_branch<5>(hookAddress, inTrampoline.allocate(tsh));
 
-		const auto onResponseSaidHook = REL::ID(36541).address() - 0x63;
-		OnResponseSaidHookedPatch dsh{ reinterpret_cast<uintptr_t>(OnResponseSaidHook), REL::ID(38357).address(), onResponseSaidHook + 0x7 };
+		// Hooking the call to the hijacked method (5 bytes), which is directly followed by a test on its result
+		const auto onResponseSaidHook =
+#ifndef ENABLE_SKYRIM_AE
+			REL::ID(36540).address() + 0x62D;
+#else
+			REL::ID(37541).address() + 0x840;
+#endif
+		OnResponseSaidHookedPatch dsh{ reinterpret_cast<uintptr_t>(OnResponseSaidHook), RELOCATION_ID(38357, 39340).address(), onResponseSaidHook + 0x5 };
 		const auto onDialogueSayHooked = inTrampoline.allocate(dsh);
 		inTrampoline.write_branch<5>(onResponseSaidHook, onDialogueSayHooked);
 	}
