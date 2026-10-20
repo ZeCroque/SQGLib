@@ -139,19 +139,21 @@ set_property(DIRECTORY
 	PROPERTY VS_STARTUP_PROJECT "${PROJECT_NAME}"
 )
 
-option(MO2_INSTANCE "Name of the instance of MO2 to run")
-option(MO2_PROFILE "Name of the MO2 profile required (useful to have MO2 write to mod folder instead of overwrite in this profile)")
-option(MO2_TARGET "Name of the MO2 target that will be run (expected to point toward SkyrimSE.exe with extra dll loaded)")
+set(MO2_INSTANCE "" CACHE STRING "Name of the instance of MO2 to run")
+set(MO2_PROFILE "" CACHE STRING "Name of the MO2 profile required (useful to have MO2 write to mod folder instead of overwrite in this profile)")
+set(MO2_TARGET "" CACHE STRING "Name of the MO2 target that will be run (expected to point toward SkyrimSE.exe with extra dll loaded)")
 set_from_environment(MO2Path)
 if(NOT DEFINED MO2Path)
 	message("MO2Path is not set")
 else()
+	# The debugger starts a script that launches MO2 and attaches to SkyrimSE.exe once SKSE is injected
+	# (attaching to the SKSE loader's child process from the start breaks the injection)
+	set(MO2_SHORTCUT "moshortcut://$<IF:$<BOOL:${MO2_INSTANCE}>,${MO2_INSTANCE},Skyrim Special Edition>:$<IF:$<BOOL:${MO2_TARGET}>,${MO2_TARGET},Skyrim Special Edition>")
 	set_target_properties("${PROJECT_NAME}"
 		PROPERTIES
-			VS_DEBUGGER_COMMAND ${MO2Path}/ModOrganizer.exe
-			VS_DEBUGGER_COMMAND_ARGUMENTS  "$<IF:$<BOOL:${MO2_PROFILE}>,-p \"${MO2_PROFILE}\",>  \"moshortcut://$<IF:$<BOOL:${MO2_INSTANCE}>,${MO2_INSTANCE},Skyrim Special Edition>:$<IF:$<BOOL:${MO2_TARGET}>,${MO2_TARGET},Skyrim Special Edition>\""
+			VS_DEBUGGER_COMMAND "$ENV{SystemRoot}/System32/WindowsPowerShell/v1.0/powershell.exe"
+			VS_DEBUGGER_COMMAND_ARGUMENTS "-NoProfile -ExecutionPolicy Bypass -File \"${CMAKE_CURRENT_SOURCE_DIR}/cmake/DebugWithMO2.ps1\" -Mo2Path \"${MO2Path}/ModOrganizer.exe\" -Shortcut \"${MO2_SHORTCUT}\" $<IF:$<BOOL:${MO2_PROFILE}>,-Profile \"${MO2_PROFILE}\",>"
 	)
-	file(COPY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Template.ChildProcessDbgSettings ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.ChildProcessDbgSettings)
 endif()
 
 target_compile_features(
