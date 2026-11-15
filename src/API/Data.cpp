@@ -358,7 +358,8 @@ namespace SQG
 						}
 						else if (packageDataTypeName == "SingleRef")
 						{
-							const auto* bgsPackageDataSingleRef = reinterpret_cast<RE::BGSPackageDataSingleRef*>(customPackageData->data.data[i]);
+							// Like BGSPackageDataLocation, the IPackageData sub-object is at +08 (TESCustomPackageData::data holds a pointer to it, not to the start of this object) -> subtract one IPackageData before casting.
+							const auto* bgsPackageDataSingleRef = reinterpret_cast<RE::BGSPackageDataSingleRef*>(customPackageData->data.data[i] - 1);  // NOLINT(clang-diagnostic-reinterpret-base-class, bugprone-pointer-arithmetic-on-polymorphic-object)
 							bgsPackageDataSingleRef->pointer->targType = RE::PackageTarget::Type::kNearReference;
 							bgsPackageDataSingleRef->pointer->target.handle = reinterpret_cast<RE::TESObjectREFR*>(inSerializer->ReadFormRef())->GetHandle();
 						}
@@ -371,7 +372,7 @@ namespace SQG
 						else if (packageDataTypeName == "Bool")
 						{
 							const auto bgsPackageDataBool = reinterpret_cast<RE::BGSPackageDataBool*>(customPackageData->data.data[i]);
-							bgsPackageDataBool->data.i = inSerializer->Read<uint32_t>();
+							bgsPackageDataBool->SetValue(inSerializer->Read<uint32_t>());
 						}
 						else if (packageDataTypeName == "Int")
 						{
@@ -425,7 +426,8 @@ namespace SQG
 				}
 				else if (packageDataTypeName == "SingleRef")
 				{
-					const auto* bgsPackageDataSingleRef = reinterpret_cast<RE::BGSPackageDataSingleRef*>(customPackageData->data.data[i]);
+					// Like BGSPackageDataLocation, the IPackageData sub-object is at +08 (TESCustomPackageData::data holds a pointer to it, not to the start of this object) -> subtract one IPackageData before casting.
+					const auto* bgsPackageDataSingleRef = reinterpret_cast<RE::BGSPackageDataSingleRef*>(customPackageData->data.data[i] - 1);  // NOLINT(clang-diagnostic-reinterpret-base-class, bugprone-pointer-arithmetic-on-polymorphic-object)
 					inSerializer->WriteFormRef(bgsPackageDataSingleRef->pointer->target.handle.get().get());
 				}
 				else if (packageDataTypeName == "TargetSelector")
@@ -436,7 +438,7 @@ namespace SQG
 				else if (packageDataTypeName == "Bool")
 				{
 					const auto bgsPackageDataBool = reinterpret_cast<RE::BGSPackageDataBool*>(customPackageData->data.data[i]);
-					inSerializer->Write<uint32_t>(bgsPackageDataBool->data.i);
+					inSerializer->Write<uint32_t>(bgsPackageDataBool->GetValue());
 				}
 				else if (packageDataTypeName == "Int")
 				{

@@ -42,7 +42,8 @@ namespace SQG
 								{
 									if (packageDataTypeName == "SingleRef")
 									{
-										const auto* bgsPackageDataSingleRef = reinterpret_cast<RE::BGSPackageDataSingleRef*>(customPackageData->data.data[i]);
+										// Like BGSPackageDataLocation, the IPackageData sub-object is at +08 (TESCustomPackageData::data holds a pointer to it, not to the start of this object) -> subtract one IPackageData before casting.
+										const auto* bgsPackageDataSingleRef = reinterpret_cast<RE::BGSPackageDataSingleRef*>(customPackageData->data.data[i] - 1);  // NOLINT(clang-diagnostic-reinterpret-base-class, bugprone-pointer-arithmetic-on-polymorphic-object)
 										bgsPackageDataSingleRef->pointer->targType = packageData.targetData.targType;
 										bgsPackageDataSingleRef->pointer->target = packageData.targetData.target;
 									}
@@ -55,7 +56,7 @@ namespace SQG
 									else if (packageDataTypeName == "Bool")
 									{
 										const auto bgsPackageDataBool = reinterpret_cast<RE::BGSPackageDataBool*>(customPackageData->data.data[i]);
-										bgsPackageDataBool->data.i = packageData.nativeData.b ? 2 : 0;
+										bgsPackageDataBool->SetValue(packageData.nativeData.b);
 									}
 									else if (packageDataTypeName == "Int")
 									{
