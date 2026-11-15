@@ -20,20 +20,17 @@ namespace SQG
 		{
 
 		case QuestStageType::Startup:
-			inQuest->initialStage = stage.get();
 			stage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kStartUpStage);
 			stage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kKeepInstanceDataFromHereOn);
 			break;
 		case QuestStageType::Shutdown:
 			stage->data.flags.set(RE::QUEST_STAGE_DATA::Flag::kShutDownStage);
+			break;
 		case QuestStageType::Default:
-			if(!inQuest->otherStages)
-			{
-				inQuest->otherStages = new RE::BSSimpleList<RE::TESQuestStage*>();
-			}
-			inQuest->otherStages->emplace_front(stage.get());
 			break;
 		}
+
+		inQuest->stages.emplace_front(stage.get());
 
 		stage->data.index = inIndex;
 
