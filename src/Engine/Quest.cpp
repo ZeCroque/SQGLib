@@ -19,6 +19,11 @@ namespace SQG::Engine::Quest
 		{
 			auto* dataManager = DataManager::GetSingleton();
 			bool isHandledQuest = false;
+			if(!inQuestStageItem->owner)
+			{
+				return false;
+			}
+
 			if(const auto questData = dataManager->questsData.find(inQuestStageItem->owner->formID); questData != dataManager->questsData.end())
 			{
 				isHandledQuest = true;
@@ -41,22 +46,36 @@ namespace SQG::Engine::Quest
 			{
 				// ReSharper disable once CppInconsistentNaming
 				Xbyak::Label BYPASS_STRING_LOAD;
+				// ReSharper disable once CppInconsistentNaming
+				Xbyak::Label RESUME_STANDARD_EXECUTION;
 
-				mov(rax, inHijackedMethodAddress); //Calling the method we hijacked (that is setting in RCX TESQuestStageItem*)
+				mov(rax, inHijackedMethodAddress); //Calling the method we hijacked (that returns the TESQuestStageItem* in RAX, null if the stage has none)
 				call(rax);
 
+				test(rax, rax); //The game tests RAX right after, so let it deal with the missing item itself
+				jz(RESUME_STANDARD_EXECUTION);
+
+				// Keep the item while calling the hook (RAX will hold its result). The stack stays 16-byte aligned and keeps the 0x20 shadow space
+				sub(rsp, 0x30);
+				mov(ptr[rsp + 0x20], rax);
+				mov(rcx, rax);
 				mov(rax, inHookAddress);	//Calling hook
 				call(rax);
+				mov(rcx, ptr[rsp + 0x20]);
+				add(rsp, 0x30);
 				test(al, al); //If the quest for which we're trying to fill the log entry is in one of ours
 				jnz(BYPASS_STRING_LOAD); //Then bypass the classic log entry loading process
 				//Else
-				mov(r15, inResumeStandardExecutionAddress); //Resume standard execution
-				jmp(r15);
+				mov(rax, rcx); //Give the item back to the game, as it would have been without the hook
+
+				L(RESUME_STANDARD_EXECUTION);
+				mov(r11, inResumeStandardExecutionAddress); //Resume standard execution. R11 is volatile, unlike R15 that the hooked function doesn't save
+				jmp(r11);
 
 				L(BYPASS_STRING_LOAD);
 				mov(rax, ptr[inStringAdr]); //Manually move our string
-				mov(r15, inBypassAddress); //Resume execution after the normal string loading process we bypassed
-				jmp(r15);
+				mov(r11, inBypassAddress); //Resume execution after the normal string loading process we bypassed
+				jmp(r11);
 			}
 		};
 	}
