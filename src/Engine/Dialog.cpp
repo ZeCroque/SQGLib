@@ -19,6 +19,13 @@ namespace SQG::Engine::Dialog
 		RE::FormID lastSpeakerId;
 	}
 
+	void Init()
+	{
+		speakersData.clear();
+		lastSelectedAnswer = nullptr;
+		lastSpeakerId = 0;
+	}
+
 	// # Hooks
 	// =======================
 	namespace
@@ -172,8 +179,6 @@ namespace SQG::Engine::Dialog
 		};
 	}
 
-	// ## Common
-	// =======================
 	void RegisterHooks(SKSE::Trampoline& inTrampoline)
 	{
 		const auto hookAddress =

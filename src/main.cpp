@@ -126,6 +126,8 @@ extern "C" DLLEXPORT bool __cdecl SKSEPlugin_Load(const SKSE::LoadInterface* inL
 				{
 					SQG::Deserialize(serializer);
 				}
+
+				SQG::Engine::Dialog::Init();
 			}
 			else if(message->type == SKSE::MessagingInterface::kPostLoadGame)
 			{
