@@ -93,9 +93,14 @@ namespace SQG
 		outPackage->packData.maxSpeed = RE::PACKAGE_DATA::PreferredSpeed::kRun;
 		outPackage->packData.foBehaviorFlags.set(RE::PACKAGE_DATA::InterruptFlag::kHellosToPlayer, RE::PACKAGE_DATA::InterruptFlag::kRandomConversations, RE::PACKAGE_DATA::InterruptFlag::kObserveCombatBehaviour, RE::PACKAGE_DATA::InterruptFlag::kGreetCorpseBehaviour, RE::PACKAGE_DATA::InterruptFlag::kReactionToPlayerActions, RE::PACKAGE_DATA::InterruptFlag::kFriendlyFireComments, RE::PACKAGE_DATA::InterruptFlag::kAggroRadiusBehavior, RE::PACKAGE_DATA::InterruptFlag::kAllowIdleChatter, RE::PACKAGE_DATA::InterruptFlag::kWorldInteractions); 
 
-		std::memcpy(outPackage->data, inPackageTemplate->data, sizeof(RE::TESCustomPackageData)); // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-dynamic-class-memaccess)
 		auto* customPackageData = reinterpret_cast<RE::TESCustomPackageData*>(outPackage->data);
+		const auto* templateData = reinterpret_cast<const RE::TESCustomPackageData*>(inPackageTemplate->data);
+		customPackageData->data.Assign(templateData->data);
+		customPackageData->procedureTree = templateData->procedureTree;
+		customPackageData->nameMap = templateData->nameMap;
 		customPackageData->templateParent = inPackageTemplate;
+		customPackageData->version = templateData->version;
+		customPackageData->alwaysRecheckConditions = templateData->alwaysRecheckConditions;
 	}
 
 	RE::TESPackage* CreatePackageFromTemplate(RE::TESPackage* inPackageTemplate, RE::TESQuest* inOwnerQuest, const std::unordered_map<std::string, PackageData>& inPackageDataMap, const std::list<RE::TESConditionItem*>& inConditions)  // NOLINT(misc-use-internal-linkage)
