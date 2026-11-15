@@ -46,7 +46,7 @@ namespace SQG
 	{
 	}
 
-	QuestData::QuestData(): quest(nullptr), stageItems{}, lastStageItemIndex(0)
+	QuestData::QuestData(): quest(nullptr)
 	{
 	}
 

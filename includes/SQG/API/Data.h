@@ -2,6 +2,7 @@
 
 #include "API.h"
 #include "REX/REX/Singleton.h"
+#include <deque>
 
 namespace DPF
 {
@@ -80,8 +81,6 @@ namespace SQG
 
 	struct SQG_API QuestData
 	{
-		static constexpr int QUEST_STAGE_ITEMS_CHUNK_SIZE = 50;
-
 		QuestData();
 		QuestData(QuestData const&) = delete;
 		QuestData(QuestData const&&) = delete;
@@ -92,10 +91,7 @@ namespace SQG
 		RE::TESQuest* quest;
 
 		std::vector<std::unique_ptr<RE::TESQuestStage>> stages;
-
-		//Quest loaded by the game all have their TESQuestStageItems instanced continuously. This replicates it, could be done in a more dynamic way but I think it's enough for now.
-		RE::TESQuestStageItem stageItems[QUEST_STAGE_ITEMS_CHUNK_SIZE];
-		int lastStageItemIndex;
+		std::deque<RE::TESQuestStageItem> stageItems;
 		std::map<std::uint16_t, std::string> logEntries;
 
 		struct Objective  // NOLINT(cppcoreguidelines-special-member-functions)

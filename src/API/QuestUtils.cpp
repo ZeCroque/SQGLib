@@ -36,24 +36,12 @@ namespace SQG
 
 		if(!inLogEntry.empty())
 		{
-			if(const auto index = dataManager->questsData[inQuest->formID].lastStageItemIndex; index < QuestData::QUEST_STAGE_ITEMS_CHUNK_SIZE)
-			{
-				++dataManager->questsData[inQuest->formID].lastStageItemIndex;
-
-				stage->questStageItem = &dataManager->questsData[inQuest->formID].stageItems[index];
-				stage->questStageItem->hasLogEntry = true;
-				stage->questStageItem->owner = inQuest;
-				stage->questStageItem->owningStage = stage.get();
-				if(inQuestStageType == QuestStageType::Shutdown)
-				{
-					stage->questStageItem->data = 1; //Means "Last stage"
-				}
-				dataManager->questsData[inQuest->formID].logEntries[inIndex] = inLogEntry;
-			}
-			else
-			{
-				SKSE::log::error("Cannot add more than 50 log entries to a quest"sv);
-			}
+			stage->questStageItem = &dataManager->questsData[inQuest->formID].stageItems.emplace_back();
+			stage->questStageItem->hasLogEntry = true;
+			stage->questStageItem->owner = inQuest;
+			stage->questStageItem->owningStage = stage.get();
+			stage->questStageItem->data = inQuestStageType == QuestStageType::Shutdown;
+			dataManager->questsData[inQuest->formID].logEntries[inIndex] = inLogEntry;
 		}
 
 		if(inScriptFragmentIndex > -1)
