@@ -12,7 +12,7 @@ namespace SQG::Engine::Package
 	//  - After a savegame has been successfully loaded
 	void InitAliasPackages(const RE::FormID inQuestId)
 	{
-		const auto* dataManager = DataManager::GetSingleton();
+		auto* dataManager = DataManager::GetSingleton();
 		if(const auto questData = dataManager->questsData.find(inQuestId); questData != dataManager->questsData.end())
 		{
 			for(const auto& [refId, aliasPackagesData] : questData->second.aliasesPackagesData)
@@ -25,14 +25,16 @@ namespace SQG::Engine::Package
 					{
 						if(aliasInstanceData->quest == RE::TESForm::LookupByID<RE::TESQuest>(inQuestId))
 						{
-							auto* instancedPackages = new RE::BSTArray<RE::TESPackage*>(); //Done in two time to deal with constness
-							aliasInstanceData->instancedPackages = instancedPackages;
+							// The array is owned by the data manager and reused, the game doesn't free it
+							auto& instancedPackages = questData->second.aliasInstancedPackages[refId];
+							instancedPackages = std::make_unique<RE::BSTArray<RE::TESPackage*>>();
+							aliasInstanceData->instancedPackages = instancedPackages.get();
 							for(const auto& [package, fragmentScriptName] : aliasPackagesData)
 							{
 								instancedPackages->push_back(package);
 								if(!fragmentScriptName.empty())
 								{
-									DataManager::GetSingleton()->packagesFragmentName[package->formID] = fragmentScriptName;
+									dataManager->packagesFragmentName[package->formID] = fragmentScriptName;
 								}
 							}
 						}

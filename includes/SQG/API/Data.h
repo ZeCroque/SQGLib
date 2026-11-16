@@ -108,6 +108,7 @@ namespace SQG
 			std::string fragmentScriptName;
 		};
 		std::map<RE::FormID, std::list<AliasPackageData>> aliasesPackagesData;
+		std::map<RE::FormID, std::unique_ptr<RE::BSTArray<RE::TESPackage*>>> aliasInstancedPackages;
 
 		RE::BSScript::Object* script = nullptr;
 		std::map<uint16_t, int> stagesToFragmentIndex;
