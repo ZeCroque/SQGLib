@@ -273,6 +273,7 @@ namespace SQG::Engine::Script
 		}
 
 		caprica::CapricaJobManager jobManager{};
+		bool initialized = false;
 	}
 
 	// Initializes Caprica compiler with vanilla data and replaces the vanilla script store by our custom one that will either :
@@ -303,6 +304,7 @@ namespace SQG::Engine::Script
 		caprica::papyrus::PapyrusCompilationContext::awaitRead();
 
 		Store::Init();
+		initialized = true;
 	}
 
 	// Compiles the script with the given name and the given source code and adds the compiled data to the DataManager
@@ -327,5 +329,16 @@ namespace SQG::Engine::Script
 		);
 		caprica::papyrus::PapyrusCompilationContext::awaitCompile();
 		caprica::papyrus::PapyrusCompilationContext::removeFromNamespace(node->baseName);
+		caprica::pex::PexFunctionBuilder::releaseCaches();
+	}
+
+	void Release()
+	{
+		if (!initialized)
+		{
+			return;
+		}
+
+		caprica::papyrus::PapyrusCompilationContext::releaseAll();
 	}
 }

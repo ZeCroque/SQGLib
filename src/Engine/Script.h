@@ -39,4 +39,5 @@ namespace SQG::Engine::Script
 	// =======================
 	void Init();
 	void AddScript(const std::string& inStringName, const std::string_view& inData);
+	void Release();
 }

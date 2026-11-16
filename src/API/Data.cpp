@@ -1,6 +1,7 @@
 #include "SQG/API/Data.h"
 
 #include "DPF/FileSystem.h"
+#include "Engine/Script.h"
 #include "papyrus/PapyrusCompilationContext.h"
 #include "SQG/API/ConditionUtils.h"
 #include "SQG/API/PackageUtils.h"
@@ -609,7 +610,19 @@ namespace SQG
 		questsData.clear();
 		dialogsData.clear();
 		conditions.clear();
+		// The nodes were created by us (AddScript, DeserializeScript) and aren't in Caprica's namespace anymore, so nothing else references them
+		for(const auto* node : compiledScripts | std::views::values)
+		{
+			delete node;
+		}
 		compiledScripts.clear();
 		packagesFragmentName.clear();
+	}
+
+	DataManager::~DataManager()
+	{
+		ClearSerializationData();
+		// The singleton is created after Caprica's statics, so it is destroyed before them, while they still reference the nodes
+		Engine::Script::Release();
 	}
 }

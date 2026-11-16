@@ -171,6 +171,8 @@ namespace SQG
 		std::map<RE::FormID, QuestData> questsData;
 
 		void ClearSerializationData();
+
+		~DataManager();
 	};
 }
 
