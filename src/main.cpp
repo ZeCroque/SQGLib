@@ -89,7 +89,7 @@ extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []()
 extern "C" DLLEXPORT bool __cdecl SKSEPlugin_Load(const SKSE::LoadInterface* inLoadInterface)
 {
 #ifndef NDEBUG
-	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF );
 #endif
 
 	InitializeLog();
@@ -173,3 +173,19 @@ extern "C" DLLEXPORT bool __cdecl SKSEPlugin_Load(const SKSE::LoadInterface* inL
 
 	return true;
 }
+
+#ifndef NDEBUG
+// Initialized first and therefore destroyed last, once every static of the DLL (Caprica's included) has released its memory
+#pragma warning(suppress: 4074)
+#pragma init_seg(compiler)
+namespace
+{
+	struct LeakDumper
+	{
+		~LeakDumper()
+		{
+			_CrtDumpMemoryLeaks();
+		}
+	} leakDumper;
+}
+#endif
