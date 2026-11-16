@@ -145,7 +145,7 @@ namespace SQG
 		//Dialogs
 		RE::TESTopic* forceGreetTopic;
 		RE::TESTopicInfo* subTopicsInfos[SUB_TOPIC_COUNT];
-		RE::TESConditionItem* impossibleCondition;
+		RE::TESConditionItem* subTopicsImpossibleConditions[SUB_TOPIC_COUNT];
 
 		//Packages
 		RE::TESPackage* acquirePackage;

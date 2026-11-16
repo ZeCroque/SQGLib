@@ -211,7 +211,7 @@ namespace SQG::Engine::Dialog
 		// =======================
 
 		// Checks if the condition for our custom topic is true and if so make the template topic (dis)appear by adding/removing an impossible condition (IsXbox, obviously impossible due to SKSE)
-		bool ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, TopicData& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo)
+		bool ProcessDialogEntry(RE::TESObjectREFR* inSpeaker, TopicData& inDialogEntry, RE::TESTopicInfo* inOutTopicInfo, RE::TESConditionItem* inImpossibleCondition)
 		{
 			bool hasAnyValidAnswer = false;
 			for(auto& answerData : inDialogEntry.answers)
@@ -228,8 +228,7 @@ namespace SQG::Engine::Dialog
 
 			if(!hasAnyValidAnswer)
 			{
-				inOutTopicInfo->objConditions.head = new RE::TESConditionItem();
-				std::memcpy(inOutTopicInfo->objConditions.head, DataManager::GetSingleton()->impossibleCondition, sizeof(RE::TESConditionItem));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-nontrivial-memcall)
+				inOutTopicInfo->objConditions.head = inImpossibleCondition;
 			}
 			return hasAnyValidAnswer;
 		}
@@ -243,15 +242,14 @@ namespace SQG::Engine::Dialog
 				const auto* dataManager = DataManager::GetSingleton();
 				if(i < inEntries.size())
 				{
-					if(ProcessDialogEntry(inSpeaker, *inEntries[i], dataManager->subTopicsInfos[i]))
+					if(ProcessDialogEntry(inSpeaker, *inEntries[i], dataManager->subTopicsInfos[i], dataManager->subTopicsImpossibleConditions[i]))
 					{
 						speakersData[inSpeaker->formID].hasAnyValidEntry = true;
 					}
 				}
 				else
 				{
-					dataManager->subTopicsInfos[i]->objConditions.head = new RE::TESConditionItem();
-					std::memcpy(dataManager->subTopicsInfos[i]->objConditions.head, dataManager->impossibleCondition, sizeof(RE::TESConditionItem));  // NOLINT(bugprone-undefined-memory-manipulation, clang-diagnostic-nontrivial-memcall)
+					dataManager->subTopicsInfos[i]->objConditions.head = dataManager->subTopicsImpossibleConditions[i];
 				}
 			}
 		}

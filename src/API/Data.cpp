@@ -576,17 +576,25 @@ namespace SQG
 
 		forceGreetTopic = reinterpret_cast<RE::TESTopic*>(dataHandler->LookupForm(RE::FormID{ 0x00080B }, "SQGLib.esp"));
 		subTopicsInfos[0] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x000802 }, "SQGLib.esp"));
+		if(subTopicsInfos[0]->objConditions.head)
+		{
+			subTopicsImpossibleConditions[0] = subTopicsInfos[0]->objConditions.head;
+		}
 		subTopicsInfos[1] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x000804 }, "SQGLib.esp"));
+		if(subTopicsInfos[1]->objConditions.head)
+		{
+			subTopicsImpossibleConditions[1] = subTopicsInfos[1]->objConditions.head;
+		}
 		subTopicsInfos[2] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x000806 }, "SQGLib.esp"));
+		if(subTopicsInfos[2]->objConditions.head)
+		{
+			subTopicsImpossibleConditions[2] = subTopicsInfos[2]->objConditions.head;
+		}
 		subTopicsInfos[3] = reinterpret_cast<RE::TESTopicInfo*>(dataHandler->LookupForm(RE::FormID{ 0x000808 }, "SQGLib.esp"));
-
-		impossibleCondition = new RE::TESConditionItem();
-		impossibleCondition->data.dataID = std::numeric_limits<std::uint32_t>::max();
-		impossibleCondition->data.functionData.function.reset(static_cast<RE::FUNCTION_DATA::FunctionID>(std::numeric_limits<std::uint16_t>::max()));
-		impossibleCondition->data.functionData.function.set(RE::FUNCTION_DATA::FunctionID::kIsXBox);
-		impossibleCondition->data.flags.opCode = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
-		impossibleCondition->data.comparisonValue.f = 1.f;
-		impossibleCondition->next = nullptr;
+		if(subTopicsInfos[3]->objConditions.head)
+		{
+			subTopicsImpossibleConditions[3] = subTopicsInfos[3]->objConditions.head;
+		}
 
 		activatePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{ 0x0019B2D });
 		acquirePackage = RE::TESForm::LookupByID<RE::TESPackage>(RE::FormID{ 0x0019713 });
