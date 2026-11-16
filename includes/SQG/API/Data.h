@@ -159,6 +159,10 @@ namespace SQG
 		//Common
 		void InitData();
 
+		// Common
+		// =======================
+		std::vector<std::unique_ptr<RE::TESConditionItem>> conditions;
+
 		// Serialized data
 		// =======================
 		std::map<std::string, caprica::papyrus::PapyrusCompilationNode*> compiledScripts;

@@ -1,6 +1,7 @@
 #include "SQG/API/PackageUtils.h"
 
 #include "DPF/API.h"
+#include "SQG/API/ConditionUtils.h"
 #include "SQG/API/Data.h"
 
 namespace SQG
@@ -78,7 +79,7 @@ namespace SQG
 			RE::TESConditionItem** conditionItemHolder = &outPackage->packConditions.head;
 			for (const auto inCondition : inConditions)
 			{
-				const auto conditionItem = *conditionItemHolder = inCondition;
+				const auto conditionItem = *conditionItemHolder = CloneCondition(inCondition);
 				conditionItemHolder = &conditionItem->next;
 			}
 		}

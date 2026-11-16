@@ -392,7 +392,7 @@ namespace SQG
 			RE::TESConditionItem** conditionItemHolder = &outPackage->packConditions.head;
 			while (inSerializer->Read<bool>())
 			{
-				*conditionItemHolder = DeserializeCondition(inSerializer);
+				*conditionItemHolder = CloneCondition(DeserializeCondition(inSerializer));
 				conditionItemHolder = &(*conditionItemHolder)->next;
 			}
 		}
@@ -608,6 +608,7 @@ namespace SQG
 	{
 		questsData.clear();
 		dialogsData.clear();
+		conditions.clear();
 		compiledScripts.clear();
 		packagesFragmentName.clear();
 	}
